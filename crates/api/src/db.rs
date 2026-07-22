@@ -294,6 +294,20 @@ pub async fn delete_webhook(pool: &PgPool, tenant_id: Uuid, id: Uuid) -> Result<
     Ok(r.rows_affected() > 0)
 }
 
+/// Fail jobs stuck in a non-terminal state longer than `stale_secs` (orphaned
+/// enqueues or hung transcodes). Returns how many were swept.
+pub async fn fail_stale_jobs(pool: &PgPool, stale_secs: i64) -> Result<u64, sqlx::Error> {
+    let r = sqlx::query(
+        "UPDATE jobs SET state = 'failed', error = 'job timed out', finished_at = now()
+         WHERE state NOT IN ('completed', 'failed')
+           AND queued_at < now() - make_interval(secs => $1)",
+    )
+    .bind(stale_secs as f64)
+    .execute(pool)
+    .await?;
+    Ok(r.rows_affected())
+}
+
 // --- Usage / billing ---------------------------------------------------------
 
 /// Transcoded minutes accrued this month for the tenant.

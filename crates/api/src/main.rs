@@ -33,6 +33,10 @@ async fn main() -> anyhow::Result<()> {
 
     let state = init_state(&settings, metrics_handle).await?;
     tokio::spawn(metrics::collect_loop(state.db().clone()));
+    tokio::spawn(sweep_stale_jobs(
+        state.db().clone(),
+        settings.job_stale_secs as i64,
+    ));
     let app = routes::build(state);
 
     let listener = tokio::net::TcpListener::bind(&settings.bind_addr)
@@ -48,6 +52,19 @@ async fn main() -> anyhow::Result<()> {
 
     tracing::info!("shutdown complete");
     Ok(())
+}
+
+/// Periodically fail jobs stuck in a non-terminal state past the stale timeout.
+async fn sweep_stale_jobs(pool: sqlx::PgPool, stale_secs: i64) {
+    let mut tick = tokio::time::interval(Duration::from_secs(300));
+    loop {
+        tick.tick().await;
+        match db::fail_stale_jobs(&pool, stale_secs).await {
+            Ok(n) if n > 0 => tracing::warn!(count = n, "swept stale jobs to failed"),
+            Ok(_) => {}
+            Err(e) => tracing::error!(error = %e, "stale-job sweep failed"),
+        }
+    }
 }
 
 fn init_tracing() {

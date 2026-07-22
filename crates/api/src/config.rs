@@ -13,6 +13,8 @@ pub struct Settings {
     pub max_inflight_per_tenant: usize,
     /// Idle seconds before a stuck (unacked) job is reclaimed for retry.
     pub reclaim_min_idle_secs: u64,
+    /// A non-terminal job older than this (seconds) is swept to `failed`.
+    pub job_stale_secs: u64,
     pub s3_bucket: String,
     /// Custom S3 endpoint (MinIO). Absent = AWS default resolver — the one
     /// legitimately optional value, not a fallback.
