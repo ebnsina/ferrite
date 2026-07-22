@@ -28,21 +28,31 @@
 		setTimeout(() => (copied = null), 1500);
 	}
 
-	// Attach hls.js to the live playlist whenever the <video> is mounted+live.
-	function livePlayer(node: HTMLVideoElement, src: string) {
-		let instance: { destroy(): void } | undefined;
+	// Play the live stream via SRS HTTP-FLV (low latency, reliable) using mpegts.js.
+	function livePlayer(node: HTMLVideoElement, flvUrl: string) {
+		let player: { destroy(): void } | undefined;
 		(async () => {
-			const { default: Hls } = await import('hls.js');
-			if (Hls.isSupported()) {
-				const hls = new Hls({ liveSyncDurationCount: 3 });
-				hls.loadSource(src);
-				hls.attachMedia(node);
-				instance = hls;
-			} else if (node.canPlayType('application/vnd.apple.mpegurl')) {
-				node.src = src;
-			}
+			await import('$lib/vendor/mpegts.js'); // UMD side effect: sets window.mpegts
+			const mpegts = window.mpegts;
+			if (!mpegts?.isSupported()) return;
+			const p = mpegts.createPlayer(
+				{ type: 'flv', isLive: true, url: flvUrl },
+				{ enableWorker: false, liveBufferLatencyChasing: true }
+			);
+			p.attachMediaElement(node);
+			p.load();
+			p.play();
+			player = p;
 		})();
-		return { destroy: () => instance?.destroy() };
+		return {
+			destroy: () => {
+				try {
+					player?.destroy();
+				} catch {
+					/* ignore teardown races */
+				}
+			}
+		};
 	}
 
 	onMount(() => {
@@ -73,10 +83,10 @@
 
 		<Card class="mb-6 overflow-hidden !p-0">
 			{#if stream.live}
-				{#key stream.hls_url}
-					<!-- svelte-ignore a11y_media_has_caption -->
-					<video use:livePlayer={stream.hls_url} controls autoplay muted playsinline class="aspect-video w-full bg-black"></video>
-				{/key}
+				<!-- No {#key}: flv_url is constant, so the player mounts once and
+				     persists across status polls instead of churning. -->
+				<!-- svelte-ignore a11y_media_has_caption -->
+				<video use:livePlayer={stream.flv_url} controls autoplay muted playsinline class="aspect-video w-full bg-black"></video>
 			{:else}
 				<div class="flex aspect-video w-full items-center justify-center bg-black text-sm text-muted">
 					Waiting for the stream to start…
