@@ -4,6 +4,7 @@ mod config;
 mod cpu_encoder;
 mod db;
 mod pipeline;
+mod thumbnails;
 
 use std::time::Duration;
 

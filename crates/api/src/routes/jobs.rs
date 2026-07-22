@@ -28,6 +28,9 @@ pub struct JobView {
     /// Presigned HLS master playlist URL; present once the job is completed.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub playback_url: Option<String>,
+    /// Presigned poster image URL; present once the job is completed.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub poster_url: Option<String>,
 }
 
 impl From<Job> for JobView {
@@ -41,6 +44,7 @@ impl From<Job> for JobView {
             queued_at: j.queued_at.to_rfc3339(),
             finished_at: j.finished_at.map(|t| t.to_rfc3339()),
             playback_url: None,
+            poster_url: None,
         }
     }
 }
@@ -107,7 +111,7 @@ async fn submit_job(
             ladder: Ladder::default_abr(),
             hls: true,
             dash: false,
-            thumbnails: false,
+            thumbnails: true,
         };
         state.queue().enqueue(&transcode).await?;
         tracing::info!(job = %job.id, tenant = %tenant_id, "job enqueued");
@@ -184,11 +188,21 @@ pub async fn get_job(
         .await?
         .ok_or(ApiError::NotFound)?;
 
-    let playback_key =
-        (job.state == "completed").then(|| format!("{}/master.m3u8", job.output_prefix));
+    let completed = job.state == "completed";
+    let prefix = job.output_prefix.clone();
     let mut view = JobView::from(job);
-    if let Some(key) = playback_key {
-        view.playback_url = Some(state.storage().presign_get(&key, PLAYBACK_URL_TTL).await?);
+    if completed {
+        let storage = state.storage();
+        view.playback_url = Some(
+            storage
+                .presign_get(&format!("{prefix}/master.m3u8"), PLAYBACK_URL_TTL)
+                .await?,
+        );
+        view.poster_url = Some(
+            storage
+                .presign_get(&format!("{prefix}/thumbs/poster.jpg"), PLAYBACK_URL_TTL)
+                .await?,
+        );
     }
     Ok(Json(view))
 }

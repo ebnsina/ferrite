@@ -8,6 +8,7 @@ use sqlx::PgPool;
 
 use crate::cpu_encoder::CpuEncoder;
 use crate::db;
+use crate::thumbnails;
 
 #[derive(Debug, thiserror::Error)]
 pub enum PipelineError {
@@ -88,9 +89,20 @@ async fn run(
     };
 
     tracing::info!(job = %job.id, renditions = job.ladder.renditions.len(), "transcoding");
-    let artifacts = encoder.transcode(job, &media, &progress).await?;
+    let mut artifacts = encoder.transcode(job, &media, &progress).await?;
     drop(progress); // closes the channel so the progress task finishes
     let _ = progress_task.await;
+
+    // Optional poster + sprite + VTT storyboard. Non-essential: failure logs
+    // but does not fail the transcode.
+    if job.thumbnails {
+        db::set_state(pool, job.id, "packaging").await?;
+        let thumb_dir = output_dir.join("thumbs");
+        match thumbnails::generate(job, &media, &source_str, &thumb_dir).await {
+            Ok(mut thumbs) => artifacts.append(&mut thumbs),
+            Err(e) => tracing::warn!(job = %job.id, error = %e, "thumbnail generation failed"),
+        }
+    }
 
     db::set_state(pool, job.id, "uploading").await?;
     tracing::info!(job = %job.id, count = artifacts.len(), "uploading artifacts");
