@@ -2,8 +2,9 @@
 //! (tracing, CORS, body limits) and the global 404 fallback are applied once.
 
 mod health;
+mod tenants;
 
-use axum::routing::get;
+use axum::routing::{get, post};
 use axum::Router;
 use tower_http::cors::CorsLayer;
 use tower_http::limit::RequestBodyLimitLayer;
@@ -16,7 +17,10 @@ use crate::state::AppState;
 pub fn build(state: AppState) -> Router {
     let api = Router::new()
         .route("/health", get(health::health))
-        .route("/ready", get(health::ready));
+        .route("/ready", get(health::ready))
+        .route("/tenants", post(tenants::create_tenant))
+        .route("/api-keys", post(tenants::create_api_key))
+        .route("/me", get(tenants::me));
 
     Router::new()
         .nest("/v1", api)
