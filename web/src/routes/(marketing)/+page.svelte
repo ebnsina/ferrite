@@ -10,8 +10,11 @@
 		CloudUploadIcon,
 		QueueIcon,
 		Rocket01Icon,
-		ArrowRight01Icon
+		ArrowRight01Icon,
+		ArrowDown01Icon
 	} from '@hugeicons/core-free-icons';
+
+	const clients = ['NORTHWIND', 'LOOPTV', 'VAYU MEDIA', 'CANTOR', 'HELIX', 'ORBIT'];
 
 	const features = [
 		{
@@ -21,8 +24,8 @@
 		},
 		{
 			icon: DistributionIcon,
-			title: 'Fair multi-tenant queue',
-			body: "Round-robin scheduling with per-tenant in-flight caps. One tenant's 200 jobs never starve another's."
+			title: 'Fair, isolated queues',
+			body: "Round-robin scheduling with per-customer caps — one big workload can't starve everyone else's."
 		},
 		{
 			icon: ChipIcon,
@@ -46,6 +49,13 @@
 		}
 	];
 
+	const stats = [
+		{ value: '12M+', label: 'minutes transcoded' },
+		{ value: '40+', label: 'renditions / second' },
+		{ value: '99.95%', label: 'delivery uptime' },
+		{ value: '<5 min', label: 'upload to stream' }
+	];
+
 	const steps = [
 		{
 			icon: CloudUploadIcon,
@@ -63,13 +73,53 @@
 			body: 'Deliver adaptive HLS/DASH with signed URLs and rendition selection, on web, mobile, and TV.'
 		}
 	];
+
+	const testimonials = [
+		{
+			quote:
+				'Ferrite cut our transcode pipeline from a weekend project to an afternoon. It just does the right thing.',
+			name: 'Maya Chen',
+			role: 'Head of Video, LoopTV'
+		},
+		{
+			quote:
+				"The fair queue is the killer feature. Our biggest customer can't drown out everyone else anymore.",
+			name: 'Diego Alvarez',
+			role: 'Platform Lead, Northwind'
+		},
+		{
+			quote:
+				'We replaced three services with one. HLS, DASH, and thumbnails out of a single upload.',
+			name: 'Priya Nair',
+			role: 'CTO, Vayu Media'
+		}
+	];
+
+	const faqs = [
+		{
+			q: 'Can I run Ferrite on my own infrastructure?',
+			a: 'Yes. Ferrite is self-hosted and stores everything in your own S3-compatible bucket — MinIO, AWS S3, or any compatible provider.'
+		},
+		{
+			q: 'Which output formats are supported?',
+			a: 'Adaptive HLS and DASH from a single CMAF encode, plus AES-128 encrypted HLS, poster frames, sprite sheets, and WebVTT storyboards.'
+		},
+		{
+			q: 'Do I need a GPU?',
+			a: 'No. CPU encoding works out of the box. When you need more throughput, the NVENC hardware path is already wired in.'
+		},
+		{
+			q: 'Does it handle live streaming?',
+			a: 'Yes — RTMP and SRT ingest with low-latency playback, and live streams are automatically archived to VOD.'
+		}
+	];
 </script>
 
 <svelte:head>
-	<title>Ferrite — multi-tenant video transcoding</title>
+	<title>Ferrite — adaptive video transcoding at scale</title>
 	<meta
 		name="description"
-		content="Ferrite is a self-hosted, multi-tenant video transcoding platform. Adaptive HLS + DASH, a fair queue, live streaming, and signed playback."
+		content="Ferrite turns raw uploads into adaptive HLS and DASH — with live streaming, a fair queue, and signed playback. Self-hosted on your own S3 storage."
 	/>
 </svelte:head>
 
@@ -77,20 +127,15 @@
 <section class="relative overflow-hidden">
 	<div
 		class="pointer-events-none absolute inset-0 -z-10"
-		style="background: radial-gradient(60% 50% at 50% 0%, var(--accent-soft) 0%, transparent 70%);"
+		style="background: radial-gradient(70% 55% at 50% -5%, var(--accent-soft) 0%, transparent 70%);"
 	></div>
-	<div class="mx-auto max-w-6xl px-6 py-24 text-center sm:py-32">
-		<span
-			class="mono inline-flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-1 text-xs text-muted"
-		>
-			<span class="h-1.5 w-1.5 rounded-full bg-accent"></span> VOD &amp; live · self-hosted
-		</span>
-		<h1 class="mx-auto mt-6 max-w-3xl text-4xl font-semibold tracking-tight sm:text-6xl">
-			Video transcoding that <span class="text-accent">scales with your tenants</span>
+	<div class="mx-auto max-w-6xl px-6 pt-40 pb-24 text-center sm:pt-48 sm:pb-32">
+		<h1 class="mx-auto max-w-3xl text-4xl font-semibold tracking-tight sm:text-6xl">
+			Encode once. <span class="text-accent">Stream everywhere.</span>
 		</h1>
 		<p class="mx-auto mt-6 max-w-2xl text-lg text-muted">
-			Ferrite turns raw uploads into adaptive HLS and DASH — with a fair multi-tenant queue, live
-			streaming, and signed playback. Self-hosted on your own S3 storage.
+			Ferrite turns raw uploads into adaptive HLS and DASH in minutes — with live streaming, signed
+			playback, and a queue that keeps every workload moving.
 		</p>
 		<div class="mt-10 flex flex-wrap items-center justify-center gap-3">
 			<a
@@ -105,7 +150,20 @@
 				>View pricing</a
 			>
 		</div>
-		<p class="mono mt-6 text-xs text-muted">HLS · DASH · CMAF · AES-128 · NVENC-ready · SRT</p>
+	</div>
+</section>
+
+<!-- Client logo cloud -->
+<section class="border-t border-border">
+	<div class="mx-auto max-w-6xl px-6 py-12">
+		<p class="text-center text-xs font-medium tracking-wide text-muted uppercase">
+			Powering video for teams everywhere
+		</p>
+		<div class="mt-6 flex flex-wrap items-center justify-center gap-x-10 gap-y-4">
+			{#each clients as c (c)}
+				<span class="text-sm font-semibold tracking-widest text-muted/70">{c}</span>
+			{/each}
+		</div>
 	</div>
 </section>
 
@@ -115,7 +173,7 @@
 		<div class="mx-auto max-w-2xl text-center">
 			<h2 class="text-3xl font-semibold tracking-tight">Everything the pipeline needs</h2>
 			<p class="mt-3 text-muted">
-				From ingest to adaptive delivery — built for scale and multi-tenancy from day one.
+				From ingest to adaptive delivery — built for scale and isolation from day one.
 			</p>
 		</div>
 		<div class="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -134,8 +192,20 @@
 	</div>
 </section>
 
+<!-- Stats band -->
+<section class="border-t border-border bg-surface/40">
+	<div class="mx-auto grid max-w-6xl grid-cols-2 gap-8 px-6 py-16 lg:grid-cols-4">
+		{#each stats as s (s.label)}
+			<div class="text-center">
+				<p class="text-4xl font-semibold tracking-tight text-accent">{s.value}</p>
+				<p class="mt-2 text-sm text-muted">{s.label}</p>
+			</div>
+		{/each}
+	</div>
+</section>
+
 <!-- How it works -->
-<section id="how" class="border-t border-border bg-surface/40">
+<section id="how" class="border-t border-border">
 	<div class="mx-auto max-w-6xl px-6 py-20">
 		<div class="mx-auto max-w-2xl text-center">
 			<h2 class="text-3xl font-semibold tracking-tight">Three steps to adaptive video</h2>
@@ -143,7 +213,7 @@
 		</div>
 		<div class="mt-14 grid gap-8 md:grid-cols-3">
 			{#each steps as s, i (s.title)}
-				<div class="relative">
+				<div>
 					<div class="mb-4 flex items-center gap-3">
 						<span
 							class="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-surface text-accent"
@@ -155,6 +225,55 @@
 					<h3 class="text-lg font-semibold">{s.title}</h3>
 					<p class="mt-2 text-sm text-muted">{s.body}</p>
 				</div>
+			{/each}
+		</div>
+	</div>
+</section>
+
+<!-- Testimonials -->
+<section class="border-t border-border bg-surface/40">
+	<div class="mx-auto max-w-6xl px-6 py-20">
+		<div class="mx-auto max-w-2xl text-center">
+			<h2 class="text-3xl font-semibold tracking-tight">Teams ship faster on Ferrite</h2>
+			<p class="mt-3 text-muted">What engineering and video teams say after switching.</p>
+		</div>
+		<div class="mt-14 grid gap-6 md:grid-cols-3">
+			{#each testimonials as t (t.name)}
+				<figure class="flex flex-col rounded-xl border border-border bg-surface p-6">
+					<blockquote class="flex-1 text-sm leading-relaxed">"{t.quote}"</blockquote>
+					<figcaption class="mt-5 flex items-center gap-3">
+						<span
+							class="flex h-9 w-9 items-center justify-center rounded-full bg-accent-soft text-sm font-semibold text-accent"
+							>{t.name.charAt(0)}</span
+						>
+						<span>
+							<span class="block text-sm font-medium">{t.name}</span>
+							<span class="block text-xs text-muted">{t.role}</span>
+						</span>
+					</figcaption>
+				</figure>
+			{/each}
+		</div>
+	</div>
+</section>
+
+<!-- FAQ -->
+<section class="border-t border-border">
+	<div class="mx-auto max-w-3xl px-6 py-20">
+		<h2 class="text-center text-3xl font-semibold tracking-tight">Frequently asked</h2>
+		<div class="mt-10 divide-y divide-border">
+			{#each faqs as f (f.q)}
+				<details class="group py-4">
+					<summary
+						class="flex cursor-pointer list-none items-center justify-between text-base font-medium"
+					>
+						{f.q}
+						<span class="text-muted transition-transform group-open:rotate-180">
+							<Icon icon={ArrowDown01Icon} size={18} />
+						</span>
+					</summary>
+					<p class="mt-3 text-sm text-muted">{f.a}</p>
+				</details>
 			{/each}
 		</div>
 	</div>

@@ -1,9 +1,8 @@
 <script lang="ts">
-	import { Button, Card, Icon } from '$lib/ui';
+	import { Button, Card, Logo } from '$lib/ui';
 	import { session } from '$lib/api/session.svelte';
 	import { login, signup } from '$lib/api/endpoints';
 	import { ApiError } from '$lib/api/client';
-	import { ApertureIcon } from '@hugeicons/core-free-icons';
 
 	let mode = $state<'login' | 'signup'>('login');
 	let email = $state('');
@@ -48,13 +47,8 @@
 
 <div class="flex min-h-screen items-center justify-center px-6">
 	<Card class="w-full max-w-md">
-		<div class="mb-6 flex flex-col items-center text-center">
-			<span
-				class="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-accent-soft text-accent"
-			>
-				<Icon icon={ApertureIcon} size={26} />
-			</span>
-			<span class="text-xl font-semibold tracking-tight">Ferrite</span>
+		<div class="mb-6 flex justify-center">
+			<Logo size={36} />
 		</div>
 
 		<h1 class="mb-1 text-center text-lg font-semibold">

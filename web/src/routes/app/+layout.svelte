@@ -9,11 +9,10 @@
 		Analytics01Icon,
 		Moon02Icon,
 		Sun03Icon,
-		ApertureIcon,
 		Logout01Icon
 	} from '@hugeicons/core-free-icons';
 	import { browser } from '$app/environment';
-	import { Icon } from '$lib/ui';
+	import { Icon, Logo } from '$lib/ui';
 	import { session } from '$lib/api/session.svelte';
 	import Auth from '$lib/components/Auth.svelte';
 
@@ -51,9 +50,8 @@
 <div class="flex min-h-screen">
 	<!-- Sidebar -->
 	<aside class="hidden w-60 shrink-0 border-r border-border bg-surface md:flex md:flex-col">
-		<div class="flex h-16 items-center gap-2 border-b border-border px-5">
-			<span class="text-accent"><Icon icon={ApertureIcon} size={20} /></span>
-			<span class="text-lg font-semibold tracking-tight">Ferrite</span>
+		<div class="flex h-16 items-center border-b border-border px-5">
+			<a href="/app"><Logo size={26} /></a>
 		</div>
 		<nav class="flex flex-1 flex-col gap-1 p-3">
 			{#each nav as item (item.href)}
@@ -81,9 +79,8 @@
 	<!-- Main -->
 	<div class="flex min-w-0 flex-1 flex-col">
 		<header class="flex h-16 items-center justify-between border-b border-border px-6">
-			<div class="flex items-center gap-2 md:hidden">
-				<span class="text-accent"><Icon icon={ApertureIcon} size={18} /></span>
-				<span class="font-semibold">Ferrite</span>
+			<div class="md:hidden">
+				<Logo size={24} />
 			</div>
 			<div class="ml-auto flex items-center gap-1">
 				<button

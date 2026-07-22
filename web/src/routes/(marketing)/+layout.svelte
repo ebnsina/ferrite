@@ -1,6 +1,5 @@
 <script lang="ts">
-	import { Icon } from '$lib/ui';
-	import { ApertureIcon } from '@hugeicons/core-free-icons';
+	import { Logo } from '$lib/ui';
 
 	let { children } = $props();
 
@@ -9,17 +8,44 @@
 		{ href: '/#how', label: 'How it works' },
 		{ href: '/pricing', label: 'Pricing' }
 	];
+
+	const footerCols = [
+		{
+			title: 'Product',
+			links: [
+				{ href: '/#features', label: 'Features' },
+				{ href: '/#how', label: 'How it works' },
+				{ href: '/pricing', label: 'Pricing' },
+				{ href: '/app', label: 'Dashboard' }
+			]
+		},
+		{
+			title: 'Platform',
+			links: [
+				{ href: '/#features', label: 'HLS & DASH' },
+				{ href: '/#features', label: 'Live streaming' },
+				{ href: '/#features', label: 'Signed playback' },
+				{ href: '/#features', label: 'GPU encoding' }
+			]
+		},
+		{
+			title: 'Company',
+			links: [
+				{ href: '/', label: 'About' },
+				{ href: '/pricing', label: 'Pricing' },
+				{ href: '/app', label: 'Sign in' }
+			]
+		}
+	];
 </script>
 
 <div class="flex min-h-screen flex-col">
-	<header class="sticky top-0 z-20 border-b border-border bg-bg/80 backdrop-blur">
+	<!-- Transparent header blends into the hero; no divider. -->
+	<header class="absolute inset-x-0 top-0 z-20">
 		<div class="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
-			<a href="/" class="flex items-center gap-2">
-				<span class="text-accent"><Icon icon={ApertureIcon} size={22} /></span>
-				<span class="text-lg font-semibold tracking-tight">Ferrite</span>
-			</a>
+			<a href="/" aria-label="Ferrite home"><Logo /></a>
 			<nav class="hidden items-center gap-8 md:flex">
-				{#each links as l (l.href)}
+				{#each links as l (l.label)}
 					<a href={l.href} class="text-sm text-muted transition-colors hover:text-fg">{l.label}</a>
 				{/each}
 			</nav>
@@ -42,19 +68,36 @@
 		{@render children()}
 	</main>
 
-	<footer class="border-t border-border">
-		<div
-			class="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-6 py-8 sm:flex-row"
-		>
-			<div class="flex items-center gap-2">
-				<span class="text-accent"><Icon icon={ApertureIcon} size={18} /></span>
-				<span class="text-sm font-medium">Ferrite</span>
-				<span class="text-sm text-muted">— multi-tenant video transcoding.</span>
+	<!-- Full-bleed footer band. -->
+	<footer class="w-full border-t border-border bg-surface/60">
+		<div class="mx-auto max-w-6xl px-6 py-16">
+			<div class="grid gap-10 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
+				<div>
+					<Logo />
+					<p class="mt-4 max-w-xs text-sm text-muted">
+						Self-hosted, adaptive video transcoding for teams shipping VOD and live.
+					</p>
+				</div>
+				{#each footerCols as col (col.title)}
+					<div>
+						<h3 class="mb-3 text-xs font-semibold tracking-wide text-muted uppercase">{col.title}</h3>
+						<ul class="flex flex-col gap-2.5">
+							{#each col.links as l (l.label)}
+								<li>
+									<a href={l.href} class="text-sm text-muted transition-colors hover:text-fg"
+										>{l.label}</a
+									>
+								</li>
+							{/each}
+						</ul>
+					</div>
+				{/each}
 			</div>
-			<div class="flex items-center gap-6 text-sm text-muted">
-				<a href="/pricing" class="hover:text-fg">Pricing</a>
-				<a href="/app" class="hover:text-fg">Dashboard</a>
-				<span>© {new Date().getFullYear()}</span>
+			<div
+				class="mt-12 flex flex-col items-center justify-between gap-3 border-t border-border pt-6 text-sm text-muted sm:flex-row"
+			>
+				<span>© {new Date().getFullYear()} Ferrite. All rights reserved.</span>
+				<span class="mono text-xs">HLS · DASH · CMAF · SRT · NVENC-ready</span>
 			</div>
 		</div>
 	</footer>

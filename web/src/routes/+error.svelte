@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { Button, Icon } from '$lib/ui';
-	import { FileNotFoundIcon, ServerStack01Icon, Alert02Icon, ApertureIcon } from '@hugeicons/core-free-icons';
+	import { Button, Icon, Logo } from '$lib/ui';
+	import { FileNotFoundIcon, ServerStack01Icon, Alert02Icon } from '@hugeicons/core-free-icons';
 
 	const status = $derived(page.status);
 	const isNotFound = $derived(status === 404);
@@ -20,10 +20,7 @@
 <div class="flex min-h-screen flex-col">
 	<header class="border-b border-border">
 		<div class="mx-auto flex h-16 max-w-6xl items-center px-6">
-			<a href="/" class="flex items-center gap-2">
-				<span class="text-accent"><Icon icon={ApertureIcon} size={22} /></span>
-				<span class="text-lg font-semibold tracking-tight">Ferrite</span>
-			</a>
+			<a href="/" aria-label="Ferrite home"><Logo /></a>
 		</div>
 	</header>
 
