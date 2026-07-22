@@ -6,6 +6,7 @@
 		DashboardSquare01Icon,
 		Film01Icon,
 		PlayListIcon,
+		LiveStreaming01Icon,
 		Moon02Icon,
 		Sun03Icon,
 		FlashIcon,
@@ -27,7 +28,8 @@
 	const nav = [
 		{ href: '/', label: 'Dashboard', icon: DashboardSquare01Icon },
 		{ href: '/assets', label: 'Assets', icon: Film01Icon },
-		{ href: '/jobs', label: 'Jobs', icon: PlayListIcon }
+		{ href: '/jobs', label: 'Jobs', icon: PlayListIcon },
+		{ href: '/live', label: 'Live', icon: LiveStreaming01Icon }
 	];
 
 	function isActive(href: string) {

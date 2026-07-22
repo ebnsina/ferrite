@@ -34,6 +34,17 @@ export interface Job {
 	storyboard_url?: string;
 }
 
+export interface LiveStream {
+	id: string;
+	name: string;
+	stream_key: string;
+	ingest_url: string;
+	hls_url: string;
+	flv_url: string;
+	created_at: string;
+	live: boolean;
+}
+
 // Matches the API's error envelope: { error: { code, message, fields? } }
 export interface ApiErrorBody {
 	error: {
