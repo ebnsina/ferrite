@@ -89,7 +89,7 @@
 		{:else}
 			<div class="flex flex-col divide-y divide-border">
 				{#each streams as s (s.id)}
-					<a href={`/live/${s.id}`} class="flex items-center gap-4 py-3 transition-colors hover:bg-surface-2">
+					<a href={`/app/live/${s.id}`} class="flex items-center gap-4 py-3 transition-colors hover:bg-surface-2">
 						<span class={s.live ? 'text-danger' : 'text-muted'}>
 							<Icon icon={DotIcon} size={22} />
 						</span>

@@ -63,7 +63,7 @@
 </script>
 
 <div class="mx-auto max-w-3xl">
-	<a href="/live" class="mb-6 inline-flex items-center gap-1 text-sm text-muted hover:text-fg">
+	<a href="/app/live" class="mb-6 inline-flex items-center gap-1 text-sm text-muted hover:text-fg">
 		<Icon icon={ArrowLeft01Icon} size={16} /> Live
 	</a>
 

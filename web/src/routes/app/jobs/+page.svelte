@@ -65,7 +65,7 @@
 		{:else}
 			<div class="flex flex-col divide-y divide-border">
 				{#each jobs as job (job.id)}
-					<a href={`/jobs/${job.id}`} class="flex items-center gap-4 py-3 transition-colors hover:bg-surface-2">
+					<a href={`/app/jobs/${job.id}`} class="flex items-center gap-4 py-3 transition-colors hover:bg-surface-2">
 						<code class="mono w-20 shrink-0 truncate text-xs text-muted">{job.id.slice(0, 8)}</code>
 						<div class="min-w-0 flex-1">
 							{#if ACTIVE.includes(job.state)}

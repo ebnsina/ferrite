@@ -1,7 +1,43 @@
 // Typed API calls. Thin wrappers over apiRequest; components never build URLs.
 import { apiRequest, API_BASE } from './client';
 import { session } from './session.svelte';
-import type { Asset, Job, LiveStream, Usage } from './types';
+import type { Asset, AuthResponse, Job, LiveStream, Member, MemberInvited, Usage } from './types';
+
+// --- Auth --------------------------------------------------------------------
+
+export function signup(email: string, password: string, workspace: string) {
+	return apiRequest<AuthResponse>('/v1/auth/signup', {
+		method: 'POST',
+		body: JSON.stringify({ email, password, workspace })
+	});
+}
+
+export function login(email: string, password: string) {
+	return apiRequest<AuthResponse>('/v1/auth/login', {
+		method: 'POST',
+		body: JSON.stringify({ email, password })
+	});
+}
+
+// --- Team --------------------------------------------------------------------
+
+export function listMembers() {
+	return apiRequest<Member[]>('/v1/members');
+}
+
+export function inviteMember(email: string, role: 'admin' | 'member') {
+	return apiRequest<MemberInvited>('/v1/members', {
+		method: 'POST',
+		body: JSON.stringify({ email, role })
+	});
+}
+
+export function createApiKey(name: string) {
+	return apiRequest<{ id: string; prefix: string; api_key: string }>('/v1/api-keys', {
+		method: 'POST',
+		body: JSON.stringify({ name })
+	});
+}
 
 export function getUsage() {
 	return apiRequest<Usage>('/v1/usage');
@@ -99,7 +135,7 @@ export function streamJob(id: string, onUpdate: (job: Job) => void): () => void 
 
 	(async () => {
 		const res = await fetch(`${API_BASE}/v1/jobs/${id}/events`, {
-			headers: { Authorization: `Bearer ${session.apiKey}`, Accept: 'text/event-stream' },
+			headers: { Authorization: `Bearer ${session.token}`, Accept: 'text/event-stream' },
 			signal: controller.signal
 		});
 		if (!res.ok || !res.body) return;

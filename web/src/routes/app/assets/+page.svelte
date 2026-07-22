@@ -54,7 +54,7 @@
 	async function transcode(assetId: string) {
 		try {
 			await createJob(assetId);
-			goto('/jobs');
+			goto('/app/jobs');
 		} catch (e) {
 			error = e instanceof ApiError ? e.message : 'Could not start transcode.';
 		}
@@ -65,7 +65,7 @@
 	async function transcodeAll() {
 		try {
 			await createJobsBatch(readyAssets.map((a) => a.id));
-			goto('/jobs');
+			goto('/app/jobs');
 		} catch (e) {
 			error = e instanceof ApiError ? e.message : 'Could not start transcodes.';
 		}

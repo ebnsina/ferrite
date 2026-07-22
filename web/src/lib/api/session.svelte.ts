@@ -1,23 +1,45 @@
-// Reactive session: holds the tenant's API key, persisted to localStorage.
+// Reactive session: the dashboard user's JWT + identity, persisted to localStorage.
 import { browser } from '$app/environment';
 
-const STORAGE_KEY = 'ferrite.apiKey';
+const STORAGE_KEY = 'ferrite.session';
 
-let apiKey = $state<string | null>(browser ? localStorage.getItem(STORAGE_KEY) : null);
+export interface SessionData {
+	token: string;
+	user: { id: string; email: string; role: string };
+	tenant: { id: string; name: string };
+}
+
+function load(): SessionData | null {
+	if (!browser) return null;
+	try {
+		const raw = localStorage.getItem(STORAGE_KEY);
+		return raw ? (JSON.parse(raw) as SessionData) : null;
+	} catch {
+		return null;
+	}
+}
+
+let data = $state<SessionData | null>(load());
 
 export const session = {
-	get apiKey() {
-		return apiKey;
+	get token() {
+		return data?.token ?? null;
+	},
+	get user() {
+		return data?.user ?? null;
+	},
+	get tenant() {
+		return data?.tenant ?? null;
 	},
 	get isAuthed() {
-		return !!apiKey;
+		return !!data;
 	},
-	set(key: string) {
-		apiKey = key;
-		if (browser) localStorage.setItem(STORAGE_KEY, key);
+	set(next: SessionData) {
+		data = next;
+		if (browser) localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
 	},
 	clear() {
-		apiKey = null;
+		data = null;
 		if (browser) localStorage.removeItem(STORAGE_KEY);
 	}
 };

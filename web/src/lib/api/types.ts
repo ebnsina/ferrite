@@ -53,6 +53,24 @@ export interface LiveStream {
 	live: boolean;
 }
 
+export interface AuthResponse {
+	token: string;
+	user: { id: string; email: string; role: string };
+	tenant: { id: string; name: string };
+}
+
+export interface Member {
+	id: string;
+	email: string;
+	role: string;
+	created_at: string;
+}
+
+export interface MemberInvited {
+	member: Member;
+	temp_password: string;
+}
+
 // Matches the API's error envelope: { error: { code, message, fields? } }
 export interface ApiErrorBody {
 	error: {

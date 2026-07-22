@@ -38,7 +38,7 @@
 			<h1 class="text-2xl font-semibold tracking-tight">Dashboard</h1>
 			<p class="mt-1 text-sm text-muted">Transcode overview for your workspace.</p>
 		</div>
-		<a href="/assets"><Button><Icon icon={Upload01Icon} size={16} /> Upload video</Button></a>
+		<a href="/app/assets"><Button><Icon icon={Upload01Icon} size={16} /> Upload video</Button></a>
 	</div>
 
 	{#if error}

@@ -52,7 +52,7 @@ export async function apiRequest<T>(path: string, opts: RequestOptions = {}): Pr
 			headers: {
 				Accept: 'application/json',
 				...(rest.body ? { 'Content-Type': 'application/json' } : {}),
-				...(session.apiKey ? { Authorization: `Bearer ${session.apiKey}` } : {}),
+				...(session.token ? { Authorization: `Bearer ${session.token}` } : {}),
 				...headers
 			}
 		});
