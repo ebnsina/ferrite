@@ -15,6 +15,8 @@ ferrite-queue.workspace = true
 
 tokio.workspace = true
 axum.workspace = true
+async-stream.workspace = true
+futures.workspace = true
 tower.workspace = true
 tower-http.workspace = true
 

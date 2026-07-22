@@ -31,7 +31,8 @@ pub fn build(state: AppState) -> Router {
         .route("/assets/{id}/complete", post(assets::complete_asset))
         .route("/jobs", get(jobs::list_jobs).post(jobs::create_job))
         .route("/jobs/batch", post(jobs::create_jobs_batch))
-        .route("/jobs/{id}", get(jobs::get_job));
+        .route("/jobs/{id}", get(jobs::get_job))
+        .route("/jobs/{id}/events", get(jobs::job_events));
 
     Router::new()
         .nest("/v1", api)

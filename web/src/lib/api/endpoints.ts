@@ -1,5 +1,6 @@
 // Typed API calls. Thin wrappers over apiRequest; components never build URLs.
-import { apiRequest } from './client';
+import { apiRequest, API_BASE } from './client';
+import { session } from './session.svelte';
 import type { Asset, Job } from './types';
 
 export interface TenantCreated {
@@ -67,6 +68,46 @@ export function listJobs() {
 
 export function getJob(id: string) {
 	return apiRequest<Job & { playback_url?: string }>(`/v1/jobs/${id}`);
+}
+
+/**
+ * Stream a job's status via SSE until it reaches a terminal state.
+ * Uses fetch (not EventSource) so the Bearer auth header can be sent.
+ * Returns a cleanup function that aborts the stream.
+ */
+export function streamJob(id: string, onUpdate: (job: Job) => void): () => void {
+	const controller = new AbortController();
+
+	(async () => {
+		const res = await fetch(`${API_BASE}/v1/jobs/${id}/events`, {
+			headers: { Authorization: `Bearer ${session.apiKey}`, Accept: 'text/event-stream' },
+			signal: controller.signal
+		});
+		if (!res.ok || !res.body) return;
+
+		const reader = res.body.getReader();
+		const decoder = new TextDecoder();
+		let buffer = '';
+		for (;;) {
+			const { value, done } = await reader.read();
+			if (done) break;
+			buffer += decoder.decode(value, { stream: true });
+			const frames = buffer.split('\n\n');
+			buffer = frames.pop() ?? '';
+			for (const frame of frames) {
+				const data = frame
+					.split('\n')
+					.find((l) => l.startsWith('data:'))
+					?.slice(5)
+					.trim();
+				if (data) onUpdate(JSON.parse(data) as Job);
+			}
+		}
+	})().catch((e) => {
+		if (e.name !== 'AbortError') console.error('[sse]', e);
+	});
+
+	return () => controller.abort();
 }
 
 /** Upload a file's bytes directly to the presigned storage URL. */

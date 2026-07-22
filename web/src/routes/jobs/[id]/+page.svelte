@@ -2,7 +2,7 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { page } from '$app/state';
 	import { Card, StatusPill, ProgressBar, Icon } from '$lib/ui';
-	import { getJob } from '$lib/api/endpoints';
+	import { getJob, streamJob } from '$lib/api/endpoints';
 	import { ApiError } from '$lib/api/client';
 	import type { Job, JobState } from '$lib/api/types';
 	import { ArrowLeft01Icon } from '@hugeicons/core-free-icons';
@@ -10,20 +10,9 @@
 	const id = $derived(page.params.id!);
 	let job = $state<Job | null>(null);
 	let error = $state<string | null>(null);
-	let timer: ReturnType<typeof setInterval>;
+	let stop: (() => void) | undefined;
 
 	const ACTIVE: JobState[] = ['queued', 'probing', 'transcoding', 'packaging', 'uploading'];
-
-	async function load() {
-		try {
-			job = await getJob(id);
-			error = null;
-			if (!ACTIVE.includes(job.state)) clearInterval(timer);
-		} catch (e) {
-			error = e instanceof ApiError ? e.message : 'Failed to load job.';
-			clearInterval(timer);
-		}
-	}
 
 	// Svelte action: attach HLS when the <video> mounts. Prefer hls.js (MSE) —
 	// Chrome falsely reports canPlayType('…mpegurl')='maybe' but can't play HLS
@@ -47,11 +36,19 @@
 		return { destroy: () => instance?.destroy() };
 	}
 
-	onMount(() => {
-		load();
-		timer = setInterval(load, 2000);
+	onMount(async () => {
+		try {
+			job = await getJob(id); // initial snapshot (also fills playback URLs if done)
+		} catch (e) {
+			error = e instanceof ApiError ? e.message : 'Failed to load job.';
+			return;
+		}
+		// Live updates until terminal; the stream closes itself when done.
+		if (ACTIVE.includes(job.state)) {
+			stop = streamJob(id, (updated) => (job = updated));
+		}
 	});
-	onDestroy(() => clearInterval(timer));
+	onDestroy(() => stop?.());
 </script>
 
 <div class="mx-auto max-w-3xl">

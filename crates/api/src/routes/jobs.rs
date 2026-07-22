@@ -1,9 +1,14 @@
 //! Transcode job submission and status.
 
+use std::convert::Infallible;
+use std::time::Duration;
+
 use axum::extract::{Path, State};
+use axum::response::sse::{Event, KeepAlive, Sse};
 use axum::Json;
 use ferrite_core::{Ladder, TranscodeJob};
 use ferrite_queue::JobQueue;
+use futures::Stream;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -188,16 +193,58 @@ pub async fn get_job(
         .await?
         .ok_or(ApiError::NotFound)?;
 
+    Ok(Json(view_with_urls(&state, job)))
+}
+
+/// Build a JobView, adding public playback URLs once the job is completed.
+/// Outputs are publicly readable, so URLs are plain (unsigned) and HLS players
+/// can fetch child playlists/segments without per-object signing.
+fn view_with_urls(state: &AppState, job: Job) -> JobView {
     let completed = job.state == "completed";
     let prefix = job.output_prefix.clone();
     let mut view = JobView::from(job);
     if completed {
-        // Outputs are publicly readable, so playback URLs are plain (unsigned)
-        // and HLS players can fetch child playlists/segments without per-object signing.
         let base = &state.settings().s3_public_url;
         view.playback_url = Some(format!("{base}/{prefix}/master.m3u8"));
         view.poster_url = Some(format!("{base}/{prefix}/thumbs/poster.jpg"));
         view.storyboard_url = Some(format!("{base}/{prefix}/thumbs/thumbs.vtt"));
     }
-    Ok(Json(view))
+    view
+}
+
+const SSE_POLL: Duration = Duration::from_millis(1000);
+const SSE_MAX_TICKS: u32 = 30 * 60; // ~30 min safety cap
+
+/// `GET /v1/jobs/:id/events` — Server-Sent Events stream of job status until it
+/// reaches a terminal state. One long-lived connection replaces client polling.
+pub async fn job_events(
+    State(state): State<AppState>,
+    ctx: TenantContext,
+    Path(id): Path<Uuid>,
+) -> ApiResult<Sse<impl Stream<Item = Result<Event, Infallible>>>> {
+    // Verify ownership before opening the stream.
+    db::find_job(state.db(), ctx.tenant_id, id)
+        .await?
+        .ok_or(ApiError::NotFound)?;
+
+    let tenant_id = ctx.tenant_id;
+    let stream = async_stream::stream! {
+        let mut ticker = tokio::time::interval(SSE_POLL);
+        for _ in 0..SSE_MAX_TICKS {
+            ticker.tick().await;
+            match db::find_job(state.db(), tenant_id, id).await {
+                Ok(Some(job)) => {
+                    let terminal = job.state == "completed" || job.state == "failed";
+                    let view = view_with_urls(&state, job);
+                    if let Ok(event) = Event::default().json_data(view) {
+                        yield Ok(event);
+                    }
+                    if terminal { break; }
+                }
+                _ => break,
+            }
+        }
+    };
+
+    Ok(Sse::new(stream).keep_alive(KeepAlive::default()))
 }
