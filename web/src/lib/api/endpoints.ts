@@ -1,7 +1,11 @@
 // Typed API calls. Thin wrappers over apiRequest; components never build URLs.
 import { apiRequest, API_BASE } from './client';
 import { session } from './session.svelte';
-import type { Asset, Job, LiveStream } from './types';
+import type { Asset, Job, LiveStream, Usage } from './types';
+
+export function getUsage() {
+	return apiRequest<Usage>('/v1/usage');
+}
 
 export function createLiveStream(name: string) {
 	return apiRequest<LiveStream>('/v1/live/streams', {

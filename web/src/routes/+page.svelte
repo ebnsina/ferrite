@@ -1,14 +1,15 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { Card, Button, StatusPill, ProgressBar, Icon } from '$lib/ui';
-	import { listAssets, listJobs } from '$lib/api/endpoints';
+	import { listAssets, listJobs, getUsage } from '$lib/api/endpoints';
 	import { ApiError } from '$lib/api/client';
-	import type { Asset, Job, JobState } from '$lib/api/types';
+	import type { Asset, Job, JobState, Usage } from '$lib/api/types';
 	import { bytes, timeAgo } from '$lib/format';
 	import { Upload01Icon, Film01Icon, PlayListIcon, HardDriveIcon } from '@hugeicons/core-free-icons';
 
 	let assets = $state<Asset[]>([]);
 	let jobs = $state<Job[]>([]);
+	let usage = $state<Usage | null>(null);
 	let error = $state<string | null>(null);
 
 	const ACTIVE: JobState[] = ['queued', 'probing', 'transcoding', 'packaging', 'uploading'];
@@ -18,7 +19,7 @@
 
 	onMount(async () => {
 		try {
-			[assets, jobs] = await Promise.all([listAssets(), listJobs()]);
+			[assets, jobs, usage] = await Promise.all([listAssets(), listJobs(), getUsage()]);
 		} catch (e) {
 			error = e instanceof ApiError ? e.message : 'Failed to load dashboard.';
 		}
@@ -57,6 +58,33 @@
 			</Card>
 		{/each}
 	</div>
+
+	{#if usage}
+		<Card class="mb-6">
+			<div class="flex items-center justify-between">
+				<h2 class="text-sm font-medium text-muted">This month</h2>
+				<span class="text-xs text-muted">estimated · mock billing</span>
+			</div>
+			<div class="mt-4 flex flex-wrap items-end justify-between gap-4">
+				<div class="flex gap-8">
+					<div>
+						<p class="text-xs text-muted">Transcoded</p>
+						<p class="mono mt-1 text-lg font-semibold">{usage.minutes.toFixed(1)} min</p>
+					</div>
+					<div>
+						<p class="text-xs text-muted">Storage</p>
+						<p class="mono mt-1 text-lg font-semibold">{bytes(usage.storage_bytes)}</p>
+					</div>
+				</div>
+				<div class="text-right">
+					<p class="text-xs text-muted">Estimated cost</p>
+					<p class="mono mt-1 text-2xl font-semibold text-accent">
+						${usage.cost.total.toFixed(2)}
+					</p>
+				</div>
+			</div>
+		</Card>
+	{/if}
 
 	<Card>
 		<h2 class="mb-4 text-sm font-medium text-muted">Recent jobs</h2>

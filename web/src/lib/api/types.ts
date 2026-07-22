@@ -34,6 +34,13 @@ export interface Job {
 	storyboard_url?: string;
 }
 
+export interface Usage {
+	minutes: number;
+	storage_bytes: number;
+	storage_gb: number;
+	cost: { currency: string; transcode: number; storage: number; total: number };
+}
+
 export interface LiveStream {
 	id: string;
 	name: string;

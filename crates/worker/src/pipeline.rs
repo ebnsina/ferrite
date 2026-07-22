@@ -135,6 +135,13 @@ async fn run(
 
     upload_master_playlist(job, &media, job_dir, storage).await?;
     record_renditions(pool, job).await?;
+
+    // Meter usage: source minutes × rendition count (billed output minutes).
+    let minutes = (media.duration_secs / 60.0) * job.ladder.renditions.len().max(1) as f64;
+    if let Err(e) = db::record_usage(pool, job.tenant_id, minutes).await {
+        tracing::warn!(job = %job.id, error = %e, "failed to record usage");
+    }
+
     Ok(artifacts.len())
 }
 

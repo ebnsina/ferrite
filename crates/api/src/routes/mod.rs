@@ -7,6 +7,7 @@ mod jobs;
 mod live;
 mod playback;
 mod tenants;
+mod usage;
 
 use axum::routing::{get, post};
 use axum::Router;
@@ -25,6 +26,7 @@ pub fn build(state: AppState) -> Router {
         .route("/tenants", post(tenants::create_tenant))
         .route("/api-keys", post(tenants::create_api_key))
         .route("/me", get(tenants::me))
+        .route("/usage", get(usage::get_usage))
         .route(
             "/assets",
             get(assets::list_assets).post(assets::create_asset),

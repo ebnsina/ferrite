@@ -245,6 +245,30 @@ pub async fn find_job(
     .await
 }
 
+// --- Usage / billing ---------------------------------------------------------
+
+/// Transcoded minutes accrued this month for the tenant.
+pub async fn usage_minutes(pool: &PgPool, tenant_id: Uuid) -> Result<f64, sqlx::Error> {
+    let row: Option<(f64,)> = sqlx::query_as(
+        "SELECT minutes FROM usage
+         WHERE tenant_id = $1 AND period = date_trunc('month', now())::date",
+    )
+    .bind(tenant_id)
+    .fetch_optional(pool)
+    .await?;
+    Ok(row.map(|r| r.0).unwrap_or(0.0))
+}
+
+/// Total source bytes stored for the tenant (ready assets).
+pub async fn storage_bytes(pool: &PgPool, tenant_id: Uuid) -> Result<i64, sqlx::Error> {
+    let row: (i64,) =
+        sqlx::query_as("SELECT COALESCE(SUM(bytes), 0)::bigint FROM assets WHERE tenant_id = $1")
+            .bind(tenant_id)
+            .fetch_one(pool)
+            .await?;
+    Ok(row.0)
+}
+
 // --- Live streams ------------------------------------------------------------
 
 #[derive(Debug, sqlx::FromRow)]

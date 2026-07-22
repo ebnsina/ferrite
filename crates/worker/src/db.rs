@@ -70,6 +70,21 @@ pub async fn set_encryption_key(
     Ok(())
 }
 
+/// Accrue transcoded minutes to the tenant's usage for the current month.
+pub async fn record_usage(pool: &PgPool, tenant_id: Uuid, minutes: f64) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        "INSERT INTO usage (tenant_id, period, minutes)
+         VALUES ($1, date_trunc('month', now())::date, $2)
+         ON CONFLICT (tenant_id, period)
+         DO UPDATE SET minutes = usage.minutes + EXCLUDED.minutes",
+    )
+    .bind(tenant_id)
+    .bind(minutes)
+    .execute(pool)
+    .await?;
+    Ok(())
+}
+
 pub async fn insert_rendition(
     pool: &PgPool,
     job_id: Uuid,
