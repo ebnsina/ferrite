@@ -11,12 +11,15 @@ use std::path::Path;
 use ferrite_core::{Artifact, ArtifactKind, MediaInfo, TranscodeError, TranscodeJob};
 use tokio::process::Command;
 
+use crate::encoding::EncodeParams;
+
 /// Produce the CMAF package (HLS + DASH) into the job's output dir.
 pub async fn generate(
     job: &TranscodeJob,
     media: &MediaInfo,
     source: &str,
     dir: &Path,
+    encode: EncodeParams,
 ) -> Result<Vec<Artifact>, TranscodeError> {
     tokio::fs::create_dir_all(dir)
         .await
@@ -26,7 +29,7 @@ pub async fn generate(
     }
 
     let manifest = dir.join("manifest.mpd");
-    let args = build_args(job, media, source, &manifest.to_string_lossy());
+    let args = build_args(job, media, source, &manifest.to_string_lossy(), encode);
 
     let output = Command::new("ffmpeg")
         .args(&args)
@@ -42,7 +45,13 @@ pub async fn generate(
     collect(job, dir).await
 }
 
-fn build_args(job: &TranscodeJob, media: &MediaInfo, source: &str, manifest: &str) -> Vec<String> {
+fn build_args(
+    job: &TranscodeJob,
+    media: &MediaInfo,
+    source: &str,
+    manifest: &str,
+    encode: EncodeParams,
+) -> Vec<String> {
     let renditions = &job.ladder.renditions;
     let mut a: Vec<String> = ["-y", "-loglevel", "error", "-nostats", "-i", source]
         .into_iter()
@@ -58,7 +67,7 @@ fn build_args(job: &TranscodeJob, media: &MediaInfo, source: &str, manifest: &st
         a.push("0:a:0".into());
     }
 
-    a.extend(["-c:v", "libx264", "-preset", "veryfast"].map(String::from));
+    a.extend(["-c:v", encode.codec, "-preset", encode.preset].map(String::from));
     if media.has_audio {
         a.extend(["-c:a", "aac", "-b:a", "128k"].map(String::from));
     }

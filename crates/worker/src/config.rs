@@ -28,6 +28,9 @@ pub struct Settings {
     /// Whether this worker also runs the fair-dispatch scheduler loop.
     pub run_scheduler: bool,
 
+    /// Video encoder: `cpu` (libx264) or `nvenc` (NVIDIA GPU).
+    pub encoder: String,
+
     /// Stable identity within the consumer group; generated per-process if unset.
     #[serde(default = "default_consumer")]
     pub consumer_name: String,

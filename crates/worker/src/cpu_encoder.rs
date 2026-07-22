@@ -12,16 +12,19 @@ use ferrite_core::{
 use serde_json::Value;
 use tokio::process::Command;
 
-/// Encodes with libx264 into HLS renditions. `output_dir` is a per-job scratch
-/// directory the worker owns and cleans up.
+/// Encodes into TS HLS renditions. `output_dir` is a per-job scratch directory
+/// the worker owns and cleans up. The codec/preset come from [`EncodeParams`]
+/// (CPU x264 or GPU NVENC).
 pub struct CpuEncoder {
     output_dir: PathBuf,
+    encode: crate::encoding::EncodeParams,
 }
 
 impl CpuEncoder {
-    pub fn new(output_dir: impl Into<PathBuf>) -> Self {
+    pub fn new(output_dir: impl Into<PathBuf>, encode: crate::encoding::EncodeParams) -> Self {
         Self {
             output_dir: output_dir.into(),
+            encode,
         }
     }
 
@@ -115,9 +118,9 @@ impl Encoder for CpuEncoder {
                     "-vf",
                     &format!("scale=-2:{}", rendition.height),
                     "-c:v",
-                    "libx264",
+                    self.encode.codec,
                     "-preset",
-                    "veryfast",
+                    self.encode.preset,
                     "-b:v",
                     &format!("{}k", rendition.bitrate_kbps),
                     "-maxrate",

@@ -4,6 +4,7 @@ mod cmaf;
 mod config;
 mod cpu_encoder;
 mod db;
+mod encoding;
 mod pipeline;
 mod thumbnails;
 mod webhooks;
@@ -132,7 +133,9 @@ async fn run_loop(
                             settings.reclaim_min_idle_secs,
                         );
 
-                        let outcome = pipeline::process(&pool, &job, &storage, &settings.work_dir).await;
+                        let encode = encoding::EncodeParams::from_setting(&settings.encoder);
+                        let outcome =
+                            pipeline::process(&pool, &job, &storage, &settings.work_dir, encode).await;
                         heartbeat.abort();
 
                         match outcome {

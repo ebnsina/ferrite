@@ -9,6 +9,7 @@ use sqlx::PgPool;
 use crate::cmaf;
 use crate::cpu_encoder::CpuEncoder;
 use crate::db;
+use crate::encoding::EncodeParams;
 use crate::thumbnails;
 
 #[derive(Debug, thiserror::Error)]
@@ -29,11 +30,12 @@ pub async fn process(
     job: &TranscodeJob,
     storage: &Storage,
     work_root: &str,
+    encode: EncodeParams,
 ) -> Result<usize, PipelineError> {
     let job_dir = PathBuf::from(work_root).join(job.id.to_string());
     tokio::fs::create_dir_all(&job_dir).await?;
 
-    let result = run(pool, job, storage, &job_dir).await;
+    let result = run(pool, job, storage, &job_dir, encode).await;
     if let Err(e) = tokio::fs::remove_dir_all(&job_dir).await {
         tracing::warn!(job = %job.id, error = %e, "failed to clean scratch dir");
     }
@@ -45,6 +47,7 @@ async fn run(
     job: &TranscodeJob,
     storage: &Storage,
     job_dir: &PathBuf,
+    encode: EncodeParams,
 ) -> Result<usize, PipelineError> {
     let source_path = job_dir.join("source.input");
     let source_str = source_path.to_string_lossy().to_string();
@@ -54,7 +57,7 @@ async fn run(
     storage.get_file(&job.source_key, &source_str).await?;
 
     let output_dir = job_dir.join("output");
-    let encoder = CpuEncoder::new(&output_dir);
+    let encoder = CpuEncoder::new(&output_dir, encode);
     let media = encoder.probe(&source_str).await?;
     tracing::info!(job = %job.id, w = media.width, h = media.height, "probed");
 
@@ -105,7 +108,7 @@ async fn run(
         let _ = progress_task.await;
         a
     } else {
-        cmaf::generate(job, &media, &source_str, &output_dir).await?
+        cmaf::generate(job, &media, &source_str, &output_dir, encode).await?
     };
 
     // Optional poster + sprite + VTT storyboard. Non-essential: failure logs
