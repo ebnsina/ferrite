@@ -1,8 +1,4 @@
-//! Central error type for the API.
-//!
-//! Every fallible handler returns [`ApiError`]. It renders to a consistent JSON
-//! envelope and maps cleanly onto HTTP status codes, so 400/404/409/422/500 are
-//! all handled the same way from day one — never a bare `unwrap` reaching a client.
+//! `ApiError`: one error type for all handlers → consistent JSON envelope + HTTP status.
 
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};

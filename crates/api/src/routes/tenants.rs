@@ -76,8 +76,14 @@ pub async fn create_api_key(
     body.validate().map_err(ApiError::Validation)?;
 
     let key = auth::generate_key();
-    let id = db::create_api_key(state.db(), ctx.tenant_id, &body.name, &key.hash, &key.prefix)
-        .await?;
+    let id = db::create_api_key(
+        state.db(),
+        ctx.tenant_id,
+        &body.name,
+        &key.hash,
+        &key.prefix,
+    )
+    .await?;
 
     Ok(Json(CreateApiKeyResponse {
         id,

@@ -32,12 +32,10 @@ pub async fn create_tenant(pool: &PgPool, name: &str) -> Result<Tenant, sqlx::Er
 }
 
 pub async fn find_tenant(pool: &PgPool, id: Uuid) -> Result<Option<Tenant>, sqlx::Error> {
-    sqlx::query_as::<_, Tenant>(
-        "SELECT id, name, plan, created_at FROM tenants WHERE id = $1",
-    )
-    .bind(id)
-    .fetch_optional(pool)
-    .await
+    sqlx::query_as::<_, Tenant>("SELECT id, name, plan, created_at FROM tenants WHERE id = $1")
+        .bind(id)
+        .fetch_optional(pool)
+        .await
 }
 
 pub async fn create_api_key(
@@ -157,4 +155,82 @@ pub async fn mark_asset_ready(
     .execute(pool)
     .await?;
     Ok(result.rows_affected() > 0)
+}
+
+// --- Jobs --------------------------------------------------------------------
+
+#[derive(Debug, sqlx::FromRow)]
+pub struct Job {
+    pub id: Uuid,
+    pub asset_id: Uuid,
+    pub state: String,
+    pub progress: f32,
+    pub error: Option<String>,
+    pub output_prefix: String,
+    pub queued_at: DateTime<Utc>,
+    pub finished_at: Option<DateTime<Utc>>,
+}
+
+/// Idempotent create: a reused `idempotency_key` returns the existing job with
+/// `created = false`, so the caller skips re-enqueuing.
+pub async fn create_job(
+    pool: &PgPool,
+    tenant_id: Uuid,
+    id: Uuid,
+    asset_id: Uuid,
+    output_prefix: &str,
+    idempotency_key: Option<&str>,
+) -> Result<(Job, bool), sqlx::Error> {
+    let inserted = sqlx::query_as::<_, Job>(
+        "INSERT INTO jobs (id, tenant_id, asset_id, output_prefix, idempotency_key)
+         VALUES ($1, $2, $3, $4, $5)
+         ON CONFLICT (tenant_id, idempotency_key) DO NOTHING
+         RETURNING id, asset_id, state, progress, error, output_prefix, queued_at, finished_at",
+    )
+    .bind(id)
+    .bind(tenant_id)
+    .bind(asset_id)
+    .bind(output_prefix)
+    .bind(idempotency_key)
+    .fetch_optional(pool)
+    .await?;
+
+    if let Some(job) = inserted {
+        return Ok((job, true));
+    }
+
+    let existing = sqlx::query_as::<_, Job>(
+        "SELECT id, asset_id, state, progress, error, output_prefix, queued_at, finished_at
+         FROM jobs WHERE tenant_id = $1 AND idempotency_key = $2",
+    )
+    .bind(tenant_id)
+    .bind(idempotency_key)
+    .fetch_one(pool)
+    .await?;
+    Ok((existing, false))
+}
+
+pub async fn find_job(
+    pool: &PgPool,
+    tenant_id: Uuid,
+    id: Uuid,
+) -> Result<Option<Job>, sqlx::Error> {
+    sqlx::query_as::<_, Job>(
+        "SELECT id, asset_id, state, progress, error, output_prefix, queued_at, finished_at
+         FROM jobs WHERE id = $1 AND tenant_id = $2",
+    )
+    .bind(id)
+    .bind(tenant_id)
+    .fetch_optional(pool)
+    .await
+}
+
+pub async fn list_jobs(pool: &PgPool, tenant_id: Uuid) -> Result<Vec<Job>, sqlx::Error> {
+    sqlx::query_as::<_, Job>(
+        "SELECT id, asset_id, state, progress, error, output_prefix, queued_at, finished_at
+         FROM jobs WHERE tenant_id = $1 ORDER BY queued_at DESC LIMIT 200",
+    )
+    .bind(tenant_id)
+    .fetch_all(pool)
+    .await
 }

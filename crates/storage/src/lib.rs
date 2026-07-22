@@ -1,8 +1,5 @@
-//! S3-compatible object storage abstraction.
-//!
-//! Works against MinIO (dev / self-host) and AWS S3 / Cloudflare R2 (prod)
-//! through the same API. MinIO requires a custom `endpoint_url` and
-//! path-style addressing; that is toggled here, not leaked to callers.
+//! S3-compatible storage (MinIO / S3 / R2) behind one API. Endpoint + path-style
+//! toggle handles MinIO; callers don't see the difference.
 
 use std::time::Duration;
 

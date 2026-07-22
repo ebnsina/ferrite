@@ -77,14 +77,18 @@ async fn init_state(settings: &Settings) -> anyhow::Result<AppState> {
     .await
     .context("failed to initialize object storage client")?;
 
-    let queue = RedisQueue::connect(&settings.redis_url, &settings.queue_group)
-        .await
-        .with_context(|| {
-            format!(
-                "could not connect to Redis at {} — is Redis running (docker compose up)?",
-                settings.redis_url
-            )
-        })?;
+    let queue = RedisQueue::connect(
+        &settings.redis_url,
+        &settings.queue_group,
+        settings.max_inflight_per_tenant,
+    )
+    .await
+    .with_context(|| {
+        format!(
+            "could not connect to Redis at {} — is Redis running (docker compose up)?",
+            settings.redis_url
+        )
+    })?;
 
     Ok(AppState::new(db, storage, queue, settings.clone()))
 }

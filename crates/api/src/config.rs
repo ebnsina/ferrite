@@ -19,6 +19,10 @@ pub struct Settings {
     #[serde(default = "default_queue_group")]
     pub queue_group: String,
 
+    /// Max jobs a single tenant may have in-flight at once (fair scheduling).
+    #[serde(default = "default_max_inflight")]
+    pub max_inflight_per_tenant: usize,
+
     #[serde(default = "default_bucket")]
     pub s3_bucket: String,
 
@@ -40,6 +44,9 @@ fn default_redis_url() -> String {
 }
 fn default_queue_group() -> String {
     "transcoders".into()
+}
+fn default_max_inflight() -> usize {
+    4
 }
 fn default_bucket() -> String {
     "ferrite".into()

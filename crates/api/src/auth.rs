@@ -1,8 +1,4 @@
-//! API-key authentication and tenant context.
-//!
-//! Keys look like `frt_<40 hex>`. Only a SHA-256 hash is stored; the plaintext
-//! is shown to the caller exactly once at creation. Requests authenticate with
-//! `Authorization: Bearer frt_...`, which resolves to a [`TenantContext`].
+//! API-key auth: `frt_<hex>` keys, SHA-256 hashed at rest, `Bearer` → `TenantContext`.
 
 use axum::extract::FromRequestParts;
 use axum::http::header::AUTHORIZATION;

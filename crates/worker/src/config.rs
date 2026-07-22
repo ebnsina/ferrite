@@ -30,6 +30,14 @@ pub struct Settings {
     /// Max delivery attempts before a job is dead-lettered.
     #[serde(default = "default_max_attempts")]
     pub max_attempts: usize,
+
+    /// Max jobs a single tenant may have in-flight at once (fair scheduling).
+    #[serde(default = "default_max_inflight")]
+    pub max_inflight_per_tenant: usize,
+
+    /// Whether this worker also runs the fair-dispatch scheduler loop.
+    #[serde(default = "default_true")]
+    pub run_scheduler: bool,
 }
 
 fn default_redis_url() -> String {
@@ -52,6 +60,9 @@ fn default_consumer() -> String {
 }
 fn default_max_attempts() -> usize {
     3
+}
+fn default_max_inflight() -> usize {
+    4
 }
 
 impl Settings {

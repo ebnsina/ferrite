@@ -3,6 +3,7 @@
 
 mod assets;
 mod health;
+mod jobs;
 mod tenants;
 
 use axum::routing::{get, post};
@@ -22,9 +23,14 @@ pub fn build(state: AppState) -> Router {
         .route("/tenants", post(tenants::create_tenant))
         .route("/api-keys", post(tenants::create_api_key))
         .route("/me", get(tenants::me))
-        .route("/assets", get(assets::list_assets).post(assets::create_asset))
+        .route(
+            "/assets",
+            get(assets::list_assets).post(assets::create_asset),
+        )
         .route("/assets/{id}", get(assets::get_asset))
-        .route("/assets/{id}/complete", post(assets::complete_asset));
+        .route("/assets/{id}/complete", post(assets::complete_asset))
+        .route("/jobs", get(jobs::list_jobs).post(jobs::create_job))
+        .route("/jobs/{id}", get(jobs::get_job));
 
     Router::new()
         .nest("/v1", api)
