@@ -1255,6 +1255,7 @@ dependencies = [
  "ferrite-storage",
  "futures",
  "hex",
+ "hmac 0.13.0",
  "rand 0.9.5",
  "serde",
  "serde_json",

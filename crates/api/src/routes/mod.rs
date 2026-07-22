@@ -4,6 +4,7 @@
 mod assets;
 mod health;
 mod jobs;
+mod playback;
 mod tenants;
 
 use axum::routing::{get, post};
@@ -38,6 +39,8 @@ pub fn build(state: AppState) -> Router {
         .nest("/v1", api)
         // Also expose /health at the root for load-balancer defaults.
         .route("/health", get(health::health))
+        // Token-authorized playback proxy (not API-key auth; scoped by signed token).
+        .route("/playback/{job_id}/{*path}", get(playback::serve))
         .fallback(not_found)
         .layer(TraceLayer::new_for_http())
         .layer(CorsLayer::permissive())

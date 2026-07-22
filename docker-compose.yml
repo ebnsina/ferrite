@@ -57,9 +57,7 @@ services:
       /bin/sh -c "
       mc alias set local http://minio:9000 ferrite ferrite-secret &&
       mc mb --ignore-existing local/ferrite &&
-      echo '{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"AWS\":[\"*\"]},\"Action\":[\"s3:GetObject\"],\"Resource\":[\"arn:aws:s3:::ferrite/*/outputs/*\"]}]}' > /tmp/p.json &&
-      mc anonymous set-json /tmp/p.json local/ferrite &&
-      echo 'bucket ready (outputs public, sources private)';
+      echo 'bucket ready (private; playback via the API proxy)';
       "
 
 volumes:

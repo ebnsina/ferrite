@@ -156,6 +156,25 @@ impl Storage {
         Ok(())
     }
 
+    /// Fetch an object fully into memory. For small objects (playlists, posters).
+    pub async fn get_bytes(&self, key: &str) -> Result<Vec<u8>, StorageError> {
+        let object = self
+            .client
+            .get_object()
+            .bucket(&self.bucket)
+            .key(key)
+            .send()
+            .await
+            .map_err(|e| StorageError::Download(e.to_string()))?;
+
+        let data = object
+            .body
+            .collect()
+            .await
+            .map_err(|e| StorageError::Download(e.to_string()))?;
+        Ok(data.into_bytes().to_vec())
+    }
+
     pub fn bucket(&self) -> &str {
         &self.bucket
     }

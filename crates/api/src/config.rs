@@ -19,9 +19,11 @@ pub struct Settings {
     #[serde(default)]
     pub s3_endpoint_url: Option<String>,
     pub s3_force_path_style: bool,
-    /// Public base URL (incl. bucket) for playback assets, e.g.
-    /// `http://localhost:9100/ferrite` or a CDN domain.
-    pub s3_public_url: String,
+    /// The API's own public base URL (e.g. `http://localhost:8091`), used to
+    /// build playback proxy URLs.
+    pub public_url: String,
+    /// Secret for signing short-lived playback tokens (HMAC).
+    pub playback_secret: String,
 }
 
 impl Settings {

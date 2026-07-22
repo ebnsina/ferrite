@@ -1,0 +1,122 @@
+//! Authorized playback proxy. Outputs are private in storage; this serves them
+//! via short-lived HMAC tokens and rewrites HLS playlists so every child
+//! playlist/segment URL carries the token. Production would front this with a CDN.
+
+use std::time::{SystemTime, UNIX_EPOCH};
+
+use axum::extract::{Path, Query, State};
+use axum::http::{header, StatusCode};
+use axum::response::{IntoResponse, Response};
+use hmac::{Hmac, KeyInit, Mac};
+use serde::Deserialize;
+use sha2::Sha256;
+use uuid::Uuid;
+
+use crate::state::AppState;
+
+type HmacSha256 = Hmac<Sha256>;
+
+/// How long a playback token is valid (covers a viewing session).
+pub const TOKEN_TTL_SECS: u64 = 4 * 60 * 60;
+
+/// Sign a token scoped to one tenant's job: `tenant.job.exp.sig`.
+pub fn sign_token(secret: &str, tenant: Uuid, job: Uuid, exp: u64) -> String {
+    let payload = format!("{tenant}.{job}.{exp}");
+    let sig = hmac_hex(secret, &payload);
+    format!("{payload}.{sig}")
+}
+
+pub fn now_unix() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0)
+}
+
+fn hmac_hex(secret: &str, msg: &str) -> String {
+    let mut mac = HmacSha256::new_from_slice(secret.as_bytes()).expect("hmac accepts any key size");
+    mac.update(msg.as_bytes());
+    hex::encode(mac.finalize().into_bytes())
+}
+
+/// Verify a token: returns (tenant, job) when the signature is valid and unexpired.
+fn verify_token(secret: &str, token: &str) -> Option<(Uuid, Uuid)> {
+    let (payload, sig_hex) = token.rsplit_once('.')?;
+    let sig = hex::decode(sig_hex).ok()?;
+    let mut mac = HmacSha256::new_from_slice(secret.as_bytes()).ok()?;
+    mac.update(payload.as_bytes());
+    mac.verify_slice(&sig).ok()?; // constant-time
+
+    let mut parts = payload.split('.');
+    let tenant: Uuid = parts.next()?.parse().ok()?;
+    let job: Uuid = parts.next()?.parse().ok()?;
+    let exp: u64 = parts.next()?.parse().ok()?;
+    (exp > now_unix()).then_some((tenant, job))
+}
+
+#[derive(Deserialize)]
+pub struct TokenQuery {
+    token: String,
+}
+
+/// `GET /playback/{job_id}/{*path}` — token-authorized asset delivery.
+pub async fn serve(
+    State(state): State<AppState>,
+    Path((job_id, path)): Path<(Uuid, String)>,
+    Query(q): Query<TokenQuery>,
+) -> Response {
+    let secret = &state.settings().playback_secret;
+    let Some((tenant, job)) = verify_token(secret, &q.token) else {
+        return (StatusCode::FORBIDDEN, "invalid or expired token").into_response();
+    };
+    // The token is scoped to a single job; reject path/id mismatch or traversal.
+    if job != job_id || path.contains("..") || path.starts_with('/') {
+        return (StatusCode::FORBIDDEN, "forbidden").into_response();
+    }
+
+    let key = format!("{tenant}/outputs/{job}/{path}");
+    let bytes = match state.storage().get_bytes(&key).await {
+        Ok(b) => b,
+        Err(_) => return (StatusCode::NOT_FOUND, "not found").into_response(),
+    };
+
+    if path.ends_with(".m3u8") {
+        let rewritten = rewrite_playlist(&String::from_utf8_lossy(&bytes), &q.token);
+        (
+            [(header::CONTENT_TYPE, "application/vnd.apple.mpegurl")],
+            rewritten,
+        )
+            .into_response()
+    } else {
+        ([(header::CONTENT_TYPE, content_type(&path))], bytes).into_response()
+    }
+}
+
+/// Append the token to every URI line so relative child/segment refs stay authorized.
+fn rewrite_playlist(text: &str, token: &str) -> String {
+    let mut out: String = text
+        .lines()
+        .map(|line| {
+            let t = line.trim();
+            if t.is_empty() || t.starts_with('#') {
+                line.to_string()
+            } else {
+                let sep = if line.contains('?') { '&' } else { '?' };
+                format!("{line}{sep}token={token}")
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+    out.push('\n');
+    out
+}
+
+fn content_type(path: &str) -> &'static str {
+    match path.rsplit('.').next() {
+        Some("ts") => "video/mp2t",
+        Some("m4s" | "mp4") => "video/mp4",
+        Some("jpg" | "jpeg") => "image/jpeg",
+        Some("vtt") => "text/vtt",
+        _ => "application/octet-stream",
+    }
+}

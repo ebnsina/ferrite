@@ -193,21 +193,30 @@ pub async fn get_job(
         .await?
         .ok_or(ApiError::NotFound)?;
 
-    Ok(Json(view_with_urls(&state, job)))
+    Ok(Json(view_with_urls(&state, ctx.tenant_id, job)))
 }
 
-/// Build a JobView, adding public playback URLs once the job is completed.
-/// Outputs are publicly readable, so URLs are plain (unsigned) and HLS players
-/// can fetch child playlists/segments without per-object signing.
-fn view_with_urls(state: &AppState, job: Job) -> JobView {
+/// Build a JobView, adding tokenized playback proxy URLs once completed.
+/// Outputs are private in storage; the proxy authorizes delivery via a
+/// short-lived token (see [`super::playback`]).
+fn view_with_urls(state: &AppState, tenant_id: Uuid, job: Job) -> JobView {
     let completed = job.state == "completed";
-    let prefix = job.output_prefix.clone();
+    let job_id = job.id;
     let mut view = JobView::from(job);
     if completed {
-        let base = &state.settings().s3_public_url;
-        view.playback_url = Some(format!("{base}/{prefix}/master.m3u8"));
-        view.poster_url = Some(format!("{base}/{prefix}/thumbs/poster.jpg"));
-        view.storyboard_url = Some(format!("{base}/{prefix}/thumbs/thumbs.vtt"));
+        let s = state.settings();
+        let exp = super::playback::now_unix() + super::playback::TOKEN_TTL_SECS;
+        let token = super::playback::sign_token(&s.playback_secret, tenant_id, job_id, exp);
+        let base = &s.public_url;
+        view.playback_url = Some(format!(
+            "{base}/playback/{job_id}/master.m3u8?token={token}"
+        ));
+        view.poster_url = Some(format!(
+            "{base}/playback/{job_id}/thumbs/poster.jpg?token={token}"
+        ));
+        view.storyboard_url = Some(format!(
+            "{base}/playback/{job_id}/thumbs/thumbs.vtt?token={token}"
+        ));
     }
     view
 }
@@ -235,7 +244,7 @@ pub async fn job_events(
             match db::find_job(state.db(), tenant_id, id).await {
                 Ok(Some(job)) => {
                     let terminal = job.state == "completed" || job.state == "failed";
-                    let view = view_with_urls(&state, job);
+                    let view = view_with_urls(&state, tenant_id, job);
                     if let Ok(event) = Event::default().json_data(view) {
                         yield Ok(event);
                     }
