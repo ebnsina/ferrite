@@ -6,8 +6,8 @@ use ferrite_core::{Encoder, TranscodeJob};
 use ferrite_storage::Storage;
 use sqlx::PgPool;
 
+use crate::cmaf;
 use crate::cpu_encoder::CpuEncoder;
-use crate::dash;
 use crate::db;
 use crate::thumbnails;
 
@@ -72,47 +72,41 @@ async fn run(
     }
     let job = &job;
 
-    // The encoder reads the source from inside its output dir.
-    tokio::fs::create_dir_all(&output_dir).await?;
-    tokio::fs::copy(&source_path, output_dir.join("source.input")).await?;
-
     db::set_state(pool, job.id, "transcoding").await?;
+    tracing::info!(job = %job.id, renditions = job.ladder.renditions.len(), encrypt = job.encrypt, "transcoding");
 
-    // Bridge the encoder's sync progress callback to throttled DB writes.
-    let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<f32>();
-    let progress_task = {
-        let pool = pool.clone();
-        let job_id = job.id;
-        tokio::spawn(async move {
-            let mut last = 0.0;
-            while let Some(p) = rx.recv().await {
-                if p - last >= 0.02 || p >= 1.0 {
-                    let _ = db::set_progress(&pool, job_id, p).await;
-                    last = p;
+    // Encrypted jobs use TS HLS + AES-128 (fMP4 encryption is CENC — future work);
+    // everything else uses a single CMAF pass shared by HLS + DASH.
+    let mut artifacts = if job.encrypt {
+        // The encoder reads the source from inside its output dir.
+        tokio::fs::create_dir_all(&output_dir).await?;
+        tokio::fs::copy(&source_path, output_dir.join("source.input")).await?;
+
+        // Bridge the encoder's sync progress callback to throttled DB writes.
+        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<f32>();
+        let progress_task = {
+            let pool = pool.clone();
+            let job_id = job.id;
+            tokio::spawn(async move {
+                let mut last = 0.0;
+                while let Some(p) = rx.recv().await {
+                    if p - last >= 0.02 || p >= 1.0 {
+                        let _ = db::set_progress(&pool, job_id, p).await;
+                        last = p;
+                    }
                 }
-            }
-        })
+            })
+        };
+        let progress = move |_rendition: &str, pct: f32| {
+            let _ = tx.send(pct);
+        };
+        let a = encoder.transcode(job, &media, &progress).await?;
+        drop(progress);
+        let _ = progress_task.await;
+        a
+    } else {
+        cmaf::generate(job, &media, &source_str, &output_dir).await?
     };
-
-    let progress = move |_rendition: &str, pct: f32| {
-        let _ = tx.send(pct);
-    };
-
-    tracing::info!(job = %job.id, renditions = job.ladder.renditions.len(), "transcoding");
-    let mut artifacts = encoder.transcode(job, &media, &progress).await?;
-    drop(progress); // closes the channel so the progress task finishes
-    let _ = progress_task.await;
-
-    // Optional MPEG-DASH package alongside HLS. Skipped for encrypted jobs —
-    // a plaintext DASH copy would defeat the encryption (DASH-CENC is future work).
-    if job.dash && !job.encrypt {
-        db::set_state(pool, job.id, "packaging").await?;
-        let dash_dir = output_dir.join("dash");
-        match dash::generate(job, &media, &source_str, &dash_dir).await {
-            Ok(mut d) => artifacts.append(&mut d),
-            Err(e) => tracing::warn!(job = %job.id, error = %e, "dash packaging failed"),
-        }
-    }
 
     // Optional poster + sprite + VTT storyboard. Non-essential: failure logs
     // but does not fail the transcode.
@@ -133,7 +127,11 @@ async fn run(
             .await?;
     }
 
-    upload_master_playlist(job, &media, job_dir, storage).await?;
+    // CMAF's ffmpeg emits master.m3u8 + manifest.mpd; the TS (encrypted) path
+    // needs the hand-built HLS master.
+    if job.encrypt {
+        upload_master_playlist(job, &media, job_dir, storage).await?;
+    }
     record_renditions(pool, job).await?;
 
     // Meter usage: source minutes × rendition count (billed output minutes).
@@ -173,9 +171,11 @@ async fn upload_master_playlist(
 
 /// One DB row per HLS rendition produced.
 async fn record_renditions(pool: &PgPool, job: &TranscodeJob) -> Result<(), sqlx::Error> {
+    // Playlists live under the master; the exact child path differs between the
+    // TS and CMAF layouts, so rows point at the master as the entrypoint.
+    let master = format!("{}/master.m3u8", job.output_prefix);
     for r in &job.ladder.renditions {
         let prefix = format!("{}/{}", job.output_prefix, r.name);
-        let playlist = format!("{prefix}/index.m3u8");
         db::insert_rendition(
             pool,
             job.id,
@@ -183,7 +183,7 @@ async fn record_renditions(pool: &PgPool, job: &TranscodeJob) -> Result<(), sqlx
             &r.name,
             r.height as i32,
             r.bitrate_kbps as i32,
-            &playlist,
+            &master,
             &prefix,
         )
         .await?;

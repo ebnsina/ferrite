@@ -117,9 +117,13 @@ fn rewrite_playlist(text: &str, token: &str) -> String {
         .lines()
         .map(|line| {
             let t = line.trim();
-            if t.starts_with("#EXT-X-KEY") {
-                // Tokenize the key URI so hls.js can fetch the AES-128 key.
-                line.replace("URI=\"enc.key\"", &format!("URI=\"enc.key?token={token}\""))
+            // Tags whose URI attribute must carry the token: AES-128 key (#EXT-X-KEY),
+            // fMP4 init segment (#EXT-X-MAP), and rendition groups (#EXT-X-MEDIA).
+            if t.starts_with("#EXT-X-KEY")
+                || t.starts_with("#EXT-X-MAP")
+                || t.starts_with("#EXT-X-MEDIA")
+            {
+                tokenize_uri_attr(line, token)
             } else if t.is_empty() || t.starts_with('#') {
                 line.to_string()
             } else {
@@ -131,6 +135,28 @@ fn rewrite_playlist(text: &str, token: &str) -> String {
         .join("\n");
     out.push('\n');
     out
+}
+
+/// Append the token to the `URI="..."` value inside an HLS tag line.
+fn tokenize_uri_attr(line: &str, token: &str) -> String {
+    let Some(start) = line.find("URI=\"") else {
+        return line.to_string();
+    };
+    let value_start = start + 5;
+    let Some(rel) = line[value_start..].find('"') else {
+        return line.to_string();
+    };
+    let value_end = value_start + rel;
+    let sep = if line[value_start..value_end].contains('?') {
+        '&'
+    } else {
+        '?'
+    };
+    format!(
+        "{}{sep}token={token}{}",
+        &line[..value_end],
+        &line[value_end..]
+    )
 }
 
 fn content_type(path: &str) -> &'static str {

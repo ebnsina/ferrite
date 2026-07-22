@@ -223,10 +223,11 @@ fn view_with_urls(state: &AppState, tenant_id: Uuid, job: Job) -> JobView {
         view.playback_url = Some(format!(
             "{base}/playback/{job_id}/master.m3u8?token={token}"
         ));
-        // Encrypted jobs have no DASH package (would be plaintext).
+        // Encrypted jobs have no DASH package (would be plaintext). Unencrypted
+        // jobs use CMAF: manifest.mpd sits alongside the HLS master.
         if !encrypted {
             view.dash_url = Some(format!(
-                "{base}/playback/{job_id}/dash/manifest.mpd?token={token}"
+                "{base}/playback/{job_id}/manifest.mpd?token={token}"
             ));
         }
         view.poster_url = Some(format!(

@@ -1,8 +1,8 @@
 //! Ferrite transcode worker: claims jobs from the queue and processes them.
 
+mod cmaf;
 mod config;
 mod cpu_encoder;
-mod dash;
 mod db;
 mod pipeline;
 mod thumbnails;
