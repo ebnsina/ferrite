@@ -85,6 +85,21 @@ pub async fn record_usage(pool: &PgPool, tenant_id: Uuid, minutes: f64) -> Resul
     Ok(())
 }
 
+/// Tenant webhooks subscribed to an event: (url, secret).
+pub async fn webhooks_for_event(
+    pool: &PgPool,
+    tenant_id: Uuid,
+    event: &str,
+) -> Result<Vec<(String, String)>, sqlx::Error> {
+    sqlx::query_as::<_, (String, String)>(
+        "SELECT url, secret FROM webhooks WHERE tenant_id = $1 AND $2 = ANY(events)",
+    )
+    .bind(tenant_id)
+    .bind(event)
+    .fetch_all(pool)
+    .await
+}
+
 pub async fn insert_rendition(
     pool: &PgPool,
     job_id: Uuid,

@@ -245,6 +245,55 @@ pub async fn find_job(
     .await
 }
 
+// --- Webhooks ----------------------------------------------------------------
+
+#[derive(Debug, sqlx::FromRow)]
+pub struct Webhook {
+    pub id: Uuid,
+    pub url: String,
+    pub events: Vec<String>,
+    pub created_at: DateTime<Utc>,
+}
+
+pub async fn create_webhook(
+    pool: &PgPool,
+    tenant_id: Uuid,
+    url: &str,
+    secret: &str,
+    events: &[String],
+) -> Result<Webhook, sqlx::Error> {
+    sqlx::query_as::<_, Webhook>(
+        "INSERT INTO webhooks (tenant_id, url, secret, events)
+         VALUES ($1, $2, $3, $4) RETURNING id, url, events, created_at",
+    )
+    .bind(tenant_id)
+    .bind(url)
+    .bind(secret)
+    .bind(events)
+    .fetch_one(pool)
+    .await
+}
+
+pub async fn list_webhooks(pool: &PgPool, tenant_id: Uuid) -> Result<Vec<Webhook>, sqlx::Error> {
+    sqlx::query_as::<_, Webhook>(
+        "SELECT id, url, events, created_at FROM webhooks
+         WHERE tenant_id = $1 ORDER BY created_at DESC",
+    )
+    .bind(tenant_id)
+    .fetch_all(pool)
+    .await
+}
+
+/// Delete a webhook; false if it does not belong to the tenant.
+pub async fn delete_webhook(pool: &PgPool, tenant_id: Uuid, id: Uuid) -> Result<bool, sqlx::Error> {
+    let r = sqlx::query("DELETE FROM webhooks WHERE id = $1 AND tenant_id = $2")
+        .bind(id)
+        .bind(tenant_id)
+        .execute(pool)
+        .await?;
+    Ok(r.rows_affected() > 0)
+}
+
 // --- Usage / billing ---------------------------------------------------------
 
 /// Transcoded minutes accrued this month for the tenant.

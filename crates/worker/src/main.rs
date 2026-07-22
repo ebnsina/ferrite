@@ -6,6 +6,7 @@ mod dash;
 mod db;
 mod pipeline;
 mod thumbnails;
+mod webhooks;
 
 use std::time::Duration;
 
@@ -140,6 +141,7 @@ async fn run_loop(
                                 if let Err(e) = db::mark_completed(&pool, job.id).await {
                                     tracing::error!(job = %job.id, error = %e, "failed to mark completed");
                                 }
+                                webhooks::deliver(&pool, job.tenant_id, "job.completed", job.id, job.asset_id).await;
                                 if let Err(e) = queue.ack(&claimed).await {
                                     tracing::error!(job = %job.id, error = %e, "failed to ack job");
                                 }
@@ -148,6 +150,7 @@ async fn run_loop(
                                 if let Err(db_err) = db::mark_failed(&pool, job.id, &e.to_string()).await {
                                     tracing::error!(job = %job.id, error = %db_err, "failed to mark failed");
                                 }
+                                webhooks::deliver(&pool, job.tenant_id, "job.failed", job.id, job.asset_id).await;
                                 handle_failure(&queue, &claimed, settings.max_attempts, e).await;
                             }
                         }

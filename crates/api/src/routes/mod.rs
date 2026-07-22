@@ -8,6 +8,7 @@ mod live;
 mod playback;
 mod tenants;
 mod usage;
+mod webhooks;
 
 use axum::routing::{get, post};
 use axum::Router;
@@ -27,6 +28,14 @@ pub fn build(state: AppState) -> Router {
         .route("/api-keys", post(tenants::create_api_key))
         .route("/me", get(tenants::me))
         .route("/usage", get(usage::get_usage))
+        .route(
+            "/webhooks",
+            get(webhooks::list_webhooks).post(webhooks::create_webhook),
+        )
+        .route(
+            "/webhooks/{id}",
+            axum::routing::delete(webhooks::delete_webhook),
+        )
         .route(
             "/assets",
             get(assets::list_assets).post(assets::create_asset),
