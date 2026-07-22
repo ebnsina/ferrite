@@ -1,0 +1,91 @@
+// Thin typed client over the Ferrite API.
+//
+// Every failure path is modelled: non-2xx responses become `ApiError` with the
+// server's code/message; network failures and non-JSON bodies degrade to a
+// generic ApiError rather than throwing something unhandled. Callers can rely
+// on catching `ApiError` and reading `.status` / `.code`.
+
+import type { ApiErrorBody } from './types';
+
+const DEFAULT_BASE = 'http://localhost:8080';
+
+/** Base URL of the API. Overridable via `PUBLIC_API_URL` at build time. */
+export const API_BASE =
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	(import.meta as any).env?.PUBLIC_API_URL ?? DEFAULT_BASE;
+
+export class ApiError extends Error {
+	readonly status: number;
+	readonly code: string;
+	readonly fields?: unknown;
+
+	constructor(status: number, code: string, message: string, fields?: unknown) {
+		super(message);
+		this.name = 'ApiError';
+		this.status = status;
+		this.code = code;
+		this.fields = fields;
+	}
+
+	get isNotFound() {
+		return this.status === 404;
+	}
+	get isUnauthorized() {
+		return this.status === 401;
+	}
+	get isServerError() {
+		return this.status >= 500;
+	}
+}
+
+export interface RequestOptions extends RequestInit {
+	/** Optional fetch implementation (pass SvelteKit's `fetch` in load funcs). */
+	fetch?: typeof fetch;
+}
+
+export async function apiRequest<T>(path: string, opts: RequestOptions = {}): Promise<T> {
+	const { fetch: fetchImpl = fetch, headers, ...rest } = opts;
+	const url = path.startsWith('http') ? path : `${API_BASE}${path}`;
+
+	let res: Response;
+	try {
+		res = await fetchImpl(url, {
+			...rest,
+			headers: {
+				Accept: 'application/json',
+				...(rest.body ? { 'Content-Type': 'application/json' } : {}),
+				...headers
+			}
+		});
+	} catch (cause) {
+		// DNS failure, offline, CORS, aborted — never surfaces as an unhandled reject.
+		throw new ApiError(0, 'network_error', 'Could not reach the server.', cause);
+	}
+
+	if (res.status === 204) {
+		return undefined as T;
+	}
+
+	const raw = await res.text();
+	const parsed = raw ? safeJsonParse(raw) : undefined;
+
+	if (!res.ok) {
+		const body = parsed as ApiErrorBody | undefined;
+		throw new ApiError(
+			res.status,
+			body?.error?.code ?? 'http_error',
+			body?.error?.message ?? `Request failed (${res.status})`,
+			body?.error?.fields
+		);
+	}
+
+	return parsed as T;
+}
+
+function safeJsonParse(raw: string): unknown {
+	try {
+		return JSON.parse(raw);
+	} catch {
+		return undefined;
+	}
+}

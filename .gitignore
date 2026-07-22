@@ -1,0 +1,24 @@
+# Internal planning / local-only (never committed)
+docs/
+data/
+
+# Rust
+/target
+**/*.rs.bk
+Cargo.lock.orig
+
+# Node / SvelteKit
+node_modules/
+web/.svelte-kit/
+web/build/
+web/.vercel/
+web/.output/
+.DS_Store
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
