@@ -4,6 +4,7 @@ use std::sync::Arc;
 
 use ferrite_queue::RedisQueue;
 use ferrite_storage::Storage;
+use metrics_exporter_prometheus::PrometheusHandle;
 use sqlx::PgPool;
 
 use crate::config::Settings;
@@ -19,16 +20,24 @@ struct Inner {
     storage: Storage,
     queue: RedisQueue,
     settings: Settings,
+    metrics: PrometheusHandle,
 }
 
 impl AppState {
-    pub fn new(db: PgPool, storage: Storage, queue: RedisQueue, settings: Settings) -> Self {
+    pub fn new(
+        db: PgPool,
+        storage: Storage,
+        queue: RedisQueue,
+        settings: Settings,
+        metrics: PrometheusHandle,
+    ) -> Self {
         Self {
             inner: Arc::new(Inner {
                 db,
                 storage,
                 queue,
                 settings,
+                metrics,
             }),
         }
     }
@@ -47,5 +56,9 @@ impl AppState {
 
     pub fn settings(&self) -> &Settings {
         &self.inner.settings
+    }
+
+    pub fn render_metrics(&self) -> String {
+        self.inner.metrics.render()
     }
 }

@@ -60,7 +60,13 @@ pub fn build(state: AppState) -> Router {
         .route("/playback/{job_id}/{*path}", get(playback::serve))
         // Ingest-server DVR callback (secret-gated) → archive live recording to VOD.
         .route("/internal/live/dvr", post(live::dvr_hook))
+        // Prometheus scrape endpoint.
+        .route(
+            "/metrics",
+            get(|state: axum::extract::State<AppState>| async move { state.render_metrics() }),
+        )
         .fallback(not_found)
+        .layer(axum::middleware::from_fn(crate::metrics::track))
         .layer(TraceLayer::new_for_http())
         .layer(CorsLayer::permissive())
         // Guard against oversized JSON bodies (uploads go direct-to-S3, not here).

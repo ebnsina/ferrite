@@ -4,6 +4,7 @@ mod auth;
 mod config;
 mod db;
 mod error;
+mod metrics;
 mod routes;
 mod state;
 
@@ -27,7 +28,11 @@ async fn main() -> anyhow::Result<()> {
     let settings = Settings::load().context("failed to load configuration")?;
     tracing::info!(bind = %settings.bind_addr, "starting ferrite-api");
 
-    let state = init_state(&settings).await?;
+    // Install the metrics recorder before anything records to it.
+    let metrics_handle = metrics::install();
+
+    let state = init_state(&settings, metrics_handle).await?;
+    tokio::spawn(metrics::collect_loop(state.db().clone()));
     let app = routes::build(state);
 
     let listener = tokio::net::TcpListener::bind(&settings.bind_addr)
@@ -56,7 +61,10 @@ fn init_tracing() {
 
 /// Connect to every dependency, turning low-level failures into actionable
 /// messages (e.g. "is `docker compose up` running?").
-async fn init_state(settings: &Settings) -> anyhow::Result<AppState> {
+async fn init_state(
+    settings: &Settings,
+    metrics_handle: metrics_exporter_prometheus::PrometheusHandle,
+) -> anyhow::Result<AppState> {
     let db = PgPoolOptions::new()
         .max_connections(10)
         .acquire_timeout(Duration::from_secs(5))
@@ -91,7 +99,13 @@ async fn init_state(settings: &Settings) -> anyhow::Result<AppState> {
         )
     })?;
 
-    Ok(AppState::new(db, storage, queue, settings.clone()))
+    Ok(AppState::new(
+        db,
+        storage,
+        queue,
+        settings.clone(),
+        metrics_handle,
+    ))
 }
 
 /// Resolve on SIGINT (Ctrl-C) or SIGTERM so in-flight requests can drain.
