@@ -96,7 +96,7 @@
 
 		<Card>
 			<h2 class="mb-3 text-sm font-medium text-muted">Ingest (OBS / ffmpeg)</h2>
-			{#each [{ label: 'RTMP URL', value: stream.ingest_url }, { label: 'Stream key', value: stream.stream_key }] as row (row.label)}
+			{#each [{ label: 'RTMP URL', value: stream.ingest_url }, { label: 'Stream key', value: stream.stream_key }, { label: 'SRT URL', value: stream.srt_url }] as row (row.label)}
 				<div class="mb-2 flex items-center gap-2">
 					<span class="w-24 shrink-0 text-xs text-muted">{row.label}</span>
 					<code class="mono flex-1 truncate rounded-lg border border-border bg-surface-2 px-3 py-1.5 text-xs">{row.value}</code>

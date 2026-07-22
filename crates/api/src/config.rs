@@ -28,6 +28,8 @@ pub struct Settings {
     /// Live ingest (server-agnostic): RTMP publish base, HLS/FLV delivery base,
     /// and the ingest server's HTTP API (for stream status).
     pub live_rtmp_base: String,
+    /// SRT ingest base, e.g. `srt://localhost:10080`.
+    pub live_srt_base: String,
     pub live_hls_base: String,
     pub live_api_url: String,
     /// Shared secret the ingest server includes when calling Ferrite's DVR hook.

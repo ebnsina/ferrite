@@ -46,6 +46,7 @@ export interface LiveStream {
 	name: string;
 	stream_key: string;
 	ingest_url: string;
+	srt_url: string;
 	hls_url: string;
 	flv_url: string;
 	created_at: string;

@@ -22,6 +22,7 @@ use crate::state::AppState;
 /// Server-agnostic view over the ingest server (SRS today).
 struct Ingest<'a> {
     rtmp_base: &'a str,
+    srt_base: &'a str,
     hls_base: &'a str,
     api_url: &'a str,
 }
@@ -30,6 +31,7 @@ impl<'a> Ingest<'a> {
     fn from(settings: &'a Settings) -> Self {
         Self {
             rtmp_base: &settings.live_rtmp_base,
+            srt_base: &settings.live_srt_base,
             hls_base: &settings.live_hls_base,
             api_url: &settings.live_api_url,
         }
@@ -37,6 +39,10 @@ impl<'a> Ingest<'a> {
 
     fn ingest_url(&self, key: &str) -> String {
         format!("{}/live/{key}", self.rtmp_base)
+    }
+    /// SRT publish URL — streamid encodes the app/stream and publish intent.
+    fn srt_url(&self, key: &str) -> String {
+        format!("{}?streamid=#!::r=live/{key},m=publish", self.srt_base)
     }
     fn hls_url(&self, key: &str) -> String {
         format!("{}/live/{key}.m3u8", self.hls_base)
@@ -75,6 +81,7 @@ pub struct LiveStreamView {
     pub name: String,
     pub stream_key: String,
     pub ingest_url: String,
+    pub srt_url: String,
     pub hls_url: String,
     pub flv_url: String,
     pub created_at: String,
@@ -85,6 +92,7 @@ fn view(settings: &Settings, s: LiveStream, live: bool) -> LiveStreamView {
     let ingest = Ingest::from(settings);
     LiveStreamView {
         ingest_url: ingest.ingest_url(&s.stream_key),
+        srt_url: ingest.srt_url(&s.stream_key),
         hls_url: ingest.hls_url(&s.stream_key),
         flv_url: ingest.flv_url(&s.stream_key),
         id: s.id,
