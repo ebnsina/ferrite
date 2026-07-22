@@ -4,6 +4,7 @@
 mod assets;
 mod health;
 mod jobs;
+mod live;
 mod playback;
 mod tenants;
 
@@ -33,7 +34,12 @@ pub fn build(state: AppState) -> Router {
         .route("/jobs", get(jobs::list_jobs).post(jobs::create_job))
         .route("/jobs/batch", post(jobs::create_jobs_batch))
         .route("/jobs/{id}", get(jobs::get_job))
-        .route("/jobs/{id}/events", get(jobs::job_events));
+        .route("/jobs/{id}/events", get(jobs::job_events))
+        .route(
+            "/live/streams",
+            get(live::list_streams).post(live::create_stream),
+        )
+        .route("/live/streams/{id}", get(live::get_stream));
 
     Router::new()
         .nest("/v1", api)

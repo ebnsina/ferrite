@@ -24,6 +24,12 @@ pub struct Settings {
     pub public_url: String,
     /// Secret for signing short-lived playback tokens (HMAC).
     pub playback_secret: String,
+
+    /// Live ingest (server-agnostic): RTMP publish base, HLS/FLV delivery base,
+    /// and the ingest server's HTTP API (for stream status).
+    pub live_rtmp_base: String,
+    pub live_hls_base: String,
+    pub live_api_url: String,
 }
 
 impl Settings {

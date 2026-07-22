@@ -47,6 +47,17 @@ services:
       timeout: 3s
       retries: 10
 
+  # Live ingest (SRS): RTMP in, HLS + HTTP-FLV out, HTTP API for status.
+  srs:
+    image: ossrs/srs:5
+    command: ["./objs/srs", "-c", "conf/ferrite.conf"]
+    ports:
+      - "${FERRITE_RTMP_PORT:-1935}:1935"    # RTMP ingest
+      - "${FERRITE_SRS_HTTP_PORT:-8085}:8080" # HLS + FLV delivery
+      - "${FERRITE_SRS_API_PORT:-1985}:1985"  # control API
+    volumes:
+      - ./deploy/srs.conf:/usr/local/srs/conf/ferrite.conf:ro
+
   # One-shot: create the bucket on startup so the app has somewhere to write.
   minio-init:
     image: minio/mc:latest

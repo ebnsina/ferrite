@@ -245,6 +245,63 @@ pub async fn find_job(
     .await
 }
 
+// --- Live streams ------------------------------------------------------------
+
+#[derive(Debug, sqlx::FromRow)]
+pub struct LiveStream {
+    pub id: Uuid,
+    pub name: String,
+    pub stream_key: String,
+    pub created_at: DateTime<Utc>,
+}
+
+pub async fn create_live_stream(
+    pool: &PgPool,
+    tenant_id: Uuid,
+    id: Uuid,
+    name: &str,
+    stream_key: &str,
+) -> Result<LiveStream, sqlx::Error> {
+    sqlx::query_as::<_, LiveStream>(
+        "INSERT INTO live_streams (id, tenant_id, name, stream_key)
+         VALUES ($1, $2, $3, $4) RETURNING id, name, stream_key, created_at",
+    )
+    .bind(id)
+    .bind(tenant_id)
+    .bind(name)
+    .bind(stream_key)
+    .fetch_one(pool)
+    .await
+}
+
+pub async fn list_live_streams(
+    pool: &PgPool,
+    tenant_id: Uuid,
+) -> Result<Vec<LiveStream>, sqlx::Error> {
+    sqlx::query_as::<_, LiveStream>(
+        "SELECT id, name, stream_key, created_at FROM live_streams
+         WHERE tenant_id = $1 ORDER BY created_at DESC LIMIT 200",
+    )
+    .bind(tenant_id)
+    .fetch_all(pool)
+    .await
+}
+
+pub async fn find_live_stream(
+    pool: &PgPool,
+    tenant_id: Uuid,
+    id: Uuid,
+) -> Result<Option<LiveStream>, sqlx::Error> {
+    sqlx::query_as::<_, LiveStream>(
+        "SELECT id, name, stream_key, created_at FROM live_streams
+         WHERE id = $1 AND tenant_id = $2",
+    )
+    .bind(id)
+    .bind(tenant_id)
+    .fetch_optional(pool)
+    .await
+}
+
 pub async fn list_jobs(pool: &PgPool, tenant_id: Uuid) -> Result<Vec<Job>, sqlx::Error> {
     sqlx::query_as::<_, Job>(
         "SELECT id, asset_id, state, progress, error, output_prefix, queued_at, finished_at,
