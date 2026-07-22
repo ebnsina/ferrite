@@ -1,15 +1,11 @@
 //! Transcode job submission and status.
 
-use std::time::Duration;
-
 use axum::extract::{Path, State};
 use axum::Json;
 use ferrite_core::{Ladder, TranscodeJob};
 use ferrite_queue::JobQueue;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-
-const PLAYBACK_URL_TTL: Duration = Duration::from_secs(60 * 60);
 
 use crate::auth::TenantContext;
 use crate::db::{self, Job};
@@ -25,12 +21,15 @@ pub struct JobView {
     pub error: Option<String>,
     pub queued_at: String,
     pub finished_at: Option<String>,
-    /// Presigned HLS master playlist URL; present once the job is completed.
+    /// Public HLS master playlist URL; present once the job is completed.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub playback_url: Option<String>,
-    /// Presigned poster image URL; present once the job is completed.
+    /// Public poster image URL; present once the job is completed.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub poster_url: Option<String>,
+    /// Public WebVTT storyboard (scrubbing thumbnails); present once completed.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub storyboard_url: Option<String>,
 }
 
 impl From<Job> for JobView {
@@ -45,6 +44,7 @@ impl From<Job> for JobView {
             finished_at: j.finished_at.map(|t| t.to_rfc3339()),
             playback_url: None,
             poster_url: None,
+            storyboard_url: None,
         }
     }
 }
@@ -192,17 +192,12 @@ pub async fn get_job(
     let prefix = job.output_prefix.clone();
     let mut view = JobView::from(job);
     if completed {
-        let storage = state.storage();
-        view.playback_url = Some(
-            storage
-                .presign_get(&format!("{prefix}/master.m3u8"), PLAYBACK_URL_TTL)
-                .await?,
-        );
-        view.poster_url = Some(
-            storage
-                .presign_get(&format!("{prefix}/thumbs/poster.jpg"), PLAYBACK_URL_TTL)
-                .await?,
-        );
+        // Outputs are publicly readable, so playback URLs are plain (unsigned)
+        // and HLS players can fetch child playlists/segments without per-object signing.
+        let base = &state.settings().s3_public_url;
+        view.playback_url = Some(format!("{base}/{prefix}/master.m3u8"));
+        view.poster_url = Some(format!("{base}/{prefix}/thumbs/poster.jpg"));
+        view.storyboard_url = Some(format!("{base}/{prefix}/thumbs/thumbs.vtt"));
     }
     Ok(Json(view))
 }

@@ -19,6 +19,9 @@ pub struct Settings {
     #[serde(default)]
     pub s3_endpoint_url: Option<String>,
     pub s3_force_path_style: bool,
+    /// Public base URL (incl. bucket) for playback assets, e.g.
+    /// `http://localhost:9100/ferrite` or a CDN domain.
+    pub s3_public_url: String,
 }
 
 impl Settings {

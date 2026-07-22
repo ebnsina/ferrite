@@ -65,7 +65,7 @@
 		{:else}
 			<div class="flex flex-col divide-y divide-border">
 				{#each jobs as job (job.id)}
-					<div class="flex items-center gap-4 py-3">
+					<a href={`/jobs/${job.id}`} class="flex items-center gap-4 py-3 transition-colors hover:bg-surface-2">
 						<code class="mono w-20 shrink-0 truncate text-xs text-muted">{job.id.slice(0, 8)}</code>
 						<div class="min-w-0 flex-1">
 							{#if ACTIVE.includes(job.state)}
@@ -77,17 +77,12 @@
 							{/if}
 						</div>
 						{#if job.playback_url}
-							<a
-								href={job.playback_url}
-								target="_blank"
-								rel="noreferrer"
-								class="flex items-center gap-1 text-xs text-accent hover:underline"
-							>
-								<Icon icon={PlayIcon} size={14} /> Playlist
-							</a>
+							<span class="flex items-center gap-1 text-xs text-accent">
+								<Icon icon={PlayIcon} size={14} /> Play
+							</span>
 						{/if}
 						<StatusPill state={job.state} />
-					</div>
+					</a>
 				{/each}
 			</div>
 		{/if}
