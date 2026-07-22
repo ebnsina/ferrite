@@ -1,6 +1,7 @@
 //! Router assembly. Route modules are registered here; cross-cutting middleware
 //! (tracing, CORS, body limits) and the global 404 fallback are applied once.
 
+mod assets;
 mod health;
 mod tenants;
 
@@ -20,7 +21,10 @@ pub fn build(state: AppState) -> Router {
         .route("/ready", get(health::ready))
         .route("/tenants", post(tenants::create_tenant))
         .route("/api-keys", post(tenants::create_api_key))
-        .route("/me", get(tenants::me));
+        .route("/me", get(tenants::me))
+        .route("/assets", get(assets::list_assets).post(assets::create_asset))
+        .route("/assets/{id}", get(assets::get_asset))
+        .route("/assets/{id}/complete", post(assets::complete_asset));
 
     Router::new()
         .nest("/v1", api)

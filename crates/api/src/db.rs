@@ -81,3 +81,80 @@ pub async fn touch_api_key(pool: &PgPool, id: Uuid) {
         .execute(pool)
         .await;
 }
+
+// --- Assets ------------------------------------------------------------------
+
+#[derive(Debug, sqlx::FromRow)]
+pub struct Asset {
+    pub id: Uuid,
+    pub filename: String,
+    pub original_key: String,
+    pub bytes: Option<i64>,
+    pub status: String,
+    pub created_at: DateTime<Utc>,
+}
+
+pub async fn create_asset(
+    pool: &PgPool,
+    tenant_id: Uuid,
+    id: Uuid,
+    filename: &str,
+    original_key: &str,
+) -> Result<Asset, sqlx::Error> {
+    sqlx::query_as::<_, Asset>(
+        "INSERT INTO assets (id, tenant_id, filename, original_key)
+         VALUES ($1, $2, $3, $4)
+         RETURNING id, filename, original_key, bytes, status, created_at",
+    )
+    .bind(id)
+    .bind(tenant_id)
+    .bind(filename)
+    .bind(original_key)
+    .fetch_one(pool)
+    .await
+}
+
+/// Tenant-scoped fetch — never returns another tenant's asset.
+pub async fn find_asset(
+    pool: &PgPool,
+    tenant_id: Uuid,
+    id: Uuid,
+) -> Result<Option<Asset>, sqlx::Error> {
+    sqlx::query_as::<_, Asset>(
+        "SELECT id, filename, original_key, bytes, status, created_at
+         FROM assets WHERE id = $1 AND tenant_id = $2",
+    )
+    .bind(id)
+    .bind(tenant_id)
+    .fetch_optional(pool)
+    .await
+}
+
+pub async fn list_assets(pool: &PgPool, tenant_id: Uuid) -> Result<Vec<Asset>, sqlx::Error> {
+    sqlx::query_as::<_, Asset>(
+        "SELECT id, filename, original_key, bytes, status, created_at
+         FROM assets WHERE tenant_id = $1 ORDER BY created_at DESC LIMIT 200",
+    )
+    .bind(tenant_id)
+    .fetch_all(pool)
+    .await
+}
+
+/// Mark an upload complete. Returns false if the asset does not belong to the tenant.
+pub async fn mark_asset_ready(
+    pool: &PgPool,
+    tenant_id: Uuid,
+    id: Uuid,
+    bytes: Option<i64>,
+) -> Result<bool, sqlx::Error> {
+    let result = sqlx::query(
+        "UPDATE assets SET status = 'ready', bytes = COALESCE($3, bytes)
+         WHERE id = $1 AND tenant_id = $2",
+    )
+    .bind(id)
+    .bind(tenant_id)
+    .bind(bytes)
+    .execute(pool)
+    .await?;
+    Ok(result.rows_affected() > 0)
+}
