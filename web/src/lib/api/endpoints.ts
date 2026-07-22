@@ -49,6 +49,18 @@ export function createJob(assetId: string) {
 	});
 }
 
+export interface BatchResult {
+	submitted: Job[];
+	skipped: { asset_id: string; reason: string }[];
+}
+
+export function createJobsBatch(assetIds: string[]) {
+	return apiRequest<BatchResult>('/v1/jobs/batch', {
+		method: 'POST',
+		body: JSON.stringify({ asset_ids: assetIds })
+	});
+}
+
 export function listJobs() {
 	return apiRequest<Job[]>('/v1/jobs');
 }

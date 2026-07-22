@@ -58,8 +58,24 @@ pub async fn create_job(
     ctx: TenantContext,
     Json(body): Json<CreateJobRequest>,
 ) -> ApiResult<Json<JobView>> {
-    // Asset must belong to the tenant and have finished uploading.
-    let asset = db::find_asset(state.db(), ctx.tenant_id, body.asset_id)
+    let job = submit_job(
+        &state,
+        ctx.tenant_id,
+        body.asset_id,
+        body.idempotency_key.as_deref(),
+    )
+    .await?;
+    Ok(Json(job.into()))
+}
+
+/// Validate a ready asset, create its job, and enqueue it (idempotency-safe).
+async fn submit_job(
+    state: &AppState,
+    tenant_id: Uuid,
+    asset_id: Uuid,
+    idempotency_key: Option<&str>,
+) -> ApiResult<Job> {
+    let asset = db::find_asset(state.db(), tenant_id, asset_id)
         .await?
         .ok_or(ApiError::NotFound)?;
     if asset.status != "ready" {
@@ -70,24 +86,22 @@ pub async fn create_job(
     }
 
     let job_id = Uuid::new_v4();
-    let output_prefix = format!("{}/outputs/{}", ctx.tenant_id, job_id);
-
+    let output_prefix = format!("{tenant_id}/outputs/{job_id}");
     let (job, created) = db::create_job(
         state.db(),
-        ctx.tenant_id,
+        tenant_id,
         job_id,
-        body.asset_id,
+        asset_id,
         &output_prefix,
-        body.idempotency_key.as_deref(),
+        idempotency_key,
     )
     .await?;
 
-    // Only enqueue when this call actually created the job (idempotency-safe).
     if created {
         let transcode = TranscodeJob {
             id: job.id,
-            tenant_id: ctx.tenant_id,
-            asset_id: body.asset_id,
+            tenant_id,
+            asset_id,
             source_key: asset.original_key,
             output_prefix,
             ladder: Ladder::default_abr(),
@@ -96,10 +110,59 @@ pub async fn create_job(
             thumbnails: false,
         };
         state.queue().enqueue(&transcode).await?;
-        tracing::info!(job = %job.id, tenant = %ctx.tenant_id, "job enqueued");
+        tracing::info!(job = %job.id, tenant = %tenant_id, "job enqueued");
+    }
+    Ok(job)
+}
+
+const MAX_BATCH: usize = 500;
+
+#[derive(Deserialize)]
+pub struct BatchJobRequest {
+    pub asset_ids: Vec<Uuid>,
+}
+
+#[derive(Serialize)]
+pub struct BatchResult {
+    pub submitted: Vec<JobView>,
+    pub skipped: Vec<SkippedItem>,
+}
+
+#[derive(Serialize)]
+pub struct SkippedItem {
+    pub asset_id: Uuid,
+    pub reason: String,
+}
+
+/// `POST /v1/jobs/batch` — submit many assets at once. Partial success: each
+/// asset is reported as submitted or skipped; the fair queue spreads the load.
+pub async fn create_jobs_batch(
+    State(state): State<AppState>,
+    ctx: TenantContext,
+    Json(body): Json<BatchJobRequest>,
+) -> ApiResult<Json<BatchResult>> {
+    if body.asset_ids.is_empty() {
+        return Err(ApiError::BadRequest("asset_ids is empty".into()));
+    }
+    if body.asset_ids.len() > MAX_BATCH {
+        return Err(ApiError::BadRequest(format!(
+            "batch too large ({}, max {MAX_BATCH})",
+            body.asset_ids.len()
+        )));
     }
 
-    Ok(Json(job.into()))
+    let mut submitted = Vec::new();
+    let mut skipped = Vec::new();
+    for asset_id in body.asset_ids {
+        match submit_job(&state, ctx.tenant_id, asset_id, None).await {
+            Ok(job) => submitted.push(job.into()),
+            Err(e) => skipped.push(SkippedItem {
+                asset_id,
+                reason: e.to_string(),
+            }),
+        }
+    }
+    Ok(Json(BatchResult { submitted, skipped }))
 }
 
 /// `GET /v1/jobs` — list the tenant's jobs.

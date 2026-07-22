@@ -2,11 +2,18 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { Card, Button, Icon } from '$lib/ui';
-	import { listAssets, createAsset, uploadToPresigned, completeAsset, createJob } from '$lib/api/endpoints';
+	import {
+		listAssets,
+		createAsset,
+		uploadToPresigned,
+		completeAsset,
+		createJob,
+		createJobsBatch
+	} from '$lib/api/endpoints';
 	import { ApiError } from '$lib/api/client';
 	import type { Asset } from '$lib/api/types';
 	import { bytes, timeAgo } from '$lib/format';
-	import { Upload01Icon, Film01Icon, Loading03Icon } from '@hugeicons/core-free-icons';
+	import { Upload01Icon, Film01Icon, Loading03Icon, PlayIcon } from '@hugeicons/core-free-icons';
 
 	let assets = $state<Asset[]>([]);
 	let loading = $state(true);
@@ -52,6 +59,17 @@
 			error = e instanceof ApiError ? e.message : 'Could not start transcode.';
 		}
 	}
+
+	const readyAssets = $derived(assets.filter((a) => a.status === 'ready'));
+
+	async function transcodeAll() {
+		try {
+			await createJobsBatch(readyAssets.map((a) => a.id));
+			goto('/jobs');
+		} catch (e) {
+			error = e instanceof ApiError ? e.message : 'Could not start transcodes.';
+		}
+	}
 </script>
 
 <div class="mx-auto max-w-5xl">
@@ -60,13 +78,20 @@
 			<h1 class="text-2xl font-semibold tracking-tight">Assets</h1>
 			<p class="mt-1 text-sm text-muted">Upload source videos to transcode.</p>
 		</div>
-		<input bind:this={fileInput} type="file" accept="video/*" class="hidden" onchange={onFile} />
-		<Button disabled={uploading} onclick={() => fileInput.click()}>
+		<div class="flex gap-2">
+			{#if readyAssets.length > 1}
+				<Button variant="secondary" onclick={transcodeAll}>
+					<Icon icon={PlayIcon} size={16} /> Transcode all ({readyAssets.length})
+				</Button>
+			{/if}
+			<input bind:this={fileInput} type="file" accept="video/*" class="hidden" onchange={onFile} />
+			<Button disabled={uploading} onclick={() => fileInput.click()}>
 			{#if uploading}<Icon icon={Loading03Icon} size={16} class="animate-spin" /> Uploading…{:else}<Icon
 					icon={Upload01Icon}
 					size={16}
 				/> Upload video{/if}
 		</Button>
+		</div>
 	</div>
 
 	{#if error}
