@@ -1,16 +1,34 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { Card, Button, StatusPill, ProgressBar } from '$lib/ui';
+	import { listAssets, listJobs } from '$lib/api/endpoints';
+	import { ApiError } from '$lib/api/client';
+	import type { Asset, Job, JobState } from '$lib/api/types';
+	import { bytes, timeAgo } from '$lib/format';
 	import { Upload, Film, ListVideo, HardDrive } from '@lucide/svelte';
-	import type { JobState } from '$lib/api/types';
 
-	// Placeholder data until the API endpoints land (Phase 1).
-	const stats = [
-		{ label: 'Assets', value: '0', icon: Film },
-		{ label: 'Active jobs', value: '0', icon: ListVideo },
-		{ label: 'Storage', value: '0 GB', icon: HardDrive }
-	];
+	let assets = $state<Asset[]>([]);
+	let jobs = $state<Job[]>([]);
+	let error = $state<string | null>(null);
 
-	const recent: { id: string; name: string; state: JobState; progress: number }[] = [];
+	const ACTIVE: JobState[] = ['queued', 'probing', 'transcoding', 'packaging', 'uploading'];
+	const activeCount = $derived(jobs.filter((j) => ACTIVE.includes(j.state)).length);
+	const totalBytes = $derived(assets.reduce((s, a) => s + (a.bytes ?? 0), 0));
+	const recent = $derived(jobs.slice(0, 5));
+
+	onMount(async () => {
+		try {
+			[assets, jobs] = await Promise.all([listAssets(), listJobs()]);
+		} catch (e) {
+			error = e instanceof ApiError ? e.message : 'Failed to load dashboard.';
+		}
+	});
+
+	const stats = $derived([
+		{ label: 'Assets', value: String(assets.length), icon: Film },
+		{ label: 'Active jobs', value: String(activeCount), icon: ListVideo },
+		{ label: 'Storage', value: bytes(totalBytes), icon: HardDrive }
+	]);
 </script>
 
 <div class="mx-auto max-w-5xl">
@@ -19,8 +37,12 @@
 			<h1 class="text-2xl font-semibold tracking-tight">Dashboard</h1>
 			<p class="mt-1 text-sm text-muted">Transcode overview for your workspace.</p>
 		</div>
-		<Button><Upload size={16} /> Upload video</Button>
+		<a href="/assets"><Button><Upload size={16} /> Upload video</Button></a>
 	</div>
+
+	{#if error}
+		<div class="mb-4 rounded-lg border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger">{error}</div>
+	{/if}
 
 	<div class="mb-8 grid gap-4 sm:grid-cols-3">
 		{#each stats as stat (stat.label)}
@@ -48,8 +70,14 @@
 			<div class="flex flex-col divide-y divide-border">
 				{#each recent as job (job.id)}
 					<div class="flex items-center gap-4 py-3">
-						<span class="min-w-0 flex-1 truncate text-sm">{job.name}</span>
-						<div class="w-40"><ProgressBar value={job.progress} /></div>
+						<code class="mono w-20 shrink-0 truncate text-xs text-muted">{job.id.slice(0, 8)}</code>
+						<div class="min-w-0 flex-1">
+							{#if ACTIVE.includes(job.state)}
+								<ProgressBar value={job.progress} />
+							{:else}
+								<p class="text-xs text-muted">{timeAgo(job.queued_at)}</p>
+							{/if}
+						</div>
 						<StatusPill state={job.state} />
 					</div>
 				{/each}

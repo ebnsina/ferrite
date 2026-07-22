@@ -2,7 +2,9 @@
 	import '../app.css';
 	import favicon from '$lib/assets/favicon.svg';
 	import { page } from '$app/state';
-	import { LayoutDashboard, Film, ListVideo, Moon, Sun, Zap } from '@lucide/svelte';
+	import { LayoutDashboard, Film, ListVideo, Moon, Sun, Zap, LogOut } from '@lucide/svelte';
+	import { session } from '$lib/api/session.svelte';
+	import Connect from '$lib/components/Connect.svelte';
 
 	let { children } = $props();
 
@@ -25,6 +27,10 @@
 </script>
 
 <svelte:head><link rel="icon" href={favicon} /></svelte:head>
+
+{#if !session.isAuthed}
+	<Connect />
+{:else}
 
 <div class="flex min-h-screen">
 	<!-- Sidebar -->
@@ -57,13 +63,20 @@
 				<span class="text-accent"><Zap size={18} /></span>
 				<span class="font-semibold">Ferrite</span>
 			</div>
-			<div class="ml-auto">
+			<div class="ml-auto flex items-center gap-1">
 				<button
 					onclick={toggleTheme}
 					aria-label="Toggle theme"
 					class="rounded-lg p-2 text-muted transition-colors hover:bg-surface-2 hover:text-fg"
 				>
 					{#if theme === 'dark'}<Sun size={18} />{:else}<Moon size={18} />{/if}
+				</button>
+				<button
+					onclick={() => session.clear()}
+					aria-label="Sign out"
+					class="rounded-lg p-2 text-muted transition-colors hover:bg-surface-2 hover:text-fg"
+				>
+					<LogOut size={18} />
 				</button>
 			</div>
 		</header>
@@ -72,3 +85,4 @@
 		</main>
 	</div>
 </div>
+{/if}

@@ -6,13 +6,11 @@
 // on catching `ApiError` and reading `.status` / `.code`.
 
 import type { ApiErrorBody } from './types';
+import { session } from './session.svelte';
+import { PUBLIC_API_URL } from '$env/static/public';
 
-const DEFAULT_BASE = 'http://localhost:8080';
-
-/** Base URL of the API. Overridable via `PUBLIC_API_URL` at build time. */
-export const API_BASE =
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	(import.meta as any).env?.PUBLIC_API_URL ?? DEFAULT_BASE;
+/** API base URL. Required — build fails if PUBLIC_API_URL is unset. */
+export const API_BASE = PUBLIC_API_URL;
 
 export class ApiError extends Error {
 	readonly status: number;
@@ -54,6 +52,7 @@ export async function apiRequest<T>(path: string, opts: RequestOptions = {}): Pr
 			headers: {
 				Accept: 'application/json',
 				...(rest.body ? { 'Content-Type': 'application/json' } : {}),
+				...(session.apiKey ? { Authorization: `Bearer ${session.apiKey}` } : {}),
 				...headers
 			}
 		});
