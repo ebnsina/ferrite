@@ -360,6 +360,19 @@ pub async fn list_live_streams(
     .await
 }
 
+/// Look up a live stream by its (secret) key — used by the ingest DVR callback.
+pub async fn find_live_stream_by_key(
+    pool: &PgPool,
+    stream_key: &str,
+) -> Result<Option<(Uuid, Uuid, String)>, sqlx::Error> {
+    sqlx::query_as::<_, (Uuid, Uuid, String)>(
+        "SELECT id, tenant_id, name FROM live_streams WHERE stream_key = $1",
+    )
+    .bind(stream_key)
+    .fetch_optional(pool)
+    .await
+}
+
 pub async fn find_live_stream(
     pool: &PgPool,
     tenant_id: Uuid,

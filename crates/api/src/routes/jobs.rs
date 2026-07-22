@@ -86,7 +86,7 @@ pub async fn create_job(
 }
 
 /// Validate a ready asset, create its job, and enqueue it (idempotency-safe).
-async fn submit_job(
+pub(crate) async fn submit_job(
     state: &AppState,
     tenant_id: Uuid,
     asset_id: Uuid,

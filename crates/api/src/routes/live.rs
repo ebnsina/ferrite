@@ -5,7 +5,8 @@
 
 use std::time::Duration;
 
-use axum::extract::{Path, State};
+use axum::extract::{Path, Query, State};
+use axum::http::StatusCode;
 use axum::Json;
 use rand::RngCore;
 use serde::{Deserialize, Serialize};
@@ -146,4 +147,90 @@ fn generate_stream_key() -> String {
     let mut bytes = [0u8; 12];
     rand::rng().fill_bytes(&mut bytes);
     hex::encode(bytes)
+}
+
+// --- Live -> VOD archival (ingest server DVR callback) -----------------------
+
+#[derive(Deserialize)]
+pub struct HookQuery {
+    secret: String,
+}
+
+/// SRS `on_dvr` callback body (subset).
+#[derive(Deserialize)]
+pub struct DvrCallback {
+    stream: String,
+    file: String,
+}
+
+/// `POST /internal/live/dvr?secret=` — the ingest server calls this when a live
+/// session's recording is finalized. We archive it into object storage as a VOD
+/// asset and auto-submit a transcode job. Returns `0` (SRS success).
+pub async fn dvr_hook(
+    State(state): State<AppState>,
+    Query(q): Query<HookQuery>,
+    Json(cb): Json<DvrCallback>,
+) -> (StatusCode, &'static str) {
+    if q.secret != state.settings().live_hook_secret {
+        return (StatusCode::FORBIDDEN, "1");
+    }
+
+    // Resolve the tenant from the stream key; ack unknown streams without work.
+    let Ok(Some((_id, tenant_id, name))) =
+        db::find_live_stream_by_key(state.db(), &cb.stream).await
+    else {
+        return (StatusCode::OK, "0");
+    };
+
+    // Map the DVR file path to its HTTP URL (SRS serves objs/nginx/html at hls_base).
+    let Some(idx) = cb.file.find("/dvr/") else {
+        return (StatusCode::OK, "0");
+    };
+    let url = format!("{}{}", state.settings().live_hls_base, &cb.file[idx..]);
+    let filename = cb
+        .file
+        .rsplit('/')
+        .next()
+        .unwrap_or("recording.flv")
+        .to_string();
+
+    // Archive in the background so the callback returns immediately.
+    tokio::spawn(archive_recording(state, tenant_id, name, url, filename));
+    (StatusCode::OK, "0")
+}
+
+async fn archive_recording(
+    state: AppState,
+    tenant_id: Uuid,
+    stream_name: String,
+    url: String,
+    filename: String,
+) {
+    let asset_id = Uuid::new_v4();
+    let key = format!("{tenant_id}/sources/{asset_id}/{filename}");
+
+    let result = async {
+        let bytes = reqwest::get(&url).await?.bytes().await?.to_vec();
+        let size = bytes.len() as i64;
+        state.storage().put_bytes(&key, bytes).await?;
+        db::create_asset(
+            state.db(),
+            tenant_id,
+            asset_id,
+            &format!("{stream_name} (recording)"),
+            &key,
+        )
+        .await?;
+        db::mark_asset_ready(state.db(), tenant_id, asset_id, Some(size)).await?;
+        super::jobs::submit_job(&state, tenant_id, asset_id, None, false).await?;
+        Ok::<_, anyhow::Error>(())
+    }
+    .await;
+
+    match result {
+        Ok(()) => {
+            tracing::info!(tenant = %tenant_id, asset = %asset_id, "archived live recording to VOD")
+        }
+        Err(e) => tracing::error!(tenant = %tenant_id, error = %e, "failed to archive recording"),
+    }
 }

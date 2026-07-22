@@ -156,6 +156,19 @@ impl Storage {
         Ok(())
     }
 
+    /// Upload in-memory bytes (used to archive a fetched live recording).
+    pub async fn put_bytes(&self, key: &str, bytes: Vec<u8>) -> Result<(), StorageError> {
+        self.client
+            .put_object()
+            .bucket(&self.bucket)
+            .key(key)
+            .body(ByteStream::from(bytes))
+            .send()
+            .await
+            .map_err(|e| StorageError::Upload(e.to_string()))?;
+        Ok(())
+    }
+
     /// Fetch an object fully into memory. For small objects (playlists, posters).
     pub async fn get_bytes(&self, key: &str) -> Result<Vec<u8>, StorageError> {
         let object = self

@@ -30,6 +30,8 @@ pub struct Settings {
     pub live_rtmp_base: String,
     pub live_hls_base: String,
     pub live_api_url: String,
+    /// Shared secret the ingest server includes when calling Ferrite's DVR hook.
+    pub live_hook_secret: String,
 }
 
 impl Settings {

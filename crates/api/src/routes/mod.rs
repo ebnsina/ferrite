@@ -58,6 +58,8 @@ pub fn build(state: AppState) -> Router {
         .route("/health", get(health::health))
         // Token-authorized playback proxy (not API-key auth; scoped by signed token).
         .route("/playback/{job_id}/{*path}", get(playback::serve))
+        // Ingest-server DVR callback (secret-gated) → archive live recording to VOD.
+        .route("/internal/live/dvr", post(live::dvr_hook))
         .fallback(not_found)
         .layer(TraceLayer::new_for_http())
         .layer(CorsLayer::permissive())
