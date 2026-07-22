@@ -2,6 +2,7 @@
 
 mod config;
 mod cpu_encoder;
+mod db;
 mod pipeline;
 
 use std::time::Duration;
@@ -9,6 +10,8 @@ use std::time::Duration;
 use anyhow::Context;
 use ferrite_queue::{JobQueue, RedisQueue};
 use ferrite_storage::{Storage, StorageConfig};
+use sqlx::postgres::PgPoolOptions;
+use sqlx::PgPool;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
 use crate::config::Settings;
@@ -28,6 +31,12 @@ async fn main() -> anyhow::Result<()> {
     })
     .await
     .context("failed to initialize object storage client")?;
+
+    let pool = PgPoolOptions::new()
+        .max_connections(5)
+        .connect(&settings.database_url)
+        .await
+        .with_context(|| format!("could not connect to Postgres at {}", settings.database_url))?;
 
     let queue = RedisQueue::connect(
         &settings.redis_url,
@@ -49,7 +58,7 @@ async fn main() -> anyhow::Result<()> {
         tracing::info!("fair-dispatch scheduler enabled on this worker");
     }
 
-    run_loop(settings, storage, queue).await
+    run_loop(settings, storage, queue, pool).await
 }
 
 /// Continuously dispatch queued jobs into the work stream, fairly across tenants.
@@ -69,7 +78,12 @@ async fn scheduler_loop(queue: RedisQueue) {
 
 /// Claim → process → ack. Failures are retried by redelivery; jobs that exceed
 /// the attempt budget are dead-lettered so one poison input can't wedge a worker.
-async fn run_loop(settings: Settings, storage: Storage, queue: RedisQueue) -> anyhow::Result<()> {
+async fn run_loop(
+    settings: Settings,
+    storage: Storage,
+    queue: RedisQueue,
+    pool: PgPool,
+) -> anyhow::Result<()> {
     let shutdown = shutdown_signal();
     tokio::pin!(shutdown);
 
@@ -85,14 +99,20 @@ async fn run_loop(settings: Settings, storage: Storage, queue: RedisQueue) -> an
                         let job = claimed.job.clone();
                         tracing::info!(job = %job.id, tenant = %job.tenant_id, "claimed job");
 
-                        match pipeline::process(&job, &storage, &settings.work_dir).await {
+                        match pipeline::process(&pool, &job, &storage, &settings.work_dir).await {
                             Ok(count) => {
                                 tracing::info!(job = %job.id, artifacts = count, "job completed");
+                                if let Err(e) = db::mark_completed(&pool, job.id).await {
+                                    tracing::error!(job = %job.id, error = %e, "failed to mark completed");
+                                }
                                 if let Err(e) = queue.ack(&claimed).await {
                                     tracing::error!(job = %job.id, error = %e, "failed to ack job");
                                 }
                             }
                             Err(e) => {
+                                if let Err(db_err) = db::mark_failed(&pool, job.id, &e.to_string()).await {
+                                    tracing::error!(job = %job.id, error = %db_err, "failed to mark failed");
+                                }
                                 handle_failure(&queue, &claimed, settings.max_attempts, e).await;
                             }
                         }

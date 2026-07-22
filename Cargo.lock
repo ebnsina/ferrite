@@ -1287,6 +1287,7 @@ name = "ferrite-worker"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "chrono",
  "config",
  "dotenvy",
  "ferrite-core",
@@ -1294,6 +1295,7 @@ dependencies = [
  "ferrite-storage",
  "serde",
  "serde_json",
+ "sqlx",
  "thiserror",
  "tokio",
  "tracing",

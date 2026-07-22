@@ -4,6 +4,9 @@ use serde::Deserialize;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct Settings {
+    #[serde(default = "default_database_url")]
+    pub database_url: String,
+
     #[serde(default = "default_redis_url")]
     pub redis_url: String,
 
@@ -40,6 +43,9 @@ pub struct Settings {
     pub run_scheduler: bool,
 }
 
+fn default_database_url() -> String {
+    "postgres://ferrite:ferrite@localhost:5432/ferrite".into()
+}
 fn default_redis_url() -> String {
     "redis://localhost:6379".into()
 }
