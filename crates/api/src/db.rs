@@ -38,6 +38,68 @@ pub async fn find_tenant(pool: &PgPool, id: Uuid) -> Result<Option<Tenant>, sqlx
         .await
 }
 
+// --- Users / members ---------------------------------------------------------
+
+#[derive(Debug, sqlx::FromRow)]
+pub struct UserAuth {
+    pub id: Uuid,
+    pub tenant_id: Uuid,
+    pub password_hash: String,
+    pub role: String,
+}
+
+#[derive(Debug, sqlx::FromRow)]
+pub struct Member {
+    pub id: Uuid,
+    pub email: String,
+    pub role: String,
+    pub created_at: DateTime<Utc>,
+}
+
+pub async fn create_user(
+    pool: &PgPool,
+    id: Uuid,
+    tenant_id: Uuid,
+    email: &str,
+    password_hash: &str,
+    role: &str,
+) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        "INSERT INTO users (id, tenant_id, email, password_hash, role)
+         VALUES ($1, $2, $3, $4, $5)",
+    )
+    .bind(id)
+    .bind(tenant_id)
+    .bind(email)
+    .bind(password_hash)
+    .bind(role)
+    .execute(pool)
+    .await?;
+    Ok(())
+}
+
+pub async fn find_user_by_email(
+    pool: &PgPool,
+    email: &str,
+) -> Result<Option<UserAuth>, sqlx::Error> {
+    sqlx::query_as::<_, UserAuth>(
+        "SELECT id, tenant_id, password_hash, role FROM users WHERE email = $1",
+    )
+    .bind(email)
+    .fetch_optional(pool)
+    .await
+}
+
+pub async fn list_members(pool: &PgPool, tenant_id: Uuid) -> Result<Vec<Member>, sqlx::Error> {
+    sqlx::query_as::<_, Member>(
+        "SELECT id, email, role, created_at FROM users
+         WHERE tenant_id = $1 ORDER BY created_at",
+    )
+    .bind(tenant_id)
+    .fetch_all(pool)
+    .await
+}
+
 pub async fn create_api_key(
     pool: &PgPool,
     tenant_id: Uuid,

@@ -5,7 +5,9 @@ mod assets;
 mod health;
 mod jobs;
 mod live;
+mod members;
 mod playback;
+mod session;
 mod tenants;
 mod usage;
 mod webhooks;
@@ -24,8 +26,14 @@ pub fn build(state: AppState) -> Router {
     let api = Router::new()
         .route("/health", get(health::health))
         .route("/ready", get(health::ready))
+        .route("/auth/signup", post(session::signup))
+        .route("/auth/login", post(session::login))
         .route("/tenants", post(tenants::create_tenant))
         .route("/api-keys", post(tenants::create_api_key))
+        .route(
+            "/members",
+            get(members::list_members).post(members::invite_member),
+        )
         .route("/me", get(tenants::me))
         .route("/usage", get(usage::get_usage))
         .route(
