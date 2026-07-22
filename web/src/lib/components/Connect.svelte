@@ -1,9 +1,9 @@
 <script lang="ts">
-	import { Button, Card } from '$lib/ui';
+	import { Button, Card, Icon } from '$lib/ui';
 	import { session } from '$lib/api/session.svelte';
 	import { createTenant } from '$lib/api/endpoints';
 	import { ApiError } from '$lib/api/client';
-	import { Zap, Copy, Check } from '@lucide/svelte';
+	import { FlashIcon, Copy01Icon, Tick01Icon } from '@hugeicons/core-free-icons';
 
 	let name = $state('');
 	let creating = $state(false);
@@ -43,7 +43,7 @@
 <div class="flex min-h-screen items-center justify-center px-6">
 	<Card class="w-full max-w-md">
 		<div class="mb-6 flex items-center gap-2">
-			<span class="text-accent"><Zap size={22} /></span>
+			<span class="text-accent"><Icon icon={FlashIcon} size={22} /></span>
 			<span class="text-xl font-semibold tracking-tight">Ferrite</span>
 		</div>
 
@@ -53,7 +53,7 @@
 			<div class="mb-4 flex items-center gap-2 rounded-lg border border-border bg-surface-2 p-3">
 				<code class="mono flex-1 truncate text-sm">{newKey}</code>
 				<button onclick={copyKey} class="text-muted hover:text-fg" aria-label="Copy key">
-					{#if copied}<Check size={16} />{:else}<Copy size={16} />{/if}
+					{#if copied}<Icon icon={Tick01Icon} size={16} />{:else}<Icon icon={Copy01Icon} size={16} />{/if}
 				</button>
 			</div>
 			<Button class="w-full" onclick={() => session.set(newKey!)}>Continue to dashboard</Button>

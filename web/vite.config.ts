@@ -13,5 +13,7 @@ export default defineConfig({
 			},
 			adapter: adapter()
 		})
-	]
+	],
+	// @hugeicons/svelte ships uncompiled .svelte; let Vite compile it for SSR.
+	ssr: { noExternal: ['@hugeicons/svelte'] }
 });

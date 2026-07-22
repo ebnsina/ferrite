@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { Card, Button, StatusPill, ProgressBar } from '$lib/ui';
+	import { Card, Button, StatusPill, ProgressBar, Icon } from '$lib/ui';
 	import { listAssets, listJobs } from '$lib/api/endpoints';
 	import { ApiError } from '$lib/api/client';
 	import type { Asset, Job, JobState } from '$lib/api/types';
 	import { bytes, timeAgo } from '$lib/format';
-	import { Upload, Film, ListVideo, HardDrive } from '@lucide/svelte';
+	import { Upload01Icon, Film01Icon, PlayListIcon, HardDriveIcon } from '@hugeicons/core-free-icons';
 
 	let assets = $state<Asset[]>([]);
 	let jobs = $state<Job[]>([]);
@@ -25,9 +25,9 @@
 	});
 
 	const stats = $derived([
-		{ label: 'Assets', value: String(assets.length), icon: Film },
-		{ label: 'Active jobs', value: String(activeCount), icon: ListVideo },
-		{ label: 'Storage', value: bytes(totalBytes), icon: HardDrive }
+		{ label: 'Assets', value: String(assets.length), icon: Film01Icon },
+		{ label: 'Active jobs', value: String(activeCount), icon: PlayListIcon },
+		{ label: 'Storage', value: bytes(totalBytes), icon: HardDriveIcon }
 	]);
 </script>
 
@@ -37,7 +37,7 @@
 			<h1 class="text-2xl font-semibold tracking-tight">Dashboard</h1>
 			<p class="mt-1 text-sm text-muted">Transcode overview for your workspace.</p>
 		</div>
-		<a href="/assets"><Button><Upload size={16} /> Upload video</Button></a>
+		<a href="/assets"><Button><Icon icon={Upload01Icon} size={16} /> Upload video</Button></a>
 	</div>
 
 	{#if error}
@@ -52,7 +52,7 @@
 						<p class="text-sm text-muted">{stat.label}</p>
 						<p class="mono mt-1 text-2xl font-semibold">{stat.value}</p>
 					</div>
-					<span class="text-muted"><stat.icon size={22} /></span>
+					<span class="text-muted"><Icon icon={stat.icon} size={22} /></span>
 				</div>
 			</Card>
 		{/each}
@@ -62,7 +62,7 @@
 		<h2 class="mb-4 text-sm font-medium text-muted">Recent jobs</h2>
 		{#if recent.length === 0}
 			<div class="flex flex-col items-center justify-center py-12 text-center">
-				<span class="mb-3 text-muted"><ListVideo size={32} /></span>
+				<span class="mb-3 text-muted"><Icon icon={PlayListIcon} size={32} /></span>
 				<p class="font-medium">No jobs yet</p>
 				<p class="mt-1 text-sm text-muted">Upload a video to kick off your first transcode.</p>
 			</div>

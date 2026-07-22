@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
-	import { Card, StatusPill, ProgressBar } from '$lib/ui';
+	import { Card, StatusPill, ProgressBar, Icon } from '$lib/ui';
 	import { listJobs, getJob } from '$lib/api/endpoints';
 	import { ApiError } from '$lib/api/client';
 	import type { Job, JobState } from '$lib/api/types';
 	import { timeAgo } from '$lib/format';
-	import { ListVideo, Play } from '@lucide/svelte';
+	import { PlayListIcon, PlayIcon } from '@hugeicons/core-free-icons';
 
 	type JobRow = Job & { playback_url?: string };
 
@@ -58,7 +58,7 @@
 			<p class="py-8 text-center text-sm text-muted">Loading…</p>
 		{:else if jobs.length === 0}
 			<div class="flex flex-col items-center justify-center py-12 text-center">
-				<span class="mb-3 text-muted"><ListVideo size={32} /></span>
+				<span class="mb-3 text-muted"><Icon icon={PlayListIcon} size={32} /></span>
 				<p class="font-medium">No jobs yet</p>
 				<p class="mt-1 text-sm text-muted">Start a transcode from the Assets page.</p>
 			</div>
@@ -83,7 +83,7 @@
 								rel="noreferrer"
 								class="flex items-center gap-1 text-xs text-accent hover:underline"
 							>
-								<Play size={14} /> Playlist
+								<Icon icon={PlayIcon} size={14} /> Playlist
 							</a>
 						{/if}
 						<StatusPill state={job.state} />

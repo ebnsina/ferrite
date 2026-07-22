@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { Button } from '$lib/ui';
-	import { FileQuestion, ServerCrash, TriangleAlert } from '@lucide/svelte';
+	import { Button, Icon } from '$lib/ui';
+	import { FileNotFoundIcon, ServerStack01Icon, Alert02Icon } from '@hugeicons/core-free-icons';
 
 	const status = $derived(page.status);
 	const isNotFound = $derived(status === 404);
@@ -21,11 +21,11 @@
 <div class="flex min-h-[70vh] flex-col items-center justify-center px-6 text-center">
 	<div class="mb-6 rounded-full border border-border bg-surface p-5 text-accent">
 		{#if isNotFound}
-			<FileQuestion size={40} />
+			<Icon icon={FileNotFoundIcon} size={40} />
 		{:else if isServer}
-			<ServerCrash size={40} />
+			<Icon icon={ServerStack01Icon} size={40} />
 		{:else}
-			<TriangleAlert size={40} />
+			<Icon icon={Alert02Icon} size={40} />
 		{/if}
 	</div>
 
