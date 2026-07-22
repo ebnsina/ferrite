@@ -100,8 +100,35 @@ async fn run(
             .await?;
     }
 
+    upload_master_playlist(job, &media, job_dir, storage).await?;
     record_renditions(pool, job).await?;
     Ok(artifacts.len())
+}
+
+/// Build and upload the HLS master playlist that ties the renditions into an
+/// adaptive ladder, at `{output_prefix}/master.m3u8`.
+async fn upload_master_playlist(
+    job: &TranscodeJob,
+    media: &ferrite_core::MediaInfo,
+    job_dir: &PathBuf,
+    storage: &Storage,
+) -> Result<(), PipelineError> {
+    let mut m3u8 = String::from("#EXTM3U\n#EXT-X-VERSION:3\n");
+    for r in &job.ladder.renditions {
+        let mut width = (r.height as f64 * media.width as f64 / media.height as f64).round() as u32;
+        width -= width % 2; // H.264 needs even dimensions
+        let bandwidth = (r.bitrate_kbps + 128) * 1000; // video + ~audio
+        m3u8.push_str(&format!(
+            "#EXT-X-STREAM-INF:BANDWIDTH={bandwidth},RESOLUTION={width}x{}\n{}/index.m3u8\n",
+            r.height, r.name
+        ));
+    }
+
+    let path = job_dir.join("master.m3u8");
+    tokio::fs::write(&path, m3u8).await?;
+    let key = format!("{}/master.m3u8", job.output_prefix);
+    storage.put_file(&key, &path.to_string_lossy()).await?;
+    Ok(())
 }
 
 /// One DB row per HLS rendition produced.

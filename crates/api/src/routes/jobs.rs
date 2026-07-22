@@ -1,11 +1,15 @@
 //! Transcode job submission and status.
 
+use std::time::Duration;
+
 use axum::extract::{Path, State};
 use axum::Json;
 use ferrite_core::{Ladder, TranscodeJob};
 use ferrite_queue::JobQueue;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
+
+const PLAYBACK_URL_TTL: Duration = Duration::from_secs(60 * 60);
 
 use crate::auth::TenantContext;
 use crate::db::{self, Job};
@@ -21,6 +25,9 @@ pub struct JobView {
     pub error: Option<String>,
     pub queued_at: String,
     pub finished_at: Option<String>,
+    /// Presigned HLS master playlist URL; present once the job is completed.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub playback_url: Option<String>,
 }
 
 impl From<Job> for JobView {
@@ -33,6 +40,7 @@ impl From<Job> for JobView {
             error: j.error,
             queued_at: j.queued_at.to_rfc3339(),
             finished_at: j.finished_at.map(|t| t.to_rfc3339()),
+            playback_url: None,
         }
     }
 }
@@ -112,5 +120,12 @@ pub async fn get_job(
     let job = db::find_job(state.db(), ctx.tenant_id, id)
         .await?
         .ok_or(ApiError::NotFound)?;
-    Ok(Json(job.into()))
+
+    let playback_key =
+        (job.state == "completed").then(|| format!("{}/master.m3u8", job.output_prefix));
+    let mut view = JobView::from(job);
+    if let Some(key) = playback_key {
+        view.playback_url = Some(state.storage().presign_get(&key, PLAYBACK_URL_TTL).await?);
+    }
+    Ok(Json(view))
 }
