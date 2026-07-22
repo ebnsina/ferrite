@@ -169,6 +169,8 @@ pub struct Job {
     pub output_prefix: String,
     pub queued_at: DateTime<Utc>,
     pub finished_at: Option<DateTime<Utc>>,
+    /// True once an AES-128 key exists — encrypted jobs skip DASH output.
+    pub encrypted: bool,
 }
 
 /// Idempotent create: a reused `idempotency_key` returns the existing job with
@@ -185,7 +187,8 @@ pub async fn create_job(
         "INSERT INTO jobs (id, tenant_id, asset_id, output_prefix, idempotency_key)
          VALUES ($1, $2, $3, $4, $5)
          ON CONFLICT (tenant_id, idempotency_key) DO NOTHING
-         RETURNING id, asset_id, state, progress, error, output_prefix, queued_at, finished_at",
+         RETURNING id, asset_id, state, progress, error, output_prefix, queued_at, finished_at,
+         (encryption_key IS NOT NULL) AS encrypted",
     )
     .bind(id)
     .bind(tenant_id)
@@ -200,7 +203,8 @@ pub async fn create_job(
     }
 
     let existing = sqlx::query_as::<_, Job>(
-        "SELECT id, asset_id, state, progress, error, output_prefix, queued_at, finished_at
+        "SELECT id, asset_id, state, progress, error, output_prefix, queued_at, finished_at,
+         (encryption_key IS NOT NULL) AS encrypted
          FROM jobs WHERE tenant_id = $1 AND idempotency_key = $2",
     )
     .bind(tenant_id)
@@ -210,13 +214,29 @@ pub async fn create_job(
     Ok((existing, false))
 }
 
+/// Fetch a job's AES-128 key (tenant-scoped). Used by the playback key endpoint.
+pub async fn get_encryption_key(
+    pool: &PgPool,
+    tenant_id: Uuid,
+    id: Uuid,
+) -> Result<Option<Vec<u8>>, sqlx::Error> {
+    let row: Option<(Option<Vec<u8>>,)> =
+        sqlx::query_as("SELECT encryption_key FROM jobs WHERE id = $1 AND tenant_id = $2")
+            .bind(id)
+            .bind(tenant_id)
+            .fetch_optional(pool)
+            .await?;
+    Ok(row.and_then(|r| r.0))
+}
+
 pub async fn find_job(
     pool: &PgPool,
     tenant_id: Uuid,
     id: Uuid,
 ) -> Result<Option<Job>, sqlx::Error> {
     sqlx::query_as::<_, Job>(
-        "SELECT id, asset_id, state, progress, error, output_prefix, queued_at, finished_at
+        "SELECT id, asset_id, state, progress, error, output_prefix, queued_at, finished_at,
+         (encryption_key IS NOT NULL) AS encrypted
          FROM jobs WHERE id = $1 AND tenant_id = $2",
     )
     .bind(id)
@@ -227,7 +247,8 @@ pub async fn find_job(
 
 pub async fn list_jobs(pool: &PgPool, tenant_id: Uuid) -> Result<Vec<Job>, sqlx::Error> {
     sqlx::query_as::<_, Job>(
-        "SELECT id, asset_id, state, progress, error, output_prefix, queued_at, finished_at
+        "SELECT id, asset_id, state, progress, error, output_prefix, queued_at, finished_at,
+         (encryption_key IS NOT NULL) AS encrypted
          FROM jobs WHERE tenant_id = $1 ORDER BY queued_at DESC LIMIT 200",
     )
     .bind(tenant_id)

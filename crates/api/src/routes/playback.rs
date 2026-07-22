@@ -74,6 +74,16 @@ pub async fn serve(
         return (StatusCode::FORBIDDEN, "forbidden").into_response();
     }
 
+    // The AES-128 key is served from the DB (never stored as an object).
+    if path.ends_with("enc.key") {
+        return match crate::db::get_encryption_key(state.db(), tenant, job).await {
+            Ok(Some(key)) => {
+                ([(header::CONTENT_TYPE, "application/octet-stream")], key).into_response()
+            }
+            _ => (StatusCode::NOT_FOUND, "no key").into_response(),
+        };
+    }
+
     let key = format!("{tenant}/outputs/{job}/{path}");
     let bytes = match state.storage().get_bytes(&key).await {
         Ok(b) => b,
@@ -107,7 +117,10 @@ fn rewrite_playlist(text: &str, token: &str) -> String {
         .lines()
         .map(|line| {
             let t = line.trim();
-            if t.is_empty() || t.starts_with('#') {
+            if t.starts_with("#EXT-X-KEY") {
+                // Tokenize the key URI so hls.js can fetch the AES-128 key.
+                line.replace("URI=\"enc.key\"", &format!("URI=\"enc.key?token={token}\""))
+            } else if t.is_empty() || t.starts_with('#') {
                 line.to_string()
             } else {
                 let sep = if line.contains('?') { '&' } else { '?' };

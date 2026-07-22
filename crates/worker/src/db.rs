@@ -56,6 +56,20 @@ pub async fn mark_failed(pool: &PgPool, job_id: Uuid, error: &str) -> Result<(),
     Ok(())
 }
 
+/// Store the AES-128 key so the API's key endpoint can serve it to authorized viewers.
+pub async fn set_encryption_key(
+    pool: &PgPool,
+    job_id: Uuid,
+    key: &[u8],
+) -> Result<(), sqlx::Error> {
+    sqlx::query("UPDATE jobs SET encryption_key = $2 WHERE id = $1")
+        .bind(job_id)
+        .bind(key)
+        .execute(pool)
+        .await?;
+    Ok(())
+}
+
 pub async fn insert_rendition(
     pool: &PgPool,
     job_id: Uuid,

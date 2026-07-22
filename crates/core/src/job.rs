@@ -48,4 +48,10 @@ pub struct TranscodeJob {
     pub hls: bool,
     pub dash: bool,
     pub thumbnails: bool,
+    /// Encrypt HLS output with AES-128.
+    #[serde(default)]
+    pub encrypt: bool,
+    /// Hex AES-128 key, populated by the worker at runtime (not by the API).
+    #[serde(default)]
+    pub encryption_key: Option<String>,
 }

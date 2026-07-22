@@ -24,6 +24,29 @@ impl CpuEncoder {
             output_dir: output_dir.into(),
         }
     }
+
+    /// Write the ffmpeg keyinfo file for encrypted jobs; returns its path.
+    /// Line 1 is the URI written into playlists; line 2 is the local key file.
+    async fn write_keyinfo(&self, job: &TranscodeJob) -> Result<Option<String>, TranscodeError> {
+        let Some(hex_key) = &job.encryption_key else {
+            return Ok(None);
+        };
+        let key = hex::decode(hex_key)
+            .map_err(|e| TranscodeError::Unsupported(format!("bad encryption key: {e}")))?;
+
+        let key_path = self.output_dir.join("enc.key.bin");
+        tokio::fs::write(&key_path, &key)
+            .await
+            .map_err(TranscodeError::Io)?;
+
+        let keyinfo_path = self.output_dir.join("enc.keyinfo");
+        let content = format!("enc.key\n{}\n", key_path.to_string_lossy());
+        tokio::fs::write(&keyinfo_path, content)
+            .await
+            .map_err(TranscodeError::Io)?;
+
+        Ok(Some(keyinfo_path.to_string_lossy().to_string()))
+    }
 }
 
 impl Encoder for CpuEncoder {
@@ -66,6 +89,11 @@ impl Encoder for CpuEncoder {
         let source = self.output_dir.join("source.input");
         let source_str = source.to_string_lossy().to_string();
 
+        // For AES-128 HLS: write a keyinfo file so ffmpeg encrypts segments and
+        // stamps `#EXT-X-KEY:URI="enc.key"` into each playlist. The key file is
+        // read only for encryption — it is never written to storage.
+        let keyinfo = self.write_keyinfo(job).await?;
+
         let mut artifacts = Vec::new();
         let total = job.ladder.renditions.len().max(1);
 
@@ -80,8 +108,8 @@ impl Encoder for CpuEncoder {
             let playlist = rendition_dir.join("index.m3u8");
             let segment_pattern = rendition_dir.join("seg_%04d.ts");
 
-            let output = Command::new("ffmpeg")
-                .args(["-y", "-loglevel", "error", "-nostats", "-i"])
+            let mut cmd = Command::new("ffmpeg");
+            cmd.args(["-y", "-loglevel", "error", "-nostats", "-i"])
                 .arg(&source_str)
                 .args([
                     "-vf",
@@ -104,8 +132,12 @@ impl Encoder for CpuEncoder {
                     "6",
                     "-hls_playlist_type",
                     "vod",
-                    "-hls_segment_filename",
-                ])
+                ]);
+            if let Some(ki) = &keyinfo {
+                cmd.args(["-hls_key_info_file", ki]);
+            }
+            let output = cmd
+                .args(["-hls_segment_filename"])
                 .arg(&segment_pattern)
                 .arg(&playlist)
                 .output()

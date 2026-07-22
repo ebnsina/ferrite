@@ -63,6 +63,9 @@ pub struct CreateJobRequest {
     pub asset_id: Uuid,
     /// Optional; a repeated key returns the same job instead of a duplicate.
     pub idempotency_key: Option<String>,
+    /// Encrypt HLS output with AES-128.
+    #[serde(default)]
+    pub encrypt: bool,
 }
 
 /// `POST /v1/jobs` — submit a transcode job for a ready asset.
@@ -76,6 +79,7 @@ pub async fn create_job(
         ctx.tenant_id,
         body.asset_id,
         body.idempotency_key.as_deref(),
+        body.encrypt,
     )
     .await?;
     Ok(Json(job.into()))
@@ -87,6 +91,7 @@ async fn submit_job(
     tenant_id: Uuid,
     asset_id: Uuid,
     idempotency_key: Option<&str>,
+    encrypt: bool,
 ) -> ApiResult<Job> {
     let asset = db::find_asset(state.db(), tenant_id, asset_id)
         .await?
@@ -121,6 +126,8 @@ async fn submit_job(
             hls: true,
             dash: true,
             thumbnails: true,
+            encrypt,
+            encryption_key: None,
         };
         state.queue().enqueue(&transcode).await?;
         tracing::info!(job = %job.id, tenant = %tenant_id, "job enqueued");
@@ -167,7 +174,7 @@ pub async fn create_jobs_batch(
     let mut submitted = Vec::new();
     let mut skipped = Vec::new();
     for asset_id in body.asset_ids {
-        match submit_job(&state, ctx.tenant_id, asset_id, None).await {
+        match submit_job(&state, ctx.tenant_id, asset_id, None, false).await {
             Ok(job) => submitted.push(job.into()),
             Err(e) => skipped.push(SkippedItem {
                 asset_id,
@@ -206,6 +213,7 @@ pub async fn get_job(
 fn view_with_urls(state: &AppState, tenant_id: Uuid, job: Job) -> JobView {
     let completed = job.state == "completed";
     let job_id = job.id;
+    let encrypted = job.encrypted;
     let mut view = JobView::from(job);
     if completed {
         let s = state.settings();
@@ -215,9 +223,12 @@ fn view_with_urls(state: &AppState, tenant_id: Uuid, job: Job) -> JobView {
         view.playback_url = Some(format!(
             "{base}/playback/{job_id}/master.m3u8?token={token}"
         ));
-        view.dash_url = Some(format!(
-            "{base}/playback/{job_id}/dash/manifest.mpd?token={token}"
-        ));
+        // Encrypted jobs have no DASH package (would be plaintext).
+        if !encrypted {
+            view.dash_url = Some(format!(
+                "{base}/playback/{job_id}/dash/manifest.mpd?token={token}"
+            ));
+        }
         view.poster_url = Some(format!(
             "{base}/playback/{job_id}/thumbs/poster.jpg?token={token}"
         ));

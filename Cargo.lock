@@ -1318,6 +1318,8 @@ dependencies = [
  "ferrite-core",
  "ferrite-queue",
  "ferrite-storage",
+ "hex",
+ "rand 0.9.5",
  "serde",
  "serde_json",
  "sqlx",

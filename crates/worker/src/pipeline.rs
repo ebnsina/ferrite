@@ -61,6 +61,15 @@ async fn run(
     // Cap the ladder to the source resolution — never upscale.
     let mut job = job.clone();
     job.ladder = job.ladder.cap_to_source(&media);
+
+    // For encrypted HLS: mint a per-job AES-128 key, persist it for the key
+    // endpoint, and hand it to the encoder. The key never touches object storage.
+    if job.encrypt {
+        let mut key = [0u8; 16];
+        rand::RngCore::fill_bytes(&mut rand::rng(), &mut key);
+        db::set_encryption_key(pool, job.id, &key).await?;
+        job.encryption_key = Some(hex::encode(key));
+    }
     let job = &job;
 
     // The encoder reads the source from inside its output dir.
@@ -94,8 +103,9 @@ async fn run(
     drop(progress); // closes the channel so the progress task finishes
     let _ = progress_task.await;
 
-    // Optional MPEG-DASH package alongside HLS.
-    if job.dash {
+    // Optional MPEG-DASH package alongside HLS. Skipped for encrypted jobs —
+    // a plaintext DASH copy would defeat the encryption (DASH-CENC is future work).
+    if job.dash && !job.encrypt {
         db::set_state(pool, job.id, "packaging").await?;
         let dash_dir = output_dir.join("dash");
         match dash::generate(job, &media, &source_str, &dash_dir).await {
