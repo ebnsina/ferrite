@@ -80,8 +80,8 @@ impl Encoder for CpuEncoder {
             let playlist = rendition_dir.join("index.m3u8");
             let segment_pattern = rendition_dir.join("seg_%04d.ts");
 
-            let status = Command::new("ffmpeg")
-                .args(["-y", "-i"])
+            let output = Command::new("ffmpeg")
+                .args(["-y", "-loglevel", "error", "-nostats", "-i"])
                 .arg(&source_str)
                 .args([
                     "-vf",
@@ -108,14 +108,16 @@ impl Encoder for CpuEncoder {
                 ])
                 .arg(&segment_pattern)
                 .arg(&playlist)
-                .status()
+                .output()
                 .await
                 .map_err(|e| TranscodeError::Ffmpeg(format!("failed to spawn ffmpeg: {e}")))?;
 
-            if !status.success() {
+            if !output.status.success() {
+                let stderr = String::from_utf8_lossy(&output.stderr);
                 return Err(TranscodeError::Ffmpeg(format!(
-                    "ffmpeg exited with {status} for rendition {}",
-                    rendition.name
+                    "rendition {} failed: {}",
+                    rendition.name,
+                    stderr.trim()
                 )));
             }
 

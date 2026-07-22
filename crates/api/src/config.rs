@@ -11,6 +11,8 @@ pub struct Settings {
     pub queue_group: String,
     /// Max jobs a single tenant may have in-flight at once (fair scheduling).
     pub max_inflight_per_tenant: usize,
+    /// Idle seconds before a stuck (unacked) job is reclaimed for retry.
+    pub reclaim_min_idle_secs: u64,
     pub s3_bucket: String,
     /// Custom S3 endpoint (MinIO). Absent = AWS default resolver — the one
     /// legitimately optional value, not a fallback.

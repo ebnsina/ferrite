@@ -22,6 +22,9 @@ pub struct Settings {
     /// Max jobs a single tenant may have in-flight at once (fair scheduling).
     pub max_inflight_per_tenant: usize,
 
+    /// Idle seconds before a stuck (unacked) job is reclaimed for retry.
+    pub reclaim_min_idle_secs: u64,
+
     /// Whether this worker also runs the fair-dispatch scheduler loop.
     pub run_scheduler: bool,
 

@@ -42,6 +42,7 @@ async fn main() -> anyhow::Result<()> {
         &settings.redis_url,
         &settings.queue_group,
         settings.max_inflight_per_tenant,
+        Duration::from_secs(settings.reclaim_min_idle_secs),
     )
     .await
     .with_context(|| {
@@ -59,6 +60,26 @@ async fn main() -> anyhow::Result<()> {
     }
 
     run_loop(settings, storage, queue, pool).await
+}
+
+/// Periodically refresh queue ownership of an in-progress entry (interval half
+/// the reclaim idle) so a healthy long job isn't stolen. Aborted when done.
+fn spawn_heartbeat(
+    queue: RedisQueue,
+    consumer: String,
+    entry_id: String,
+    reclaim_min_idle_secs: u64,
+) -> tokio::task::JoinHandle<()> {
+    let interval = Duration::from_secs((reclaim_min_idle_secs / 2).max(1));
+    tokio::spawn(async move {
+        let mut tick = tokio::time::interval(interval);
+        loop {
+            tick.tick().await;
+            if let Err(e) = queue.heartbeat(&consumer, &entry_id).await {
+                tracing::warn!(entry = %entry_id, error = %e, "heartbeat failed");
+            }
+        }
+    })
 }
 
 /// Continuously dispatch queued jobs into the work stream, fairly across tenants.
@@ -97,9 +118,21 @@ async fn run_loop(
                 match claimed {
                     Ok(Some(claimed)) => {
                         let job = claimed.job.clone();
-                        tracing::info!(job = %job.id, tenant = %job.tenant_id, "claimed job");
+                        tracing::info!(job = %job.id, tenant = %job.tenant_id, attempt = claimed.delivery_count, "claimed job");
 
-                        match pipeline::process(&pool, &job, &storage, &settings.work_dir).await {
+                        // Keep the entry owned while we work so no other worker
+                        // reclaims a long-running (but healthy) job.
+                        let heartbeat = spawn_heartbeat(
+                            queue.clone(),
+                            settings.consumer_name.clone(),
+                            claimed.id.clone(),
+                            settings.reclaim_min_idle_secs,
+                        );
+
+                        let outcome = pipeline::process(&pool, &job, &storage, &settings.work_dir).await;
+                        heartbeat.abort();
+
+                        match outcome {
                             Ok(count) => {
                                 tracing::info!(job = %job.id, artifacts = count, "job completed");
                                 if let Err(e) = db::mark_completed(&pool, job.id).await {

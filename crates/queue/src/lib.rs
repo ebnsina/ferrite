@@ -6,7 +6,10 @@ use std::time::Duration;
 
 use ferrite_core::TranscodeJob;
 use redis::aio::{ConnectionManager, ConnectionManagerConfig};
-use redis::streams::{StreamReadOptions, StreamReadReply};
+use redis::streams::{
+    StreamAutoClaimOptions, StreamAutoClaimReply, StreamClaimOptions, StreamClaimReply,
+    StreamPendingCountReply, StreamReadOptions, StreamReadReply,
+};
 use redis::{AsyncCommands, Script};
 use thiserror::Error;
 use uuid::Uuid;
@@ -72,6 +75,8 @@ pub struct RedisQueue {
     group: String,
     /// Max jobs a single tenant may have in-flight (in the work stream) at once.
     max_inflight_per_tenant: usize,
+    /// Idle time before a pending (unacked) entry may be reclaimed for retry.
+    reclaim_min_idle: Duration,
 }
 
 impl RedisQueue {
@@ -80,6 +85,7 @@ impl RedisQueue {
         redis_url: &str,
         group: &str,
         max_inflight_per_tenant: usize,
+        reclaim_min_idle: Duration,
     ) -> Result<Self, QueueError> {
         let client = redis::Client::open(redis_url)?;
 
@@ -105,6 +111,7 @@ impl RedisQueue {
             claim_conn,
             group: group.to_string(),
             max_inflight_per_tenant: max_inflight_per_tenant.max(1),
+            reclaim_min_idle,
         })
     }
 
@@ -113,6 +120,53 @@ impl RedisQueue {
         let mut conn = self.conn.clone();
         let _: String = redis::cmd("PING").query_async(&mut conn).await?;
         Ok(())
+    }
+
+    /// Claim one entry that has been pending (unacked) longer than the idle
+    /// threshold — a job whose worker died or that failed a prior attempt.
+    /// `delivery_count` reflects the real XPENDING count, so retries progress.
+    async fn reclaim(&self, consumer: &str) -> Result<Option<ClaimedJob>, QueueError> {
+        let mut conn = self.claim_conn.clone();
+        let min_idle = self.reclaim_min_idle.as_millis() as usize;
+        let opts = StreamAutoClaimOptions::default().count(1);
+        let reply: StreamAutoClaimReply = conn
+            .xautoclaim_options(STREAM, &self.group, consumer, min_idle, "0-0", opts)
+            .await?;
+
+        let Some(entry) = reply.claimed.into_iter().next() else {
+            return Ok(None);
+        };
+        let payload: String = entry
+            .get(FIELD)
+            .ok_or_else(|| QueueError::Malformed(format!("entry {} has no payload", entry.id)))?;
+        let job: TranscodeJob = serde_json::from_str(&payload)?;
+        let delivery_count = self.times_delivered(&entry.id).await.unwrap_or(1);
+
+        Ok(Some(ClaimedJob {
+            id: entry.id,
+            job,
+            delivery_count,
+        }))
+    }
+
+    /// Refresh ownership of an in-progress entry so its idle clock resets and no
+    /// other worker reclaims it. `JUSTID` avoids bumping the delivery counter.
+    /// Call periodically (interval < reclaim_min_idle) while processing.
+    pub async fn heartbeat(&self, consumer: &str, entry_id: &str) -> Result<(), QueueError> {
+        let mut conn = self.conn.clone();
+        let opts = StreamClaimOptions::default().idle(0).with_justid();
+        let _: StreamClaimReply = conn
+            .xclaim_options(STREAM, &self.group, consumer, 0, &[entry_id], opts)
+            .await?;
+        Ok(())
+    }
+
+    /// How many times an entry has been delivered (via XPENDING).
+    async fn times_delivered(&self, id: &str) -> Result<usize, QueueError> {
+        let mut conn = self.claim_conn.clone();
+        let reply: StreamPendingCountReply =
+            conn.xpending_count(STREAM, &self.group, id, id, 1).await?;
+        Ok(reply.ids.first().map(|p| p.times_delivered).unwrap_or(1))
     }
 
     /// Dispatch one job from the least-recently-served under-cap tenant into the
@@ -179,6 +233,12 @@ impl JobQueue for RedisQueue {
         consumer: &str,
         block: Duration,
     ) -> Result<Option<ClaimedJob>, QueueError> {
+        // Prefer reclaiming a stuck entry (dead worker / prior failure) so retries
+        // and dead-lettering actually progress; otherwise read a fresh entry.
+        if let Some(job) = self.reclaim(consumer).await? {
+            return Ok(Some(job));
+        }
+
         let mut conn = self.claim_conn.clone();
         let opts = StreamReadOptions::default()
             .group(&self.group, consumer)

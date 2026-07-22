@@ -81,6 +81,7 @@ async fn init_state(settings: &Settings) -> anyhow::Result<AppState> {
         &settings.redis_url,
         &settings.queue_group,
         settings.max_inflight_per_tenant,
+        Duration::from_secs(settings.reclaim_min_idle_secs),
     )
     .await
     .with_context(|| {
