@@ -2,6 +2,7 @@
 
 mod config;
 mod cpu_encoder;
+mod dash;
 mod db;
 mod pipeline;
 mod thumbnails;

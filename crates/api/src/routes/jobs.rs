@@ -26,10 +26,13 @@ pub struct JobView {
     pub error: Option<String>,
     pub queued_at: String,
     pub finished_at: Option<String>,
-    /// Public HLS master playlist URL; present once the job is completed.
+    /// HLS master playlist proxy URL; present once the job is completed.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub playback_url: Option<String>,
-    /// Public poster image URL; present once the job is completed.
+    /// MPEG-DASH manifest proxy URL; present once the job is completed.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub dash_url: Option<String>,
+    /// Poster image proxy URL; present once the job is completed.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub poster_url: Option<String>,
     /// Public WebVTT storyboard (scrubbing thumbnails); present once completed.
@@ -48,6 +51,7 @@ impl From<Job> for JobView {
             queued_at: j.queued_at.to_rfc3339(),
             finished_at: j.finished_at.map(|t| t.to_rfc3339()),
             playback_url: None,
+            dash_url: None,
             poster_url: None,
             storyboard_url: None,
         }
@@ -115,7 +119,7 @@ async fn submit_job(
             output_prefix,
             ladder: Ladder::default_abr(),
             hls: true,
-            dash: false,
+            dash: true,
             thumbnails: true,
         };
         state.queue().enqueue(&transcode).await?;
@@ -210,6 +214,9 @@ fn view_with_urls(state: &AppState, tenant_id: Uuid, job: Job) -> JobView {
         let base = &s.public_url;
         view.playback_url = Some(format!(
             "{base}/playback/{job_id}/master.m3u8?token={token}"
+        ));
+        view.dash_url = Some(format!(
+            "{base}/playback/{job_id}/dash/manifest.mpd?token={token}"
         ));
         view.poster_url = Some(format!(
             "{base}/playback/{job_id}/thumbs/poster.jpg?token={token}"

@@ -7,6 +7,7 @@ use ferrite_storage::Storage;
 use sqlx::PgPool;
 
 use crate::cpu_encoder::CpuEncoder;
+use crate::dash;
 use crate::db;
 use crate::thumbnails;
 
@@ -92,6 +93,16 @@ async fn run(
     let mut artifacts = encoder.transcode(job, &media, &progress).await?;
     drop(progress); // closes the channel so the progress task finishes
     let _ = progress_task.await;
+
+    // Optional MPEG-DASH package alongside HLS.
+    if job.dash {
+        db::set_state(pool, job.id, "packaging").await?;
+        let dash_dir = output_dir.join("dash");
+        match dash::generate(job, &media, &source_str, &dash_dir).await {
+            Ok(mut d) => artifacts.append(&mut d),
+            Err(e) => tracing::warn!(job = %job.id, error = %e, "dash packaging failed"),
+        }
+    }
 
     // Optional poster + sprite + VTT storyboard. Non-essential: failure logs
     // but does not fail the transcode.

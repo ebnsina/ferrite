@@ -87,9 +87,18 @@ pub async fn serve(
             rewritten,
         )
             .into_response()
+    } else if path.ends_with(".mpd") {
+        let rewritten = rewrite_dash(&String::from_utf8_lossy(&bytes), &q.token);
+        ([(header::CONTENT_TYPE, "application/dash+xml")], rewritten).into_response()
     } else {
         ([(header::CONTENT_TYPE, content_type(&path))], bytes).into_response()
     }
+}
+
+/// Append the token to DASH segment/init template URLs (they end in `.m4s`) so
+/// the player's relative segment requests stay authorized.
+fn rewrite_dash(xml: &str, token: &str) -> String {
+    xml.replace(".m4s\"", &format!(".m4s?token={token}\""))
 }
 
 /// Append the token to every URI line so relative child/segment refs stay authorized.

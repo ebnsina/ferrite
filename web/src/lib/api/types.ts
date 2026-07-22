@@ -29,6 +29,7 @@ export interface Job {
 	queued_at: string;
 	finished_at: string | null;
 	playback_url?: string;
+	dash_url?: string;
 	poster_url?: string;
 	storyboard_url?: string;
 }

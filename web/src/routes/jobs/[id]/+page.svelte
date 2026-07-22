@@ -11,26 +11,32 @@
 	let job = $state<Job | null>(null);
 	let error = $state<string | null>(null);
 	let stop: (() => void) | undefined;
+	let format = $state<'hls' | 'dash'>('hls');
 
 	const ACTIVE: JobState[] = ['queued', 'probing', 'transcoding', 'packaging', 'uploading'];
 
-	// Svelte action: attach HLS when the <video> mounts. Prefer hls.js (MSE) —
-	// Chrome falsely reports canPlayType('…mpegurl')='maybe' but can't play HLS
-	// natively; only Safari truly can, so native is the fallback.
-	function hlsPlayer(node: HTMLVideoElement, src: string) {
+	// Attach the right player when the <video> mounts. Keyed on {format} so
+	// switching HLS/DASH remounts and re-attaches cleanly.
+	function player(node: HTMLVideoElement, opts: { format: 'hls' | 'dash'; src: string }) {
 		let instance: { destroy(): void } | undefined;
 		(async () => {
+			if (opts.format === 'dash') {
+				const { MediaPlayer } = await import('dashjs');
+				const p = MediaPlayer().create();
+				p.initialize(node, opts.src, false);
+				instance = { destroy: () => p.destroy() };
+				return;
+			}
+			// HLS: prefer hls.js (MSE) — Chrome falsely reports canPlayType='maybe'
+			// but can't play HLS natively; only Safari truly can.
 			const { default: Hls } = await import('hls.js');
 			if (Hls.isSupported()) {
 				const hls = new Hls();
-				hls.on(Hls.Events.ERROR, (_e, data) =>
-					console.error('[hls]', data.type, data.details, data.fatal)
-				);
-				hls.loadSource(src);
+				hls.loadSource(opts.src);
 				hls.attachMedia(node);
 				instance = hls;
 			} else if (node.canPlayType('application/vnd.apple.mpegurl')) {
-				node.src = src; // Safari native HLS
+				node.src = opts.src;
 			}
 		})();
 		return { destroy: () => instance?.destroy() };
@@ -67,17 +73,32 @@
 		</div>
 
 		{#if job.playback_url}
+			{@const src = format === 'dash' ? job.dash_url! : job.playback_url}
 			<Card class="overflow-hidden !p-0">
-				<!-- svelte-ignore a11y_media_has_caption -->
-				<video
-					use:hlsPlayer={job.playback_url}
-					controls
-					playsinline
-					poster={job.poster_url}
-					class="aspect-video w-full bg-black"
-				></video>
+				{#key format}
+					<!-- svelte-ignore a11y_media_has_caption -->
+					<video
+						use:player={{ format, src }}
+						controls
+						playsinline
+						poster={job.poster_url}
+						class="aspect-video w-full bg-black"
+					></video>
+				{/key}
 			</Card>
-			<p class="mono mt-3 break-all text-xs text-muted">{job.playback_url}</p>
+			{#if job.dash_url}
+				<div class="mono mt-3 inline-flex overflow-hidden rounded-lg border border-border text-xs">
+					<button
+						class={`px-3 py-1 ${format === 'hls' ? 'bg-accent text-accent-fg' : 'text-muted hover:text-fg'}`}
+						onclick={() => (format = 'hls')}>HLS</button
+					>
+					<button
+						class={`px-3 py-1 ${format === 'dash' ? 'bg-accent text-accent-fg' : 'text-muted hover:text-fg'}`}
+						onclick={() => (format = 'dash')}>DASH</button
+					>
+				</div>
+			{/if}
+			<p class="mono mt-3 break-all text-xs text-muted">{src}</p>
 		{:else if ACTIVE.includes(job.state)}
 			<Card>
 				<p class="mb-3 text-sm text-muted">Transcoding…</p>
