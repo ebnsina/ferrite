@@ -18,6 +18,7 @@
 		LiveStreaming01Icon,
 		CodeIcon,
 		Search01Icon,
+		ShieldIcon,
 		ArrowRight01Icon
 	} from '@hugeicons/core-free-icons';
 
@@ -55,6 +56,12 @@
 			title: 'Search inside videos',
 			body: 'Search the spoken words across your library and jump to the moment.',
 			href: '/app/search'
+		},
+		{
+			icon: ShieldIcon,
+			title: 'Content credentials',
+			body: 'Signed, tamper-evident provenance + edit lineage on produced assets.',
+			href: '/app/assets'
 		},
 		{
 			icon: LiveStreaming01Icon,

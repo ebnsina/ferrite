@@ -24,7 +24,9 @@
 		Coins01Icon,
 		PackageIcon,
 		CpuIcon,
-		Cancel01Icon
+		Cancel01Icon,
+		Search01Icon,
+		ShieldIcon
 	} from '@hugeicons/core-free-icons';
 
 	function scrollTo(id: string) {
@@ -151,12 +153,48 @@
 		}
 	];
 
+	// Differentiators the hosted platforms don't offer.
+	const differentiators = [
+		{
+			icon: Search01Icon,
+			title: 'Search inside your videos',
+			body: 'Search the spoken words across your entire library and jump straight to the exact moment.'
+		},
+		{
+			icon: ShieldIcon,
+			title: 'Content credentials',
+			body: 'Ed25519-signed, tamper-evident provenance with full edit lineage on every produced asset.'
+		},
+		{
+			icon: SubtitleIcon,
+			title: 'Multi-language captions',
+			body: 'Translate transcripts into any language, delivered as selectable caption tracks.'
+		},
+		{
+			icon: SecurityLockIcon,
+			title: 'On-ingest moderation',
+			body: 'Automatically classify spoken content for policy safety as videos come in — locally.'
+		},
+		{
+			icon: CodeIcon,
+			title: 'Interactive transcript',
+			body: 'A clickable transcript synced to playback — click a line to seek, share any moment.'
+		},
+		{
+			icon: CpuIcon,
+			title: 'Provider-agnostic AI',
+			body: 'Every AI feature runs against local models or your own key — swap providers with one env var.'
+		}
+	];
+
 	// Comparison — model-level differences, framed honestly against hosted platforms.
 	const compareCols = ['Ferrite', 'Mux', 'api.video', 'Cloudflare Stream'];
 	const compareRows = [
 		{ label: 'Self-hosted / on-prem', cells: [true, false, false, false] },
 		{ label: 'Store in your own S3 bucket', cells: [true, false, false, false] },
 		{ label: 'No per-minute delivery fees', cells: [true, false, false, false] },
+		{ label: 'In-video search', cells: [true, false, false, false] },
+		{ label: 'Content provenance / credentials', cells: [true, false, false, false] },
 		{ label: 'Provider-agnostic / local AI', cells: [true, false, false, false] },
 		{ label: 'Runs fully offline / air-gapped', cells: [true, false, false, false] },
 		{ label: 'Adaptive HLS + DASH', cells: [true, true, true, true] },
@@ -436,6 +474,32 @@
 					</span>
 					<h3 class="text-base font-semibold">{r.title}</h3>
 					<p class="mt-2 text-sm text-muted">{r.body}</p>
+				</div>
+			{/each}
+		</div>
+	</div>
+</section>
+
+<!-- Differentiators -->
+<section class="border-t border-border">
+	<div class="mx-auto max-w-6xl px-6 py-20" use:reveal>
+		<div class="mx-auto max-w-2xl text-center">
+			<span class="text-xs font-semibold tracking-wide text-accent uppercase">Only on Ferrite</span>
+			<h2 class="mt-2 text-3xl font-semibold tracking-tight">Features no one else ships</h2>
+			<p class="mt-3 text-muted">
+				The parts the hosted platforms don't have — searchable, verifiable, and private by design.
+			</p>
+		</div>
+		<div class="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+			{#each differentiators as d (d.title)}
+				<div class="rounded-xl border border-accent/20 bg-accent-soft/30 p-6">
+					<span
+						class="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-accent text-accent-fg"
+					>
+						<Icon icon={d.icon} size={20} />
+					</span>
+					<h3 class="text-base font-semibold">{d.title}</h3>
+					<p class="mt-2 text-sm text-muted">{d.body}</p>
 				</div>
 			{/each}
 		</div>
