@@ -40,7 +40,7 @@ fn hmac_hex(secret: &str, msg: &str) -> String {
 }
 
 /// Verify a token: returns (tenant, job) when the signature is valid and unexpired.
-fn verify_token(secret: &str, token: &str) -> Option<(Uuid, Uuid)> {
+pub fn verify_token(secret: &str, token: &str) -> Option<(Uuid, Uuid)> {
     let (payload, sig_hex) = token.rsplit_once('.')?;
     let sig = hex::decode(sig_hex).ok()?;
     let mut mac = HmacSha256::new_from_slice(secret.as_bytes()).ok()?;

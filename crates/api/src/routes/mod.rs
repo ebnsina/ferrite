@@ -1,6 +1,7 @@
 //! Router assembly. Route modules are registered here; cross-cutting middleware
 //! (tracing, CORS, body limits) and the global 404 fallback are applied once.
 
+mod analytics;
 mod assets;
 mod brand;
 mod health;
@@ -78,6 +79,8 @@ pub fn build(state: AppState) -> Router {
         .route("/jobs/batch", post(jobs::create_jobs_batch))
         .route("/jobs/{id}", get(jobs::get_job))
         .route("/jobs/{id}/events", get(jobs::job_events))
+        .route("/jobs/{id}/analytics", get(analytics::job_analytics))
+        .route("/jobs/{id}/embed", get(analytics::job_embed))
         .route(
             "/live/streams",
             get(live::list_streams).post(live::create_stream),
@@ -93,6 +96,8 @@ pub fn build(state: AppState) -> Router {
         // Signed, embeddable derived media (thumbnails + previews).
         .route("/media/{asset_id}/thumbnail", get(media::thumbnail))
         .route("/media/{asset_id}/preview", get(media::preview))
+        // Public analytics beacon from the embed player (token-attributed).
+        .route("/playback/beacon", post(analytics::beacon))
         // Ingest-server DVR callback (secret-gated) → archive live recording to VOD.
         .route("/internal/live/dvr", post(live::dvr_hook))
         // Prometheus scrape endpoint.

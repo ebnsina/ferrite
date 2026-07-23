@@ -538,6 +538,52 @@ pub async fn find_job(
     .await
 }
 
+// --- Playback analytics ------------------------------------------------------
+
+pub async fn insert_playback_event(
+    pool: &PgPool,
+    tenant_id: Uuid,
+    job_id: Uuid,
+    session: &str,
+    kind: &str,
+    position: f64,
+    watched: f64,
+) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        "INSERT INTO playback_events (tenant_id, job_id, session, kind, position, watched)
+         VALUES ($1, $2, $3, $4, $5, $6)",
+    )
+    .bind(tenant_id)
+    .bind(job_id)
+    .bind(session)
+    .bind(kind)
+    .bind(position as f32)
+    .bind(watched as f32)
+    .execute(pool)
+    .await?;
+    Ok(())
+}
+
+/// (views, watch_seconds, completions) for a job, tenant-scoped.
+pub async fn job_analytics(
+    pool: &PgPool,
+    tenant_id: Uuid,
+    job_id: Uuid,
+) -> Result<(i64, f64, i64), sqlx::Error> {
+    let row: (i64, f64, i64) = sqlx::query_as(
+        "SELECT
+           count(DISTINCT session) FILTER (WHERE kind = 'view'),
+           COALESCE(sum(watched), 0)::float8,
+           count(DISTINCT session) FILTER (WHERE kind = 'ended')
+         FROM playback_events WHERE job_id = $1 AND tenant_id = $2",
+    )
+    .bind(job_id)
+    .bind(tenant_id)
+    .fetch_one(pool)
+    .await?;
+    Ok(row)
+}
+
 // --- Webhooks ----------------------------------------------------------------
 
 #[derive(Debug, sqlx::FromRow)]

@@ -2,7 +2,13 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { page } from '$app/state';
 	import { Card, StatusPill, ProgressBar, Icon } from '$lib/ui';
-	import { getJob, streamJob } from '$lib/api/endpoints';
+	import {
+		getJob,
+		streamJob,
+		getJobEmbed,
+		getJobAnalytics,
+		type JobAnalytics
+	} from '$lib/api/endpoints';
 	import { ApiError } from '$lib/api/client';
 	import type { Job, JobState } from '$lib/api/types';
 	import {
@@ -11,7 +17,11 @@
 		ArrowDown01Icon,
 		Download01Icon,
 		MusicNote01Icon,
-		SubtitleIcon
+		SubtitleIcon,
+		Copy01Icon,
+		Tick01Icon,
+		CodeIcon,
+		Analytics01Icon
 	} from '@hugeicons/core-free-icons';
 
 	const id = $derived(page.params.id!);
@@ -103,6 +113,36 @@
 		};
 	}
 
+	// Embed + analytics (loaded once the job is completed).
+	let iframe = $state<string | null>(null);
+	let analytics = $state<JobAnalytics | null>(null);
+	let copied = $state(false);
+
+	function fmtDuration(secs: number): string {
+		const s = Math.round(secs);
+		if (s < 60) return `${s}s`;
+		const m = Math.floor(s / 60);
+		return `${m}m ${s % 60}s`;
+	}
+
+	async function loadEmbedAndAnalytics() {
+		try {
+			[iframe, analytics] = await Promise.all([
+				getJobEmbed(id).then((r) => r.iframe),
+				getJobAnalytics(id)
+			]);
+		} catch {
+			// non-fatal (e.g. not completed yet)
+		}
+	}
+
+	function copyEmbed() {
+		if (!iframe) return;
+		navigator.clipboard.writeText(iframe);
+		copied = true;
+		setTimeout(() => (copied = false), 1500);
+	}
+
 	onMount(async () => {
 		try {
 			job = await getJob(id); // initial snapshot (also fills playback URLs if done)
@@ -113,6 +153,8 @@
 		// Live updates until terminal; the stream closes itself when done.
 		if (ACTIVE.includes(job.state)) {
 			stop = streamJob(id, (updated) => (job = updated));
+		} else if (job.state === 'completed') {
+			loadEmbedAndAnalytics();
 		}
 	});
 	onDestroy(() => stop?.());
@@ -232,6 +274,37 @@
 							<Icon icon={SubtitleIcon} size={15} /> Download captions
 						</a>
 					{/if}
+				</div>
+			{/if}
+
+			{#if analytics}
+				<div class="mt-6">
+					<h2 class="mb-3 flex items-center gap-2 text-sm font-medium text-muted">
+						<Icon icon={Analytics01Icon} size={16} /> Analytics
+					</h2>
+					<div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+						{#each [{ label: 'Views', value: String(analytics.views) }, { label: 'Watch time', value: fmtDuration(analytics.watch_seconds) }, { label: 'Avg. view', value: fmtDuration(analytics.avg_view_seconds) }, { label: 'Completion', value: `${Math.round(analytics.completion_rate * 100)}%` }] as s (s.label)}
+							<Card>
+								<p class="text-xs text-muted">{s.label}</p>
+								<p class="mono mt-1 text-xl font-semibold">{s.value}</p>
+							</Card>
+						{/each}
+					</div>
+				</div>
+			{/if}
+
+			{#if iframe}
+				<div class="mt-6">
+					<h2 class="mb-3 flex items-center gap-2 text-sm font-medium text-muted">
+						<Icon icon={CodeIcon} size={16} /> Embed
+					</h2>
+					<div class="flex items-start gap-2 rounded-lg border border-border bg-surface-2 p-3">
+						<code class="mono flex-1 break-all text-xs text-muted">{iframe}</code>
+						<button onclick={copyEmbed} class="shrink-0 text-muted hover:text-fg" aria-label="Copy embed code">
+							<Icon icon={copied ? Tick01Icon : Copy01Icon} size={16} />
+						</button>
+					</div>
+					<p class="mt-2 text-xs text-muted">Paste this iframe into any page to embed the player.</p>
 				</div>
 			{/if}
 		{:else if ACTIVE.includes(job.state)}

@@ -204,6 +204,22 @@ export function getJob(id: string) {
 	return apiRequest<Job & { playback_url?: string }>(`/v1/jobs/${id}`);
 }
 
+export function getJobEmbed(id: string) {
+	return apiRequest<{ embed_url: string; iframe: string }>(`/v1/jobs/${id}/embed`);
+}
+
+export interface JobAnalytics {
+	views: number;
+	watch_seconds: number;
+	avg_view_seconds: number;
+	completions: number;
+	completion_rate: number;
+}
+
+export function getJobAnalytics(id: string) {
+	return apiRequest<JobAnalytics>(`/v1/jobs/${id}/analytics`);
+}
+
 /**
  * Stream a job's status via SSE until it reaches a terminal state.
  * Uses fetch (not EventSource) so the Bearer auth header can be sent.
