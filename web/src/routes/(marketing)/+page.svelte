@@ -304,18 +304,12 @@
 		</div>
 
 		<!-- The terms behind the features, explained in a line each. -->
-		<div class="mt-20 border-t border-border pt-12">
-			<h3 class="text-center text-lg font-semibold">The acronyms, decoded</h3>
-			<p class="mx-auto mt-2 max-w-xl text-center text-sm text-muted">
-				The terms you'll see below — and what each one actually does.
-			</p>
-			<div class="mt-10 grid gap-x-10 gap-y-6 sm:grid-cols-2">
+		<div class="mt-14">
+			<p class="text-xs font-semibold tracking-wide text-muted uppercase">The acronyms, decoded</p>
+			<div class="mt-5 grid gap-x-10 gap-y-5 sm:grid-cols-2">
 				{#each glossary as g (g.term)}
-					<div class="flex gap-4 border-b border-border pb-6">
-						<span
-							class="mono shrink-0 rounded-md bg-accent-soft px-2 py-1 text-sm font-semibold text-accent"
-							>{g.term}</span
-						>
+					<div class="flex items-baseline gap-3">
+						<span class="mono shrink-0 text-sm font-semibold text-accent">{g.term}</span>
 						<p class="text-sm text-muted">{g.desc}</p>
 					</div>
 				{/each}
