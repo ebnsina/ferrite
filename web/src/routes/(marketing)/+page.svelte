@@ -28,7 +28,15 @@
 		currencyOpen = false;
 	}
 
-	const clients = ['NORTHWIND', 'LOOPTV', 'VAYU MEDIA', 'CANTOR', 'HELIX', 'ORBIT'];
+	// Categories of teams Ferrite is built for — not customer names.
+	const clients = [
+		'Creator platforms',
+		'Media teams',
+		'Course builders',
+		'Live events',
+		'Marketplaces',
+		'Internal video'
+	];
 
 	// Plain-language explainers for non-technical readers: what it is + why it matters.
 	const benefits = [
@@ -236,24 +244,22 @@
 		}
 	];
 
+	// Illustrative quotes — not attributed to specific customers.
 	const testimonials = [
 		{
 			quote:
 				'Ferrite cut our transcode pipeline from a weekend project to an afternoon. It just does the right thing.',
-			name: 'Maya Chen',
-			role: 'Head of Video, LoopTV'
+			who: 'Platform engineer, media SaaS'
 		},
 		{
 			quote:
-				"The fair queue is the killer feature. Our biggest customer can't drown out everyone else anymore.",
-			name: 'Diego Alvarez',
-			role: 'Platform Lead, Northwind'
+				"The fair queue is the killer feature — one big tenant can't drown out everyone else anymore.",
+			who: 'Head of video, streaming startup'
 		},
 		{
 			quote:
 				'We replaced three services with one. HLS, DASH, and thumbnails out of a single upload.',
-			name: 'Priya Nair',
-			role: 'CTO, Vayu Media'
+			who: 'Founding engineer, creator platform'
 		}
 	];
 
@@ -393,7 +399,7 @@
 <section class="border-t border-border">
 	<div class="mx-auto max-w-6xl px-6 py-12">
 		<p class="text-center text-xs font-medium tracking-wide text-muted uppercase">
-			Powering video for teams everywhere
+			Built for teams shipping video
 		</p>
 		<div class="mt-6 flex flex-wrap items-center justify-center gap-x-10 gap-y-4">
 			{#each clients as c (c)}
@@ -425,7 +431,7 @@
 		</div>
 	{:else if kind === 'fair'}
 		<div class="w-full max-w-[280px] space-y-2.5">
-			{#each [{ n: 'Acme', c: 'bg-accent' }, { n: 'LoopTV', c: 'bg-success' }, { n: 'Vayu', c: 'bg-warning' }] as row, ri (row.n)}
+			{#each [{ n: 'Team A', c: 'bg-accent' }, { n: 'Team B', c: 'bg-success' }, { n: 'Team C', c: 'bg-warning' }] as row, ri (row.n)}
 				<div class="flex items-center gap-2">
 					<span class="w-12 shrink-0 text-[10px] text-muted">{row.n}</span>
 					<div class="flex flex-1 gap-1">
@@ -716,23 +722,14 @@
 <section class="border-t border-border">
 	<div class="mx-auto max-w-6xl px-6 py-20" use:reveal>
 		<div class="mx-auto max-w-2xl text-center">
-			<h2 class="text-3xl font-semibold tracking-tight">Teams ship faster on Ferrite</h2>
-			<p class="mt-3 text-muted">What engineering and video teams say after switching.</p>
+			<h2 class="text-3xl font-semibold tracking-tight">Built for teams shipping video</h2>
+			<p class="mt-3 text-muted">The kind of feedback we build Ferrite to earn.</p>
 		</div>
 		<div class="mt-14 grid gap-6 md:grid-cols-3">
-			{#each testimonials as t (t.name)}
+			{#each testimonials as t (t.who)}
 				<figure class="flex flex-col rounded-xl border border-border bg-surface p-6">
 					<blockquote class="flex-1 text-sm leading-relaxed">"{t.quote}"</blockquote>
-					<figcaption class="mt-5 flex items-center gap-3">
-						<span
-							class="flex h-9 w-9 items-center justify-center rounded-full bg-accent-soft text-sm font-semibold text-accent"
-							>{t.name.charAt(0)}</span
-						>
-						<span>
-							<span class="block text-sm font-medium">{t.name}</span>
-							<span class="block text-xs text-muted">{t.role}</span>
-						</span>
-					</figcaption>
+					<figcaption class="mt-5 text-xs text-muted">— {t.who}</figcaption>
 				</figure>
 			{/each}
 		</div>
