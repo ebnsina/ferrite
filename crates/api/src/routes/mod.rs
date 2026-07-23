@@ -88,6 +88,7 @@ pub fn build(state: AppState) -> Router {
         .route("/jobs/batch", post(jobs::create_jobs_batch))
         .route("/jobs/{id}", get(jobs::get_job))
         .route("/jobs/{id}/events", get(jobs::job_events))
+        .route("/jobs/{id}/transcript", get(jobs::job_transcript))
         .route("/jobs/{id}/analytics", get(analytics::job_analytics))
         .route("/jobs/{id}/embed", get(analytics::job_embed))
         .route("/jobs/{id}/translate", post(jobs::translate_captions))

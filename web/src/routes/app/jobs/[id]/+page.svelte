@@ -11,7 +11,9 @@
 		getJobEmbed,
 		getJobAnalytics,
 		translateCaptions,
-		type JobAnalytics
+		getJobTranscript,
+		type JobAnalytics,
+		type Cue
 	} from '$lib/api/endpoints';
 	import { ApiError } from '$lib/api/client';
 	import type { Job, JobState } from '$lib/api/types';
@@ -36,6 +38,35 @@
 
 	// Deep-link: ?t=<seconds> seeks the player to a moment (from in-video search).
 	const seekTo = $derived(Number(page.url.searchParams.get('t')) || 0);
+
+	// Interactive transcript
+	let videoEl = $state<HTMLVideoElement>();
+	let transcript = $state<Cue[]>([]);
+	let activeIdx = $state(-1);
+	let copiedCue = $state(-1);
+
+	function onTimeUpdate() {
+		const t = videoEl?.currentTime ?? 0;
+		activeIdx = transcript.findIndex((c) => t >= c.start && t < c.end);
+	}
+
+	function seekCue(c: Cue) {
+		if (!videoEl) return;
+		videoEl.currentTime = c.start;
+		videoEl.play?.().catch(() => {});
+	}
+
+	function copyMoment(c: Cue, i: number) {
+		const url = `${location.origin}/app/jobs/${id}?t=${Math.floor(c.start)}`;
+		navigator.clipboard.writeText(url);
+		copiedCue = i;
+		setTimeout(() => (copiedCue = -1), 1200);
+	}
+
+	function timecode(secs: number): string {
+		const s = Math.floor(secs);
+		return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+	}
 
 	// Rendition (quality) selection — driven by hls.js levels.
 	interface Rendition {
@@ -197,6 +228,13 @@
 			stop = streamJob(id, (updated) => (job = updated));
 		} else if (job.state === 'completed') {
 			loadEmbedAndAnalytics();
+			if (job.captions_url) {
+				try {
+					transcript = await getJobTranscript(id);
+				} catch {
+					/* no transcript */
+				}
+			}
 		}
 	});
 	onDestroy(() => stop?.());
@@ -225,7 +263,9 @@
 				{#key format}
 					<!-- svelte-ignore a11y_media_has_caption -->
 					<video
+						bind:this={videoEl}
 						use:player={{ format, src }}
+						ontimeupdate={onTimeUpdate}
 						controls
 						playsinline
 						crossorigin="anonymous"
@@ -347,6 +387,36 @@
 						>
 					</div>
 					{#if transErr}<p class="mt-2 text-sm text-danger">{transErr}</p>{/if}
+				</div>
+			{/if}
+
+			{#if transcript.length > 0}
+				<div class="mt-6">
+					<h2 class="mb-2 flex items-center gap-2 text-sm font-medium text-muted">
+						<Icon icon={SubtitleIcon} size={16} /> Transcript
+						<span class="text-xs font-normal">— click a line to jump there</span>
+					</h2>
+					<div class="max-h-80 overflow-y-auto rounded-xl border border-border bg-surface">
+						{#each transcript as c, i (i)}
+							<div
+								class={`group flex items-start gap-3 border-b border-border px-4 py-2 transition-colors last:border-0 ${i === activeIdx ? 'bg-accent-soft' : 'hover:bg-surface-2'}`}
+							>
+								<button
+									onclick={() => seekCue(c)}
+									class={`mono shrink-0 pt-0.5 text-xs ${i === activeIdx ? 'text-accent' : 'text-muted'}`}
+									>{timecode(c.start)}</button
+								>
+								<button onclick={() => seekCue(c)} class="flex-1 text-left text-sm">{c.text}</button>
+								<button
+									onclick={() => copyMoment(c, i)}
+									aria-label="Copy link to this moment"
+									class="shrink-0 text-muted opacity-0 transition-opacity group-hover:opacity-100 hover:text-fg"
+								>
+									<Icon icon={copiedCue === i ? Tick01Icon : Copy01Icon} size={14} />
+								</button>
+							</div>
+						{/each}
+					</div>
 				</div>
 			{/if}
 

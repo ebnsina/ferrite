@@ -262,6 +262,35 @@ pub async fn list_jobs(
     Ok(Json(jobs.into_iter().map(JobView::from).collect()))
 }
 
+#[derive(Serialize)]
+pub struct CueView {
+    pub start: f64,
+    pub end: f64,
+    pub text: String,
+}
+
+/// `GET /v1/jobs/{id}/transcript` — the job's transcript cues (for the
+/// interactive transcript panel).
+pub async fn job_transcript(
+    State(state): State<AppState>,
+    ctx: TenantContext,
+    Path(id): Path<Uuid>,
+) -> ApiResult<Json<Vec<CueView>>> {
+    db::find_job(state.db(), ctx.tenant_id, id)
+        .await?
+        .ok_or(ApiError::NotFound)?;
+    let cues = db::transcript_for_job(state.db(), id).await?;
+    Ok(Json(
+        cues.into_iter()
+            .map(|(s, e, t)| CueView {
+                start: s as f64,
+                end: e as f64,
+                text: t,
+            })
+            .collect(),
+    ))
+}
+
 #[derive(Deserialize)]
 pub struct TranslateRequest {
     /// Target language, e.g. "Spanish" or "es".

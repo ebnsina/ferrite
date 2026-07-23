@@ -271,6 +271,16 @@ export function getJob(id: string) {
 	return apiRequest<Job & { playback_url?: string }>(`/v1/jobs/${id}`);
 }
 
+export interface Cue {
+	start: number;
+	end: number;
+	text: string;
+}
+
+export function getJobTranscript(id: string) {
+	return apiRequest<Cue[]>(`/v1/jobs/${id}/transcript`);
+}
+
 export function translateCaptions(id: string, lang: string) {
 	return apiRequest<{ lang: string; url: string }>(`/v1/jobs/${id}/translate`, {
 		method: 'POST',
