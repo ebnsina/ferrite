@@ -1,5 +1,7 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
+	import { fade, fly } from 'svelte/transition';
+	import { cubicOut } from 'svelte/easing';
 	import { Icon } from '$lib/ui';
 	import { Cancel01Icon } from '@hugeicons/core-free-icons';
 
@@ -16,6 +18,21 @@
 	function onkeydown(e: KeyboardEvent) {
 		if (e.key === 'Escape') onclose();
 	}
+
+	// Lock background scroll while open, compensating for the scrollbar width so
+	// the page behind doesn't shift (the "jump").
+	$effect(() => {
+		if (!open) return;
+		const gutter = window.innerWidth - document.documentElement.clientWidth;
+		const prevOverflow = document.body.style.overflow;
+		const prevPad = document.body.style.paddingRight;
+		document.body.style.overflow = 'hidden';
+		if (gutter > 0) document.body.style.paddingRight = `${gutter}px`;
+		return () => {
+			document.body.style.overflow = prevOverflow;
+			document.body.style.paddingRight = prevPad;
+		};
+	});
 </script>
 
 <svelte:window {onkeydown} />
@@ -26,6 +43,7 @@
 		class="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
 		aria-label="Close"
 		onclick={onclose}
+		transition:fade={{ duration: 180 }}
 	></button>
 
 	<!-- Panel -->
@@ -34,6 +52,7 @@
 		role="dialog"
 		aria-modal="true"
 		aria-label={title}
+		transition:fly={{ x: 520, duration: 280, easing: cubicOut }}
 	>
 		<div class="flex items-start justify-between border-b border-border px-6 py-5">
 			<div>

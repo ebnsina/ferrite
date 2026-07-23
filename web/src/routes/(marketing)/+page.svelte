@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { Icon } from '$lib/ui';
+	import { reveal } from '$lib/actions/reveal';
 	import {
 		Layers01Icon,
 		DistributionIcon,
@@ -12,7 +13,18 @@
 		Rocket01Icon,
 		ArrowRight01Icon,
 		ArrowDown01Icon,
-		CheckmarkCircle02Icon
+		CheckmarkCircle02Icon,
+		AiVideoIcon,
+		SubtitleIcon,
+		Scissor01Icon,
+		CodeIcon,
+		Share08Icon,
+		ServerStack01Icon,
+		DatabaseIcon,
+		Coins01Icon,
+		PackageIcon,
+		CpuIcon,
+		Cancel01Icon
 	} from '@hugeicons/core-free-icons';
 
 	function scrollTo(id: string) {
@@ -61,33 +73,95 @@
 		{
 			icon: Layers01Icon,
 			title: 'Adaptive HLS + DASH',
-			body: 'One CMAF encode packages both HLS and DASH with shared fMP4 segments. Per-title renditions, ready for any player.'
+			body: 'One CMAF encode packages both HLS and DASH with shared fMP4 segments — ready for any player.'
 		},
 		{
-			icon: DistributionIcon,
-			title: 'Fair, isolated queues',
-			body: "Round-robin scheduling with per-customer caps — one big workload can't starve everyone else's."
+			icon: AiVideoIcon,
+			title: 'AI vertical shorts',
+			body: 'Auto-find highlights from the transcript, reframe to 9:16, and burn in captions. Provider-agnostic — cloud or fully local.'
+		},
+		{
+			icon: SubtitleIcon,
+			title: 'Auto-captions',
+			body: 'Transcribe speech to WebVTT with whisper.cpp locally or any OpenAI-compatible endpoint. Nothing leaves your box unless you want it to.'
 		},
 		{
 			icon: ChipIcon,
-			title: 'CPU now, GPU-ready',
-			body: 'Software encoding out of the box, with an NVENC path wired in for when you need hardware throughput.'
+			title: 'Per-title encoding',
+			body: 'Content-aware bitrate ladders tailored to each source — cut egress on simple videos without touching quality on complex ones.'
 		},
 		{
-			icon: LiveStreaming01Icon,
-			title: 'Live streaming',
-			body: 'RTMP and SRT ingest, low-latency HTTP-FLV playback, and automatic archival of live streams to VOD.'
+			icon: Scissor01Icon,
+			title: 'Clip, trim & thumbnails',
+			body: 'Cut clips into new assets, extract a frame at any timestamp, and hover-to-play animated previews — all on demand.'
 		},
 		{
 			icon: SecurityLockIcon,
-			title: 'Signed playback',
-			body: 'Private outputs served through a token-authorized proxy. Playlists are rewritten on the fly — no public buckets.'
+			title: 'Watermark & signed playback',
+			body: 'Burn your logo onto the stream + MP4, and serve private outputs through expiring signed tokens — no public buckets.'
 		},
 		{
-			icon: Image01Icon,
-			title: 'Thumbnails & sprites',
-			body: 'Poster frames, sprite sheets, and WebVTT storyboards generated automatically for scrubbing previews.'
+			icon: LiveStreaming01Icon,
+			title: 'Live + simulcast',
+			body: 'RTMP/SRT ingest, low-latency playback, auto-archival to VOD, instant live clipping, and restream to YouTube/Twitch at once.'
+		},
+		{
+			icon: CodeIcon,
+			title: 'Embeddable player + analytics',
+			body: 'A branded, signed <iframe> player with rendition selection, plus views, watch-time, and completion analytics.'
+		},
+		{
+			icon: DistributionIcon,
+			title: 'Fair multi-tenant queue',
+			body: "Round-robin scheduling with per-customer caps — one tenant's 10,000 jobs can't starve everyone else's."
 		}
+	];
+
+	// Ferrite's honest differentiators vs hosted video SaaS.
+	const reasons = [
+		{
+			icon: ServerStack01Icon,
+			title: 'Self-hosted, your rules',
+			body: 'Run it on your own servers — cloud, on-prem, or fully air-gapped. No third party sits between you and your video.'
+		},
+		{
+			icon: DatabaseIcon,
+			title: 'Your storage, your data',
+			body: 'Everything lives in your own S3-compatible bucket. Your originals and outputs never become someone else’s asset.'
+		},
+		{
+			icon: Coins01Icon,
+			title: 'No per-minute lock-in',
+			body: 'Pay for your own infrastructure, not per delivered minute. Costs stay predictable as you scale.'
+		},
+		{
+			icon: CpuIcon,
+			title: 'Provider-agnostic AI',
+			body: 'Captions and AI shorts run against local models or any OpenAI-compatible API — swap providers with one env var.'
+		},
+		{
+			icon: PackageIcon,
+			title: 'All-in-one pipeline',
+			body: 'VOD, live, clipping, captions, AI shorts, embeds, and analytics in one system — no bolt-on services to wire together.'
+		},
+		{
+			icon: SecurityLockIcon,
+			title: 'Private by design',
+			body: 'Signed playback, per-tenant isolation, and AES-128 encryption built in. Your content stays yours.'
+		}
+	];
+
+	// Comparison — model-level differences, framed honestly against hosted platforms.
+	const compareCols = ['Ferrite', 'Mux', 'api.video', 'Cloudflare Stream'];
+	const compareRows = [
+		{ label: 'Self-hosted / on-prem', cells: [true, false, false, false] },
+		{ label: 'Store in your own S3 bucket', cells: [true, false, false, false] },
+		{ label: 'No per-minute delivery fees', cells: [true, false, false, false] },
+		{ label: 'Provider-agnostic / local AI', cells: [true, false, false, false] },
+		{ label: 'Runs fully offline / air-gapped', cells: [true, false, false, false] },
+		{ label: 'Adaptive HLS + DASH', cells: [true, true, true, true] },
+		{ label: 'Live streaming', cells: [true, true, true, true] },
+		{ label: 'Embeddable player + analytics', cells: [true, true, true, true] }
 	];
 
 	// Friendly, grouped explanations of the jargon — what it means for you, not a spec.
@@ -269,7 +343,7 @@
 
 <!-- Why Ferrite — plain-language benefits for non-technical readers -->
 <section id="benefits" class="border-t border-border">
-	<div class="mx-auto max-w-6xl px-6 py-20">
+	<div class="mx-auto max-w-6xl px-6 py-20" use:reveal>
 		<div class="mx-auto max-w-2xl text-center">
 			<h2 class="text-3xl font-semibold tracking-tight">The hard parts of video, handled</h2>
 			<p class="mt-3 text-muted">
@@ -320,11 +394,11 @@
 
 <!-- Features -->
 <section id="features" class="border-t border-border bg-surface/40">
-	<div class="mx-auto max-w-6xl px-6 py-20">
+	<div class="mx-auto max-w-6xl px-6 py-20" use:reveal>
 		<div class="mx-auto max-w-2xl text-center">
-			<h2 class="text-3xl font-semibold tracking-tight">Everything the pipeline needs</h2>
+			<h2 class="text-3xl font-semibold tracking-tight">One platform, the whole pipeline</h2>
 			<p class="mt-3 text-muted">
-				From ingest to adaptive delivery — built for scale and isolation from day one.
+				VOD, live, AI, and delivery — everything you'd otherwise stitch together from five services.
 			</p>
 		</div>
 		<div class="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -343,9 +417,84 @@
 	</div>
 </section>
 
+<!-- Why Ferrite -->
+<section id="why" class="border-t border-border">
+	<div class="mx-auto max-w-6xl px-6 py-20" use:reveal>
+		<div class="mx-auto max-w-2xl text-center">
+			<h2 class="text-3xl font-semibold tracking-tight">Why teams choose Ferrite</h2>
+			<p class="mt-3 text-muted">
+				Same modern feature set as the hosted platforms — without handing over your video or your bill.
+			</p>
+		</div>
+		<div class="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+			{#each reasons as r (r.title)}
+				<div class="rounded-xl border border-border bg-surface p-6">
+					<span
+						class="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-accent-soft text-accent"
+					>
+						<Icon icon={r.icon} size={20} />
+					</span>
+					<h3 class="text-base font-semibold">{r.title}</h3>
+					<p class="mt-2 text-sm text-muted">{r.body}</p>
+				</div>
+			{/each}
+		</div>
+	</div>
+</section>
+
+<!-- Comparison -->
+<section class="border-t border-border bg-surface/40">
+	<div class="mx-auto max-w-4xl px-6 py-20" use:reveal>
+		<div class="mx-auto max-w-2xl text-center">
+			<h2 class="text-3xl font-semibold tracking-tight">Ferrite vs hosted platforms</h2>
+			<p class="mt-3 text-muted">
+				Where a self-hosted pipeline changes the equation. Feature parity where it counts.
+			</p>
+		</div>
+		<div class="mt-12 overflow-x-auto">
+			<table class="w-full min-w-[560px] border-collapse text-sm">
+				<thead>
+					<tr class="border-b border-border">
+						<th class="py-3 pr-4 text-left font-medium text-muted"></th>
+						{#each compareCols as c, i (c)}
+							<th
+								class={`px-4 py-3 text-center font-semibold ${i === 0 ? 'text-accent' : 'text-muted'}`}
+								>{c}</th
+							>
+						{/each}
+					</tr>
+				</thead>
+				<tbody>
+					{#each compareRows as row (row.label)}
+						<tr class="border-b border-border">
+							<td class="py-3 pr-4 text-left">{row.label}</td>
+							{#each row.cells as ok, i (i)}
+								<td class={`px-4 py-3 text-center ${i === 0 ? 'bg-accent-soft/40' : ''}`}>
+									{#if ok}
+										<span class="inline-flex text-accent"
+											><Icon icon={CheckmarkCircle02Icon} size={18} /></span
+										>
+									{:else}
+										<span class="inline-flex text-muted/40"><Icon icon={Cancel01Icon} size={16} /></span
+										>
+									{/if}
+								</td>
+							{/each}
+						</tr>
+					{/each}
+				</tbody>
+			</table>
+		</div>
+		<p class="mt-6 text-center text-xs text-muted">
+			Comparison reflects deployment model; hosted platforms are excellent managed services — Ferrite
+			trades managed convenience for ownership and control.
+		</p>
+	</div>
+</section>
+
 <!-- Stats band -->
 <section class="border-t border-border">
-	<div class="mx-auto grid max-w-6xl grid-cols-2 gap-8 px-6 py-16 lg:grid-cols-4">
+	<div class="mx-auto grid max-w-6xl grid-cols-2 gap-8 px-6 py-16 lg:grid-cols-4" use:reveal>
 		{#each stats as s (s.label)}
 			<div class="text-center">
 				<p class="text-4xl font-semibold tracking-tight text-accent">{s.value}</p>
@@ -357,7 +506,7 @@
 
 <!-- How it works -->
 <section id="how" class="border-t border-border bg-surface/40">
-	<div class="mx-auto max-w-6xl px-6 py-20">
+	<div class="mx-auto max-w-6xl px-6 py-20" use:reveal>
 		<div class="mx-auto max-w-2xl text-center">
 			<h2 class="text-3xl font-semibold tracking-tight">Three steps to adaptive video</h2>
 			<p class="mt-3 text-muted">Upload a source file and Ferrite handles the rest.</p>
@@ -383,7 +532,7 @@
 
 <!-- Testimonials -->
 <section class="border-t border-border">
-	<div class="mx-auto max-w-6xl px-6 py-20">
+	<div class="mx-auto max-w-6xl px-6 py-20" use:reveal>
 		<div class="mx-auto max-w-2xl text-center">
 			<h2 class="text-3xl font-semibold tracking-tight">Teams ship faster on Ferrite</h2>
 			<p class="mt-3 text-muted">What engineering and video teams say after switching.</p>
@@ -410,7 +559,7 @@
 
 <!-- Pricing -->
 <section id="pricing" class="border-t border-border bg-surface/40">
-	<div class="mx-auto max-w-6xl px-6 py-20">
+	<div class="mx-auto max-w-6xl px-6 py-20" use:reveal>
 		<div class="mx-auto max-w-2xl text-center">
 			<h2 class="text-3xl font-semibold tracking-tight">Simple, scalable pricing</h2>
 			<p class="mt-3 text-muted">
@@ -467,7 +616,7 @@
 
 <!-- FAQ -->
 <section class="border-t border-border">
-	<div class="mx-auto max-w-3xl px-6 py-20">
+	<div class="mx-auto max-w-3xl px-6 py-20" use:reveal>
 		<h2 class="text-center text-3xl font-semibold tracking-tight">Frequently asked</h2>
 		<div class="mt-10 divide-y divide-border">
 			{#each faqs as f (f.q)}
@@ -489,7 +638,7 @@
 
 <!-- CTA -->
 <section class="border-t border-border">
-	<div class="mx-auto max-w-4xl px-6 py-20 text-center">
+	<div class="mx-auto max-w-4xl px-6 py-20 text-center" use:reveal>
 		<h2 class="text-3xl font-semibold tracking-tight">Spin up your workspace in minutes</h2>
 		<p class="mx-auto mt-3 max-w-xl text-muted">
 			Create an account, upload a video, and watch it become adaptive HLS and DASH.
