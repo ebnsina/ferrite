@@ -1,6 +1,6 @@
 # Ferrite — contributor & agent guide
 
-Multi-tenant video transcoder. Rust API + FFmpeg workers, SvelteKit dashboard, Redis-backed fair queue, S3-compatible storage. VOD first, live later.
+Self-hosted, multi-tenant video platform (VOD + live). Rust API + FFmpeg workers, SvelteKit dashboard, Redis-backed fair queue, S3-compatible storage. Covers adaptive HLS/DASH, clip/thumbnails, MP4/audio/watermark, auto-captions, AI shorts, embed + analytics, and live with simulcast + instant clipping. See `README.md` for the full feature list and API surface.
 
 ## Comments
 
@@ -26,17 +26,21 @@ Module headers: one line. A tricky invariant gets one line at the site, not a le
 - **Modular**: small focused files; one responsibility each.
 - **Errors**: handle 404/500/validation from the start; never `unwrap()` on a request path. API errors go through `ApiError` → JSON envelope.
 - **Docs before coding**: verify library APIs via context7; check versions against the crates.io sparse index. Don't assume.
-- **Icons**: use the icon lib (`@lucide/svelte`), not inline SVG.
+- **Icons**: use `@hugeicons/svelte` with `@hugeicons/core-free-icons` (via the `Icon` component), not inline SVG.
 - **Tenancy**: every tenant-owned query is scoped by `tenant_id`.
 - **Queue fairness**: enqueue is per-tenant; the scheduler round-robins with an in-flight cap. Don't bypass it with direct stream writes.
+- **Config**: `FERRITE_*`, fail-fast (no serde defaults) except genuinely optional integrations (SMTP, whisper/AI, watermark). Unset optionals must degrade gracefully — log/skip/fallback, never crash.
+- **Motion**: route animations through `$lib/motion` (`dur()`), so reduced-motion is one switch. Marketing scroll-reveal uses the `reveal` action.
 
 ## Layout
 
-`crates/{core,storage,queue,api,worker}` · `web/` (SvelteKit) · `migrations/` · `docs/` (gitignored, internal).
+`crates/{core,storage,queue,api,worker}` · `web/` (SvelteKit; `app/` = dashboard, `(marketing)/` = public, `embed/` = public player) · `migrations/` (sqlx, sequential) · `deploy/` (Dockerfiles, prod compose, SRS config) · `docs/` (gitignored, internal).
+
+Worker pipeline branches on job kind: transcode (`cmaf` + `extras` + `thumbnails` + `captions`), `clip`, and `shorts`. New migrations are additive and numbered.
 
 ## Dev
 
-`docker compose up -d` · `sqlx migrate run` · `cargo run -p ferrite-api` · `cargo run -p ferrite-worker` · `cd web && pnpm dev`. See `Makefile`.
+`docker compose up -d` · `sqlx migrate run` · `cargo run -p ferrite-api` · `cargo run -p ferrite-worker` · `cd web && pnpm dev`. Frontend on `:5173` (`/` marketing, `/app` dashboard). See `Makefile`.
 
 ## Git
 
