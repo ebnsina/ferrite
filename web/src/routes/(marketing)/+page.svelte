@@ -5,6 +5,7 @@
 	import { Icon } from '$lib/ui';
 	import { reveal } from '$lib/actions/reveal';
 	import { detectCurrency, formatPrice, CURRENCY_LIST, CURRENCIES } from '$lib/currency';
+	import { SITE } from '$lib/site';
 	import { Stack, ShareNetwork, Cpu, Broadcast, LockKey, Image, CloudArrowUp, Queue, Rocket, ArrowRight, CaretDown, CheckCircle, MagicWand, ClosedCaptioning, Scissors, Code, Database, Coins, Package, X, MagnifyingGlass, ShieldCheck, Play } from 'phosphor-svelte';
 
 	function scrollTo(id: string) {
@@ -348,11 +349,14 @@
 </script>
 
 <svelte:head>
-	<title>Ferrite — adaptive video transcoding at scale</title>
-	<meta
-		name="description"
-		content="Ferrite turns raw uploads into adaptive HLS and DASH — with live streaming, a fair queue, and signed playback. Self-hosted on your own S3 storage."
-	/>
+	<title>{SITE.title}</title>
+	<meta name="description" content={SITE.description} />
+	<link rel="canonical" href={`${SITE.url}/`} />
+	<meta property="og:title" content={SITE.title} />
+	<meta property="og:description" content={SITE.description} />
+	<meta property="og:url" content={`${SITE.url}/`} />
+	<meta name="twitter:title" content={SITE.title} />
+	<meta name="twitter:description" content={SITE.description} />
 </svelte:head>
 
 <!-- Hero -->

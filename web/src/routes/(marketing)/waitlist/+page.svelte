@@ -68,7 +68,18 @@
 		'w-full rounded-lg border border-border bg-surface-2 px-3 py-2.5 text-sm outline-none focus:border-accent';
 </script>
 
-<svelte:head><title>Join the waitlist — Ferrite</title></svelte:head>
+<svelte:head>
+	<title>Join the waitlist — Ferrite</title>
+	<meta
+		name="description"
+		content="Get early access to Ferrite Cloud — managed adaptive video with a 14-day free trial. Tell us what you're building."
+	/>
+	<meta property="og:title" content="Join the Ferrite early-access waitlist" />
+	<meta
+		property="og:description"
+		content="Managed adaptive video, AI shorts, live streaming, and signed playback — get early access."
+	/>
+</svelte:head>
 
 <section class="mx-auto max-w-lg px-6 pt-32 pb-24">
 	{#if done}
