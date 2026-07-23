@@ -56,6 +56,9 @@ pub struct Settings {
     /// shorts fall back to an even-split heuristic (no LLM needed).
     #[serde(default)]
     pub ai_chat_model: Option<String>,
+    /// Ed25519 seed for signing content provenance. Unset → provenance skipped.
+    #[serde(default)]
+    pub provenance_secret: Option<String>,
 }
 
 fn default_consumer() -> String {

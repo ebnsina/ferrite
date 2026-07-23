@@ -7,6 +7,7 @@ pub mod encoder;
 pub mod job;
 pub mod ladder;
 pub mod media;
+pub mod provenance;
 
 pub use encoder::{Artifact, ArtifactKind, Encoder, ProgressSink, TranscodeError};
 pub use job::{Clip, JobState, ShortsSpec, TranscodeJob, Watermark};

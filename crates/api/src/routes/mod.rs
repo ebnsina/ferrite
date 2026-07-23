@@ -11,6 +11,7 @@ mod media;
 mod members;
 mod playback;
 mod profile;
+mod provenance;
 mod search;
 mod session;
 mod tenants;
@@ -77,6 +78,11 @@ pub fn build(state: AppState) -> Router {
         .route("/assets/{id}/complete", post(assets::complete_asset))
         .route("/assets/{id}/clip", post(assets::clip_asset))
         .route("/assets/{id}/shorts", post(assets::shorts_asset))
+        .route(
+            "/assets/{id}/provenance",
+            get(provenance::get_asset_provenance),
+        )
+        .route("/provenance/key", get(provenance::public_key))
         .route("/jobs", get(jobs::list_jobs).post(jobs::create_job))
         .route("/jobs/batch", post(jobs::create_jobs_batch))
         .route("/jobs/{id}", get(jobs::get_job))

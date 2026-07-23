@@ -35,11 +35,15 @@ pub async fn process(
     encode: EncodeParams,
     captions: &crate::captions::Backend,
     chat: Option<&crate::ai::Chat>,
+    provenance: Option<&str>,
 ) -> Result<usize, PipelineError> {
     let job_dir = PathBuf::from(work_root).join(job.id.to_string());
     tokio::fs::create_dir_all(&job_dir).await?;
 
-    let result = run(pool, job, storage, &job_dir, encode, captions, chat).await;
+    let result = run(
+        pool, job, storage, &job_dir, encode, captions, chat, provenance,
+    )
+    .await;
     if let Err(e) = tokio::fs::remove_dir_all(&job_dir).await {
         tracing::warn!(job = %job.id, error = %e, "failed to clean scratch dir");
     }
@@ -54,10 +58,11 @@ async fn run(
     encode: EncodeParams,
     captions: &crate::captions::Backend,
     chat: Option<&crate::ai::Chat>,
+    provenance: Option<&str>,
 ) -> Result<usize, PipelineError> {
     // Clip jobs trim the source into a new asset instead of transcoding.
     if let Some(clip) = job.clip.clone() {
-        let res = crate::clip::run(pool, job, &clip, storage, job_dir).await;
+        let res = crate::clip::run(pool, job, &clip, storage, job_dir, provenance).await;
         if res.is_err() {
             let _ = db::set_asset_status(pool, clip.dest_asset_id, "error").await;
         }
@@ -66,7 +71,10 @@ async fn run(
 
     // Shorts jobs transcribe → pick highlights → produce vertical clips.
     if let Some(spec) = job.shorts.clone() {
-        return crate::shorts::run(pool, job, &spec, storage, job_dir, captions, chat).await;
+        return crate::shorts::run(
+            pool, job, &spec, storage, job_dir, captions, chat, provenance,
+        )
+        .await;
     }
 
     let source_path = job_dir.join("source.input");

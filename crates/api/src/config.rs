@@ -39,6 +39,11 @@ pub struct Settings {
     /// Shared secret the ingest server includes when calling Ferrite's DVR hook.
     pub live_hook_secret: String,
 
+    /// Ed25519 seed for content-provenance signing/verification (must match the
+    /// worker). Unset → provenance endpoints report "not configured".
+    #[serde(default)]
+    pub provenance_secret: Option<String>,
+
     /// Public base URL of the dashboard/frontend (e.g. `http://localhost:5173`),
     /// used to build links in emails (password reset, invites).
     pub app_base_url: String,

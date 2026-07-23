@@ -18,6 +18,7 @@ pub async fn run(
     clip: &Clip,
     storage: &Storage,
     job_dir: &Path,
+    provenance: Option<&str>,
 ) -> Result<usize, PipelineError> {
     db::mark_started(pool, job.id, "transcoding").await?;
 
@@ -67,6 +68,19 @@ pub async fn run(
 
     let bytes = tokio::fs::metadata(&out).await.map(|m| m.len() as i64).ok();
     db::mark_asset_ready(pool, clip.dest_asset_id, bytes).await?;
+
+    let filename = clip.dest_key.rsplit('/').next().unwrap_or("clip.mp4");
+    crate::provenance::record(
+        pool,
+        provenance,
+        job.tenant_id,
+        clip.dest_asset_id,
+        filename,
+        "clip",
+        Some(job.asset_id),
+        &out,
+    )
+    .await;
 
     Ok(1)
 }

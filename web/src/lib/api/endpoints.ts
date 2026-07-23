@@ -177,6 +177,20 @@ export function createAsset(filename: string) {
 	});
 }
 
+export interface Provenance {
+	manifest: Record<string, unknown>;
+	signature: string;
+	algorithm: string;
+	public_key: string;
+	signature_valid: boolean;
+	content_matches: boolean;
+	verified: boolean;
+}
+
+export function getProvenance(assetId: string) {
+	return apiRequest<Provenance>(`/v1/assets/${assetId}/provenance`);
+}
+
 export function makeShorts(id: string, count: number) {
 	return apiRequest<{ job_id: string }>(`/v1/assets/${id}/shorts`, {
 		method: 'POST',

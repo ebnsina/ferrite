@@ -25,6 +25,7 @@ pub async fn run(
     job_dir: &Path,
     transcriber: &Backend,
     chat: Option<&Chat>,
+    provenance: Option<&str>,
 ) -> Result<usize, PipelineError> {
     db::mark_started(pool, job.id, "probing").await?;
 
@@ -68,7 +69,20 @@ pub async fn run(
     let total = highlights.len();
     let mut made = 0;
     for (i, h) in highlights.iter().enumerate() {
-        match produce_short(pool, job, &source_str, job_dir, &cues, h, i, burn, storage).await {
+        match produce_short(
+            pool,
+            job,
+            &source_str,
+            job_dir,
+            &cues,
+            h,
+            i,
+            burn,
+            storage,
+            provenance,
+        )
+        .await
+        {
             Ok(()) => made += 1,
             Err(e) => tracing::warn!(job = %job.id, error = %e, "short generation failed"),
         }
@@ -156,6 +170,7 @@ async fn produce_short(
     index: usize,
     burn: bool,
     storage: &Storage,
+    provenance: Option<&str>,
 ) -> Result<(), String> {
     let out_name = format!("short{index}.mp4");
     let duration = h.end - h.start;
@@ -222,6 +237,18 @@ async fn produce_short(
     db::create_ready_asset(pool, job.tenant_id, asset_id, &filename, &key, Some(bytes))
         .await
         .map_err(|e| e.to_string())?;
+
+    crate::provenance::record(
+        pool,
+        provenance,
+        job.tenant_id,
+        asset_id,
+        &filename,
+        "shorts",
+        Some(job.asset_id),
+        &out_path,
+    )
+    .await;
     Ok(())
 }
 

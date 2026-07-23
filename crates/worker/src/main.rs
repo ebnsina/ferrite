@@ -10,6 +10,7 @@ mod db;
 mod encoding;
 mod extras;
 mod pipeline;
+mod provenance;
 mod shorts;
 mod thumbnails;
 mod webhooks;
@@ -125,6 +126,10 @@ async fn run_loop(
     if chat.is_some() {
         tracing::info!("AI highlight model configured");
     }
+    let provenance = settings.provenance_secret.clone();
+    if provenance.is_some() {
+        tracing::info!("content provenance signing enabled");
+    }
 
     loop {
         tokio::select! {
@@ -150,7 +155,7 @@ async fn run_loop(
                         let encode = encoding::EncodeParams::from_setting(&settings.encoder);
                         let outcome = pipeline::process(
                             &pool, &job, &storage, &settings.work_dir, encode, &caption_backend,
-                            chat.as_ref(),
+                            chat.as_ref(), provenance.as_deref(),
                         )
                         .await;
                         heartbeat.abort();

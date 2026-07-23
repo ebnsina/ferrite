@@ -58,6 +58,28 @@ pub async fn mark_asset_ready(
     Ok(())
 }
 
+/// Store a signed provenance manifest for a produced asset.
+pub async fn insert_provenance(
+    pool: &PgPool,
+    asset_id: Uuid,
+    tenant_id: Uuid,
+    manifest: &str,
+    signature: &str,
+) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        "INSERT INTO provenance (asset_id, tenant_id, manifest, signature)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (asset_id) DO UPDATE SET manifest = $3, signature = $4",
+    )
+    .bind(asset_id)
+    .bind(tenant_id)
+    .bind(manifest)
+    .bind(signature)
+    .execute(pool)
+    .await?;
+    Ok(())
+}
+
 /// Replace a job's transcript segments (idempotent across retries).
 pub async fn replace_transcript(
     pool: &PgPool,

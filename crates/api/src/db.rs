@@ -411,6 +411,21 @@ pub async fn mark_asset_ready(
     Ok(result.rows_affected() > 0)
 }
 
+/// Stored provenance (manifest JSON + hex signature) for an asset, tenant-scoped.
+pub async fn get_provenance(
+    pool: &PgPool,
+    tenant_id: Uuid,
+    asset_id: Uuid,
+) -> Result<Option<(String, String)>, sqlx::Error> {
+    sqlx::query_as::<_, (String, String)>(
+        "SELECT manifest, signature FROM provenance WHERE asset_id = $1 AND tenant_id = $2",
+    )
+    .bind(asset_id)
+    .bind(tenant_id)
+    .fetch_optional(pool)
+    .await
+}
+
 // --- Jobs --------------------------------------------------------------------
 
 #[derive(Debug, sqlx::FromRow)]

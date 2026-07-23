@@ -10,7 +10,9 @@
 		createJob,
 		createJobsBatch,
 		clipAsset,
-		makeShorts
+		makeShorts,
+		getProvenance,
+		type Provenance
 	} from '$lib/api/endpoints';
 	import { ApiError } from '$lib/api/client';
 	import { clipSchema, validate } from '$lib/schemas';
@@ -24,7 +26,10 @@
 		PlayIcon,
 		CloudUploadIcon,
 		Scissor01Icon,
-		AiVideoIcon
+		AiVideoIcon,
+		ShieldIcon,
+		CheckmarkCircle02Icon,
+		Cancel01Icon
 	} from '@hugeicons/core-free-icons';
 
 	let assets = $state<Asset[]>([]);
@@ -137,6 +142,29 @@
 			clipErrors = { end: e instanceof ApiError ? e.message : 'Could not create clip.' };
 		} finally {
 			clipping = false;
+		}
+	}
+
+	// Provenance sheet
+	let provOpen = $state(false);
+	let provAsset = $state<Asset | null>(null);
+	let prov = $state<Provenance | null>(null);
+	let provLoading = $state(false);
+	let provNone = $state(false);
+
+	async function openProv(a: Asset) {
+		provAsset = a;
+		prov = null;
+		provNone = false;
+		provLoading = true;
+		provOpen = true;
+		try {
+			prov = await getProvenance(a.id);
+		} catch (e) {
+			if (e instanceof ApiError && e.isNotFound) provNone = true;
+			else provNone = true;
+		} finally {
+			provLoading = false;
 		}
 	}
 
@@ -260,6 +288,14 @@
 						</div>
 						<span class="mono text-xs text-muted">{a.status}</span>
 						{#if a.status === 'ready'}
+							<button
+								onclick={() => openProv(a)}
+								aria-label="Content credentials"
+								title="Content credentials"
+								class="rounded-lg p-1.5 text-muted transition-colors hover:bg-surface-2 hover:text-accent"
+							>
+								<Icon icon={ShieldIcon} size={16} />
+							</button>
 							<Button size="sm" variant="ghost" onclick={() => openShorts(a)}>
 								<Icon icon={AiVideoIcon} size={15} /> Shorts
 							</Button>
@@ -454,5 +490,61 @@
 				{shortsBusy ? 'Starting…' : 'Generate'}
 			</Button>
 		</div>
+	{/snippet}
+</Sheet>
+
+<Sheet
+	open={provOpen}
+	onclose={() => (provOpen = false)}
+	title="Content credentials"
+	description={provAsset ? provAsset.filename : ''}
+>
+	{#if provLoading}
+		<p class="py-8 text-center text-sm text-muted">Verifying…</p>
+	{:else if provNone || !prov}
+		<div class="rounded-lg border border-border bg-surface-2 p-4 text-center">
+			<span class="mb-2 inline-flex text-muted"><Icon icon={ShieldIcon} size={24} /></span>
+			<p class="text-sm font-medium">No content credentials</p>
+			<p class="mt-1 text-xs text-muted">
+				Only Ferrite-produced assets (clips, shorts, live clips) are signed.
+			</p>
+		</div>
+	{:else}
+		<div
+			class={`mb-4 flex items-center gap-3 rounded-lg border p-4 ${prov.verified ? 'border-success/30 bg-success/10' : 'border-danger/30 bg-danger/10'}`}
+		>
+			<span class={prov.verified ? 'text-success' : 'text-danger'}>
+				<Icon icon={prov.verified ? CheckmarkCircle02Icon : Cancel01Icon} size={26} />
+			</span>
+			<div>
+				<p class="text-sm font-semibold">
+					{prov.verified ? 'Verified by Ferrite' : 'Verification failed'}
+				</p>
+				<p class="text-xs text-muted">
+					Signature {prov.signature_valid ? 'valid' : 'invalid'} · Content
+					{prov.content_matches ? 'unmodified' : 'modified'}
+				</p>
+			</div>
+		</div>
+		<dl class="flex flex-col gap-2 text-sm">
+			{#each [['Tool', String(prov.manifest.tool ?? '—')], ['Operation', String(prov.manifest.operation ?? '—')], ['Created', String(prov.manifest.created_at ?? '—')], ['Algorithm', prov.algorithm]] as [k, v] (k)}
+				<div class="flex justify-between gap-4 border-b border-border pb-2">
+					<dt class="text-muted">{k}</dt>
+					<dd class="truncate text-right font-medium">{v}</dd>
+				</div>
+			{/each}
+			<div class="pt-1">
+				<dt class="mb-1 text-xs text-muted">Content hash (SHA-256)</dt>
+				<dd class="mono break-all text-xs">{String(prov.manifest.sha256 ?? '')}</dd>
+			</div>
+			<div class="pt-1">
+				<dt class="mb-1 text-xs text-muted">Public key (Ed25519)</dt>
+				<dd class="mono break-all text-xs text-muted">{prov.public_key}</dd>
+			</div>
+		</dl>
+	{/if}
+
+	{#snippet footer()}
+		<Button class="w-full" variant="secondary" onclick={() => (provOpen = false)}>Close</Button>
 	{/snippet}
 </Sheet>
