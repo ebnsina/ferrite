@@ -46,14 +46,26 @@ pub struct UserAuth {
     pub tenant_id: Uuid,
     pub password_hash: String,
     pub role: String,
+    pub name: Option<String>,
 }
 
 #[derive(Debug, sqlx::FromRow)]
 pub struct Member {
     pub id: Uuid,
     pub email: String,
+    pub name: Option<String>,
     pub role: String,
     pub created_at: DateTime<Utc>,
+}
+
+/// A user's own profile (self-scoped view).
+#[derive(Debug, sqlx::FromRow)]
+pub struct Profile {
+    pub id: Uuid,
+    pub email: String,
+    pub name: Option<String>,
+    pub role: String,
+    pub password_hash: String,
 }
 
 pub async fn create_user(
@@ -63,16 +75,18 @@ pub async fn create_user(
     email: &str,
     password_hash: &str,
     role: &str,
+    name: Option<&str>,
 ) -> Result<(), sqlx::Error> {
     sqlx::query(
-        "INSERT INTO users (id, tenant_id, email, password_hash, role)
-         VALUES ($1, $2, $3, $4, $5)",
+        "INSERT INTO users (id, tenant_id, email, password_hash, role, name)
+         VALUES ($1, $2, $3, $4, $5, $6)",
     )
     .bind(id)
     .bind(tenant_id)
     .bind(email)
     .bind(password_hash)
     .bind(role)
+    .bind(name)
     .execute(pool)
     .await?;
     Ok(())
@@ -83,16 +97,48 @@ pub async fn find_user_by_email(
     email: &str,
 ) -> Result<Option<UserAuth>, sqlx::Error> {
     sqlx::query_as::<_, UserAuth>(
-        "SELECT id, tenant_id, password_hash, role FROM users WHERE email = $1",
+        "SELECT id, tenant_id, password_hash, role, name FROM users WHERE email = $1",
     )
     .bind(email)
     .fetch_optional(pool)
     .await
 }
 
+/// A user's own profile by id — includes the password hash for verification.
+pub async fn find_profile(pool: &PgPool, id: Uuid) -> Result<Option<Profile>, sqlx::Error> {
+    sqlx::query_as::<_, Profile>(
+        "SELECT id, email, name, role, password_hash FROM users WHERE id = $1",
+    )
+    .bind(id)
+    .fetch_optional(pool)
+    .await
+}
+
+pub async fn update_user_name(pool: &PgPool, id: Uuid, name: &str) -> Result<(), sqlx::Error> {
+    sqlx::query("UPDATE users SET name = $2 WHERE id = $1")
+        .bind(id)
+        .bind(name)
+        .execute(pool)
+        .await?;
+    Ok(())
+}
+
+pub async fn update_user_password(
+    pool: &PgPool,
+    id: Uuid,
+    password_hash: &str,
+) -> Result<(), sqlx::Error> {
+    sqlx::query("UPDATE users SET password_hash = $2 WHERE id = $1")
+        .bind(id)
+        .bind(password_hash)
+        .execute(pool)
+        .await?;
+    Ok(())
+}
+
 pub async fn list_members(pool: &PgPool, tenant_id: Uuid) -> Result<Vec<Member>, sqlx::Error> {
     sqlx::query_as::<_, Member>(
-        "SELECT id, email, role, created_at FROM users
+        "SELECT id, email, name, role, created_at FROM users
          WHERE tenant_id = $1 ORDER BY created_at",
     )
     .bind(tenant_id)

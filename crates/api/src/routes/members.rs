@@ -21,6 +21,7 @@ const ROLES: [&str; 2] = ["admin", "member"];
 pub struct MemberView {
     pub id: Uuid,
     pub email: String,
+    pub name: Option<String>,
     pub role: String,
     pub created_at: String,
 }
@@ -30,6 +31,7 @@ impl From<Member> for MemberView {
         MemberView {
             id: m.id,
             email: m.email,
+            name: m.name,
             role: m.role,
             created_at: m.created_at.to_rfc3339(),
         }
@@ -80,7 +82,7 @@ pub async fn invite_member(
     let temp_password = temp_password();
     let hash = auth::hash_password(&temp_password)?;
     let id = Uuid::new_v4();
-    db::create_user(state.db(), id, ctx.tenant_id, &email, &hash, &body.role).await?;
+    db::create_user(state.db(), id, ctx.tenant_id, &email, &hash, &body.role, None).await?;
 
     let members = db::list_members(state.db(), ctx.tenant_id).await?;
     let member = members

@@ -15,6 +15,7 @@ use crate::state::AppState;
 pub struct UserView {
     pub id: Uuid,
     pub email: String,
+    pub name: Option<String>,
     pub role: String,
 }
 
@@ -56,7 +57,7 @@ pub async fn signup(
     let tenant = db::create_tenant(state.db(), body.workspace.trim()).await?;
     let user_id = Uuid::new_v4();
     let hash = auth::hash_password(&body.password)?;
-    db::create_user(state.db(), user_id, tenant.id, &email, &hash, "owner").await?;
+    db::create_user(state.db(), user_id, tenant.id, &email, &hash, "owner", None).await?;
 
     let token = auth::issue_session(&state.settings().auth_secret, user_id, tenant.id, "owner");
     Ok(Json(AuthResponse {
@@ -64,6 +65,7 @@ pub async fn signup(
         user: UserView {
             id: user_id,
             email,
+            name: None,
             role: "owner".into(),
         },
         tenant: TenantView {
@@ -107,6 +109,7 @@ pub async fn login(
         user: UserView {
             id: user.id,
             email,
+            name: user.name,
             role: user.role,
         },
         tenant: TenantView {
