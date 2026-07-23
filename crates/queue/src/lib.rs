@@ -1,6 +1,6 @@
 //! Fair multi-tenant job queue on Redis: per-tenant pending lists fed
 //! round-robin (in-flight-capped) into a durable work stream with a consumer
-//! group. Prevents one tenant's 200 jobs from starving another's 1.
+//! group. Prevents one tenant's 10,000 jobs from starving another's 1.
 
 use std::time::Duration;
 

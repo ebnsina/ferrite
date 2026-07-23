@@ -37,7 +37,7 @@
 			title: 'Every customer gets their turn',
 			plain:
 				'When lots of videos are uploaded at once, Ferrite shares the processing evenly instead of working through one big pile first.',
-			benefit: 'One customer uploading 200 videos never makes everyone else wait in line.'
+			benefit: 'One customer uploading 10,000 videos never makes everyone else wait in line.'
 		},
 		{
 			icon: LiveStreaming01Icon,
