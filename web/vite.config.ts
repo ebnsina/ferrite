@@ -4,6 +4,9 @@ import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vite';
 
 export default defineConfig({
+	// Pin the dev port. strictPort makes Vite fail loudly if 5173 is taken
+	// instead of silently hopping to a random port (keeps dev URLs consistent).
+	server: { port: 5173, strictPort: true },
 	plugins: [
 		tailwindcss(),
 		sveltekit({

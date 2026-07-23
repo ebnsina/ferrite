@@ -1,6 +1,8 @@
-DB_URL ?= postgres://ferrite:ferrite@localhost:5432/ferrite
+# Ferrite's Docker Postgres is on 5455 (see FERRITE_PG_PORT in .env); 5432 is a
+# separate native Postgres on this machine — don't point migrations at it.
+DB_URL ?= postgres://ferrite:ferrite@localhost:5455/ferrite
 
-.PHONY: help up down logs migrate api worker web build check fmt
+.PHONY: help up down logs migrate api worker web build check fmt fresh kill
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -26,6 +28,17 @@ worker: ## Run a transcode worker
 
 web: ## Run the dashboard dev server
 	cd web && pnpm dev
+
+fresh: ## Kill Ferrite's own procs/ports and restart API+worker+web cleanly
+	./scripts/fresh.sh
+
+kill: ## Stop only Ferrite's processes (API 8787, web 5173) — leaves other projects alone
+	-pkill -f 'target/debug/ferrite-api' 2>/dev/null
+	-pkill -f 'target/debug/ferrite-worker' 2>/dev/null
+	-pkill -f 'Sites/ferrite/web/node_modules' 2>/dev/null
+	-lsof -tiTCP:8787 -sTCP:LISTEN 2>/dev/null | xargs -r kill 2>/dev/null
+	-lsof -tiTCP:5173 -sTCP:LISTEN 2>/dev/null | xargs -r kill 2>/dev/null
+	@echo "Ferrite stopped."
 
 build: ## Build everything
 	cargo build && cd web && pnpm build

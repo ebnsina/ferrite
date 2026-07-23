@@ -39,4 +39,4 @@ jobs:
       - run: pnpm check
       - run: pnpm build
         env:
-          PUBLIC_API_URL: http://localhost:8091
+          PUBLIC_API_URL: http://localhost:8787

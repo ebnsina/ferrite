@@ -90,7 +90,7 @@ cp web/.env.example web/.env
 
 # 3. Apply the database schema
 cargo install sqlx-cli --no-default-features --features postgres   # once
-sqlx migrate run --database-url postgres://ferrite:ferrite@localhost:5432/ferrite
+sqlx migrate run --database-url postgres://ferrite:ferrite@localhost:5455/ferrite
 
 # 4. Run the API and a worker (separate terminals)
 cargo run -p ferrite-api
@@ -101,7 +101,7 @@ cd web && pnpm install && pnpm dev
 ```
 
 - Marketing site: `http://localhost:5173/` · Dashboard: `http://localhost:5173/app`
-- API health: `http://localhost:8080/health`
+- API health: `http://localhost:8787/health`
 - MinIO console: `http://localhost:9001`
 
 Config lives in `.env` (`FERRITE_*`, fail-fast — a missing required value stops
