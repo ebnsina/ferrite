@@ -100,8 +100,8 @@
 {#if !session.isAuthed}
 	<Auth />
 {:else}
-	<div class="flex min-h-screen">
-		<!-- Sidebar -->
+	<div class="flex h-screen overflow-hidden">
+		<!-- Sidebar (fixed height; only its own nav scrolls if it overflows) -->
 		<aside class="hidden w-60 shrink-0 border-r border-border bg-surface md:flex md:flex-col">
 			<div class="flex h-16 items-center border-b border-border px-5">
 				<a href="/app"><Logo size={26} /></a>
@@ -135,9 +135,9 @@
 			</aside>
 		{/if}
 
-		<!-- Main -->
+		<!-- Main (header pinned; content scrolls independently) -->
 		<div class="flex min-w-0 flex-1 flex-col">
-			<header class="flex h-16 items-center justify-between border-b border-border px-6">
+			<header class="flex h-16 shrink-0 items-center justify-between border-b border-border px-6">
 				<div class="flex items-center gap-2 md:hidden">
 					<button
 						onclick={() => (mobileOpen = true)}
@@ -152,7 +152,7 @@
 					<UserMenu />
 				</div>
 			</header>
-			<main class="flex-1 px-6 py-8">
+			<main class="flex-1 overflow-y-auto px-6 py-8">
 				{#key page.url.pathname}
 					<div in:fly={{ y: 10, duration: dur(220), easing: cubicOut }}>
 						{@render children()}
