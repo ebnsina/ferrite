@@ -22,7 +22,7 @@
 		SubtitleIcon,
 		ShieldIcon,
 		FlashIcon,
-		Analytics01Icon
+		CreditCardIcon
 	} from '@hugeicons/core-free-icons';
 
 	const name = $derived(session.user?.name || nameFromEmail(session.user?.email));
@@ -189,7 +189,7 @@
 	<!-- This month → nudge to Analytics -->
 	{#if usage}
 		{@const u = usage}
-		<a href="/app/analytics" class="mb-6 block">
+		<a href="/app/usage" class="mb-6 block">
 			<Card class="transition-colors hover:border-accent/40 hover:bg-surface-2">
 				<div class="flex flex-wrap items-center justify-between gap-4">
 					<div class="flex items-center gap-8">
@@ -207,7 +207,7 @@
 						</div>
 					</div>
 					<span class="flex items-center gap-1.5 text-sm text-muted">
-						<Icon icon={Analytics01Icon} size={15} /> View analytics
+						<Icon icon={CreditCardIcon} size={15} /> View usage
 						<Icon icon={ArrowRight01Icon} size={14} />
 					</span>
 				</div>

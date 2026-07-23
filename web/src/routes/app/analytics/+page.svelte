@@ -1,13 +1,13 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
-	import { Card, StatusPill, Icon } from '$lib/ui';
-	import { AreaChart, Donut, Gauge, Meter, bucketByDay, sumByDay, cumulative } from '$lib/charts';
+	import { Card, Icon } from '$lib/ui';
+	import { AreaChart, Donut, Gauge, bucketByDay, sumByDay, cumulative } from '$lib/charts';
 	import { listAssets, listJobs, getUsage } from '$lib/api/endpoints';
 	import { ApiError } from '$lib/api/client';
-	import { humanizeError, humanizeJobError } from '$lib/humanize';
+	import { humanizeError } from '$lib/humanize';
 	import type { Asset, Job, JobState, Usage } from '$lib/api/types';
-	import { bytes, timeAgo } from '$lib/format';
-	import { Analytics01Icon, RefreshIcon, Timer01Icon, CheckmarkCircle02Icon } from '@hugeicons/core-free-icons';
+	import { bytes } from '$lib/format';
+	import { Analytics01Icon, RefreshIcon, Timer01Icon } from '@hugeicons/core-free-icons';
 
 	let assets = $state<Asset[]>([]);
 	let jobs = $state<Job[]>([]);
@@ -76,15 +76,6 @@
 		{ label: 'Error', value: assets.filter((a) => a.status === 'error').length, color: 'text-danger' }
 	]);
 
-	const costSegments = $derived(
-		usage
-			? [
-					{ label: 'Transcode', value: usage.cost.transcode, color: 'text-accent' },
-					{ label: 'Storage', value: usage.cost.storage, color: 'text-success' }
-				]
-			: []
-	);
-
 	function fmtDuration(secs: number): string {
 		const s = Math.round(secs);
 		if (s < 60) return `${s}s`;
@@ -99,12 +90,6 @@
 		{ label: 'Avg processing', value: avgProcSecs === null ? '—' : fmtDuration(avgProcSecs) },
 		{ label: 'Storage used', value: bytes(storageBytes) }
 	]);
-
-	const activity = $derived(
-		[...jobs]
-			.sort((a, b) => new Date(b.finished_at ?? b.queued_at).getTime() - new Date(a.finished_at ?? a.queued_at).getTime())
-			.slice(0, 15)
-	);
 </script>
 
 <div class="mx-auto max-w-6xl">
@@ -220,86 +205,30 @@
 		</Card>
 	</div>
 
-	<!-- Usage + library -->
-	<div class="mb-6 grid gap-6 lg:grid-cols-2">
-		<Card>
-			<div class="mb-4 flex items-center justify-between">
-				<h2 class="text-sm font-medium">Usage this month</h2>
-				<span class="text-[10px] text-muted">estimated · mock billing</span>
-			</div>
-			{#if usage}
-				{@const u = usage}
-				<div class="mb-5 flex items-center gap-5">
-					<Donut segments={costSegments} size={110} thickness={13}>
-						{#snippet center()}
-							<span class="mono text-lg font-semibold text-accent">${u.cost.total.toFixed(0)}</span>
-							<span class="text-[10px] text-muted">cost</span>
-						{/snippet}
-					</Donut>
-					<div class="flex flex-1 flex-col gap-3">
-						<Meter label="Transcoded" value={`${u.minutes.toFixed(1)} min`} fraction={u.minutes / 2000} hint="of a 2,000-min reference" />
-						<Meter label="Storage" value={bytes(u.storage_bytes)} fraction={u.storage_gb / 100} color="text-success" hint="of a 100 GB reference" />
-					</div>
-				</div>
-				<div class="grid grid-cols-2 gap-3 border-t border-border pt-4 text-xs">
-					<div class="flex items-center gap-2">
-						<span class="h-2 w-2 rounded-full bg-accent"></span><span class="text-muted">Transcode</span>
-						<span class="mono ml-auto font-medium">${u.cost.transcode.toFixed(2)}</span>
-					</div>
-					<div class="flex items-center gap-2">
-						<span class="h-2 w-2 rounded-full bg-success"></span><span class="text-muted">Storage</span>
-						<span class="mono ml-auto font-medium">${u.cost.storage.toFixed(2)}</span>
-					</div>
-				</div>
-			{:else}
-				<p class="py-8 text-center text-sm text-muted">Loading…</p>
-			{/if}
-		</Card>
-
-		<Card>
-			<h2 class="mb-4 text-sm font-medium">Your library</h2>
-			<div class="mb-4 flex items-baseline gap-2">
-				<span class="mono text-3xl font-semibold">{assets.length}</span>
-				<span class="text-sm text-muted">videos · {bytes(storageBytes)}</span>
-			</div>
-			<div class="flex flex-col gap-2.5">
-				{#each assetStatus as s (s.label)}
-					{@const frac = assets.length ? s.value / assets.length : 0}
-					<div class="flex items-center gap-3">
-						<span class="w-16 shrink-0 text-xs text-muted">{s.label}</span>
-						<div class="h-2 flex-1 overflow-hidden rounded-full bg-surface-2">
-							<div class={`h-full rounded-full bg-current ${s.color}`} style={`width:${frac * 100}%`}></div>
-						</div>
-						<span class="mono w-6 shrink-0 text-right text-xs">{s.value}</span>
-					</div>
-				{/each}
-			</div>
-			<div class="mt-4 flex items-center justify-between border-t border-border pt-4">
-				<span class="flex items-center gap-1.5 text-xs text-muted"><Icon icon={Timer01Icon} size={13} /> Avg processing</span>
-				<span class="mono text-sm font-semibold">{avgProcSecs === null ? '—' : fmtDuration(avgProcSecs)}</span>
-			</div>
-		</Card>
-	</div>
-
-	<!-- Recent activity -->
+	<!-- Library breakdown -->
 	<Card>
-		<h2 class="mb-4 text-sm font-medium">Recent activity</h2>
-		{#if activity.length === 0}
-			<div class="flex flex-col items-center justify-center py-10 text-center">
-				<span class="mb-2 text-muted"><Icon icon={CheckmarkCircle02Icon} size={26} /></span>
-				<p class="text-sm text-muted">No activity yet.</p>
-			</div>
-		{:else}
-			<div class="divide-y divide-border">
-				{#each activity as job (job.id)}
-					<a href={`/app/jobs/${job.id}`} class="flex items-center gap-4 py-2.5 transition-colors hover:bg-surface-2">
-						<code class="mono w-20 shrink-0 truncate text-xs text-muted">{job.id.slice(0, 8)}</code>
-						<span class="flex-1 text-xs text-muted">{timeAgo(job.finished_at ?? job.queued_at)}</span>
-						{#if job.error}<span class="hidden truncate text-xs text-danger sm:block">{humanizeJobError(job.error)}</span>{/if}
-						<StatusPill state={job.state} />
-					</a>
-				{/each}
-			</div>
-		{/if}
+		<div class="mb-4 flex items-center justify-between">
+			<h2 class="text-sm font-medium">Your library</h2>
+			<span class="flex items-center gap-1.5 text-xs text-muted">
+				<Icon icon={Timer01Icon} size={13} /> Avg processing
+				<span class="mono font-semibold text-fg">{avgProcSecs === null ? '—' : fmtDuration(avgProcSecs)}</span>
+			</span>
+		</div>
+		<div class="mb-4 flex items-baseline gap-2">
+			<span class="mono text-3xl font-semibold">{assets.length}</span>
+			<span class="text-sm text-muted">videos · {bytes(storageBytes)}</span>
+		</div>
+		<div class="grid gap-x-8 gap-y-2.5 sm:grid-cols-2">
+			{#each assetStatus as s (s.label)}
+				{@const frac = assets.length ? s.value / assets.length : 0}
+				<div class="flex items-center gap-3">
+					<span class="w-16 shrink-0 text-xs text-muted">{s.label}</span>
+					<div class="h-2 flex-1 overflow-hidden rounded-full bg-surface-2">
+						<div class={`h-full rounded-full bg-current ${s.color}`} style={`width:${frac * 100}%`}></div>
+					</div>
+					<span class="mono w-6 shrink-0 text-right text-xs">{s.value}</span>
+				</div>
+			{/each}
+		</div>
 	</Card>
 </div>

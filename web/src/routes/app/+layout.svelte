@@ -10,6 +10,8 @@
 		Settings01Icon,
 		Search01Icon,
 		Building01Icon,
+		PulseIcon,
+		CreditCardIcon,
 		Menu01Icon,
 		Cancel01Icon
 	} from '@hugeicons/core-free-icons';
@@ -48,11 +50,15 @@
 		},
 		{
 			label: 'Insights',
-			items: [{ href: '/app/analytics', label: 'Analytics', icon: Analytics01Icon }]
+			items: [
+				{ href: '/app/analytics', label: 'Analytics', icon: Analytics01Icon },
+				{ href: '/app/activity', label: 'Activity', icon: PulseIcon }
+			]
 		},
 		{
 			label: 'Workspace',
 			items: [
+				{ href: '/app/usage', label: 'Usage', icon: CreditCardIcon },
 				{ href: '/app/team', label: 'Team', icon: UserGroupIcon },
 				{ href: '/app/settings', label: 'Settings', icon: Settings01Icon },
 				...(session.user?.superadmin
