@@ -74,6 +74,34 @@ pub struct PublicKeyView {
     pub algorithm: &'static str,
 }
 
+#[derive(Serialize)]
+pub struct ModerationView {
+    /// Whether moderation has run for this asset.
+    pub checked: bool,
+    pub flagged: bool,
+    pub categories: Value,
+}
+
+/// `GET /v1/assets/{id}/moderation` — content-safety result for an asset.
+pub async fn get_moderation(
+    State(state): State<AppState>,
+    ctx: TenantContext,
+    Path(id): Path<Uuid>,
+) -> ApiResult<Json<ModerationView>> {
+    match db::get_moderation(state.db(), ctx.tenant_id, id).await? {
+        Some((flagged, categories)) => Ok(Json(ModerationView {
+            checked: true,
+            flagged,
+            categories,
+        })),
+        None => Ok(Json(ModerationView {
+            checked: false,
+            flagged: false,
+            categories: Value::Array(vec![]),
+        })),
+    }
+}
+
 /// `GET /v1/provenance/key` — the deployment's public verification key.
 pub async fn public_key(State(state): State<AppState>) -> Json<PublicKeyView> {
     let public_key = state

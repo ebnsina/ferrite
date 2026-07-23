@@ -426,6 +426,21 @@ pub async fn get_provenance(
     .await
 }
 
+/// Moderation result (flagged, categories JSON) for an asset, tenant-scoped.
+pub async fn get_moderation(
+    pool: &PgPool,
+    tenant_id: Uuid,
+    asset_id: Uuid,
+) -> Result<Option<(bool, serde_json::Value)>, sqlx::Error> {
+    sqlx::query_as::<_, (bool, serde_json::Value)>(
+        "SELECT flagged, categories FROM moderation WHERE asset_id = $1 AND tenant_id = $2",
+    )
+    .bind(asset_id)
+    .bind(tenant_id)
+    .fetch_optional(pool)
+    .await
+}
+
 // --- Jobs --------------------------------------------------------------------
 
 #[derive(Debug, sqlx::FromRow)]

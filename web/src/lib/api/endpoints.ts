@@ -191,6 +191,16 @@ export function getProvenance(assetId: string) {
 	return apiRequest<Provenance>(`/v1/assets/${assetId}/provenance`);
 }
 
+export interface Moderation {
+	checked: boolean;
+	flagged: boolean;
+	categories: string[];
+}
+
+export function getModeration(assetId: string) {
+	return apiRequest<Moderation>(`/v1/assets/${assetId}/moderation`);
+}
+
 export function makeShorts(id: string, count: number) {
 	return apiRequest<{ job_id: string }>(`/v1/assets/${id}/shorts`, {
 		method: 'POST',

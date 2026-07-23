@@ -83,6 +83,49 @@ impl Chat {
     }
 }
 
+impl Chat {
+    /// Classify a transcript for policy safety. Returns (flagged, categories).
+    /// None on any failure (caller treats moderation as unavailable).
+    pub async fn moderate(&self, text: &str) -> Option<(bool, Vec<String>)> {
+        let clipped: String = text.chars().take(6000).collect();
+        let system = "You are a content-safety classifier. Given a video transcript, return ONLY \
+             JSON {\"flagged\":bool,\"categories\":[...]} where categories is any of \
+             [\"hate\",\"harassment\",\"violence\",\"sexual\",\"self-harm\",\"illegal\"] that \
+             clearly apply. Set flagged=true only for serious, unambiguous policy violations.";
+        let body = serde_json::json!({
+            "model": self.model,
+            "messages": [
+                {"role": "system", "content": system},
+                {"role": "user", "content": clipped},
+            ],
+            "temperature": 0.0,
+            "response_format": {"type": "json_object"}
+        });
+        let resp = reqwest::Client::new()
+            .post(format!("{}/chat/completions", self.base))
+            .bearer_auth(&self.key)
+            .json(&body)
+            .send()
+            .await
+            .ok()?;
+        if !resp.status().is_success() {
+            return None;
+        }
+        let parsed: ChatResponse = resp.json().await.ok()?;
+        let content = parsed.choices.first()?.message.content.clone();
+        let m: ModerationJson = serde_json::from_str(&content).ok()?;
+        Some((m.flagged, m.categories))
+    }
+}
+
+#[derive(Deserialize)]
+struct ModerationJson {
+    #[serde(default)]
+    flagged: bool,
+    #[serde(default)]
+    categories: Vec<String>,
+}
+
 #[derive(Deserialize)]
 struct ChatResponse {
     choices: Vec<Choice>,

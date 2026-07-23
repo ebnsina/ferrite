@@ -58,6 +58,29 @@ pub async fn mark_asset_ready(
     Ok(())
 }
 
+/// Store a content-moderation result for an asset.
+pub async fn insert_moderation(
+    pool: &PgPool,
+    asset_id: Uuid,
+    tenant_id: Uuid,
+    flagged: bool,
+    categories: &[String],
+) -> Result<(), sqlx::Error> {
+    let cats = serde_json::to_value(categories).unwrap_or(serde_json::json!([]));
+    sqlx::query(
+        "INSERT INTO moderation (asset_id, tenant_id, flagged, categories)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (asset_id) DO UPDATE SET flagged = $3, categories = $4",
+    )
+    .bind(asset_id)
+    .bind(tenant_id)
+    .bind(flagged)
+    .bind(cats)
+    .execute(pool)
+    .await?;
+    Ok(())
+}
+
 /// Store a signed provenance manifest for a produced asset.
 pub async fn insert_provenance(
     pool: &PgPool,

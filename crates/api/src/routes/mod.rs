@@ -82,6 +82,7 @@ pub fn build(state: AppState) -> Router {
             "/assets/{id}/provenance",
             get(provenance::get_asset_provenance),
         )
+        .route("/assets/{id}/moderation", get(provenance::get_moderation))
         .route("/provenance/key", get(provenance::public_key))
         .route("/jobs", get(jobs::list_jobs).post(jobs::create_job))
         .route("/jobs/batch", post(jobs::create_jobs_batch))

@@ -12,7 +12,9 @@
 		clipAsset,
 		makeShorts,
 		getProvenance,
-		type Provenance
+		getModeration,
+		type Provenance,
+		type Moderation
 	} from '$lib/api/endpoints';
 	import { ApiError } from '$lib/api/client';
 	import { clipSchema, validate } from '$lib/schemas';
@@ -149,23 +151,22 @@
 	let provOpen = $state(false);
 	let provAsset = $state<Asset | null>(null);
 	let prov = $state<Provenance | null>(null);
+	let mod = $state<Moderation | null>(null);
 	let provLoading = $state(false);
 	let provNone = $state(false);
 
 	async function openProv(a: Asset) {
 		provAsset = a;
 		prov = null;
+		mod = null;
 		provNone = false;
 		provLoading = true;
 		provOpen = true;
-		try {
-			prov = await getProvenance(a.id);
-		} catch (e) {
-			if (e instanceof ApiError && e.isNotFound) provNone = true;
-			else provNone = true;
-		} finally {
-			provLoading = false;
-		}
+		const [p, m] = await Promise.allSettled([getProvenance(a.id), getModeration(a.id)]);
+		if (p.status === 'fulfilled') prov = p.value;
+		else provNone = true;
+		if (m.status === 'fulfilled') mod = m.value;
+		provLoading = false;
 	}
 
 	// AI shorts sheet
@@ -542,6 +543,27 @@
 				<dd class="mono break-all text-xs text-muted">{prov.public_key}</dd>
 			</div>
 		</dl>
+	{/if}
+
+	{#if mod && mod.checked}
+		<div class="mt-6">
+			<h3 class="mb-2 text-sm font-medium text-muted">Content safety</h3>
+			<div
+				class={`flex items-center gap-3 rounded-lg border p-3 ${mod.flagged ? 'border-warning/40 bg-warning/10' : 'border-success/30 bg-success/10'}`}
+			>
+				<span class={mod.flagged ? 'text-warning' : 'text-success'}>
+					<Icon icon={mod.flagged ? ShieldIcon : CheckmarkCircle02Icon} size={20} />
+				</span>
+				<div>
+					<p class="text-sm font-medium">
+						{mod.flagged ? 'Flagged for review' : 'No issues detected'}
+					</p>
+					{#if mod.categories.length}
+						<p class="text-xs text-muted">{mod.categories.join(', ')}</p>
+					{/if}
+				</div>
+			</div>
+		</div>
 	{/if}
 
 	{#snippet footer()}

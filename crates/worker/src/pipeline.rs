@@ -192,15 +192,37 @@ async fn run(
                 });
                 // Index transcript segments for search.
                 if let Ok(vtt) = tokio::fs::read_to_string(&path).await {
-                    let segs: Vec<(f64, f64, String)> = crate::captions::parse_cues(&vtt)
-                        .into_iter()
-                        .map(|c| (c.start, c.end, c.text))
+                    let cues = crate::captions::parse_cues(&vtt);
+                    let segs: Vec<(f64, f64, String)> = cues
+                        .iter()
+                        .map(|c| (c.start, c.end, c.text.clone()))
                         .collect();
                     if let Err(e) =
                         db::replace_transcript(pool, job.tenant_id, job.asset_id, job.id, &segs)
                             .await
                     {
                         tracing::warn!(job = %job.id, error = %e, "failed to index transcript");
+                    }
+                    // Content moderation on the spoken transcript (best-effort).
+                    if let Some(chat) = chat {
+                        let text = cues
+                            .iter()
+                            .map(|c| c.text.as_str())
+                            .collect::<Vec<_>>()
+                            .join(" ");
+                        if let Some((flagged, cats)) = chat.moderate(&text).await {
+                            let _ = db::insert_moderation(
+                                pool,
+                                job.asset_id,
+                                job.tenant_id,
+                                flagged,
+                                &cats,
+                            )
+                            .await;
+                            if flagged {
+                                tracing::warn!(job = %job.id, ?cats, "content moderation flagged asset");
+                            }
+                        }
                     }
                 }
             }
