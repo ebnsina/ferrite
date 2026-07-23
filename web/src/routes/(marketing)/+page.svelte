@@ -1,17 +1,31 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
+	import { browser } from '$app/environment';
 	import { Icon } from '$lib/ui';
 	import { reveal } from '$lib/actions/reveal';
-	import { Stack, ShareNetwork, Cpu, Broadcast, LockKey, Image, CloudArrowUp, Queue, Rocket, ArrowRight, CaretDown, CheckCircle, MagicWand, ClosedCaptioning, Scissors, Code, Database, Coins, Package, X, MagnifyingGlass, ShieldCheck } from 'phosphor-svelte';
+	import { detectCurrency, formatPrice, CURRENCY_CODES, CURRENCIES } from '$lib/currency';
+	import { Stack, ShareNetwork, Cpu, Broadcast, LockKey, Image, CloudArrowUp, Queue, Rocket, ArrowRight, CaretDown, CheckCircle, MagicWand, ClosedCaptioning, Scissors, Code, Database, Coins, Package, X, MagnifyingGlass, ShieldCheck, Play } from 'phosphor-svelte';
 
 	function scrollTo(id: string) {
 		document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 	}
+
+	// Region-aware pricing: detect on the client, allow override, persist choice.
+	let currency = $state('USD');
+	onMount(() => {
+		const saved = localStorage.getItem('ferrite.currency');
+		currency = saved && CURRENCIES[saved] ? saved : detectCurrency();
+	});
+	$effect(() => {
+		if (browser) localStorage.setItem('ferrite.currency', currency);
+	});
 
 	const clients = ['NORTHWIND', 'LOOPTV', 'VAYU MEDIA', 'CANTOR', 'HELIX', 'ORBIT'];
 
 	// Plain-language explainers for non-technical readers: what it is + why it matters.
 	const benefits = [
 		{
+			kind: 'adaptive',
 			icon: Stack,
 			eyebrow: 'Smooth playback',
 			title: 'Plays perfectly on any connection',
@@ -20,6 +34,7 @@
 			benefit: 'No buffering, no spinning wheels — on a laptop, a phone, or a smart TV.'
 		},
 		{
+			kind: 'fair',
 			icon: ShareNetwork,
 			eyebrow: 'Fair for everyone',
 			title: 'Every customer gets their turn',
@@ -28,6 +43,7 @@
 			benefit: 'One customer uploading 10,000 videos never makes everyone else wait in line.'
 		},
 		{
+			kind: 'live',
 			icon: Broadcast,
 			eyebrow: 'Live, then on-demand',
 			title: 'Go live and keep the replay',
@@ -36,6 +52,7 @@
 			benefit: 'The moment your event ends, an on-demand version is ready to watch.'
 		},
 		{
+			kind: 'private',
 			icon: LockKey,
 			eyebrow: 'Private by default',
 			title: 'Your videos stay yours',
@@ -235,7 +252,7 @@
 	const tiers = [
 		{
 			name: 'Free',
-			price: '$0',
+			priceUsd: 0,
 			cadence: '',
 			blurb: 'Self-host it on your own infrastructure, forever.',
 			cta: 'Get the code',
@@ -252,7 +269,7 @@
 		},
 		{
 			name: 'Starter',
-			price: '$29',
+			priceUsd: 29,
 			cadence: '/mo',
 			blurb: 'Managed cloud for side projects & small apps.',
 			cta: 'Start free trial',
@@ -264,7 +281,7 @@
 		},
 		{
 			name: 'Pro',
-			price: '$99',
+			priceUsd: 99,
 			cadence: '/mo',
 			blurb: 'For teams shipping video to production.',
 			cta: 'Start free trial',
@@ -282,7 +299,7 @@
 		},
 		{
 			name: 'Enterprise',
-			price: 'Custom',
+			priceUsd: null,
 			cadence: '',
 			blurb: 'Self-hosted or dedicated, with the controls you need.',
 			cta: 'Contact us',
@@ -298,6 +315,10 @@
 			]
 		}
 	];
+
+	// Standard 3-up cards; Enterprise gets its own band below.
+	const mainTiers = tiers.filter((t) => t.name !== 'Enterprise');
+	const enterprise = tiers.find((t) => t.name === 'Enterprise')!;
 
 	const faqs = [
 		{
@@ -371,6 +392,72 @@
 	</div>
 </section>
 
+{#snippet benefitVisual(kind: string)}
+	{#if kind === 'adaptive'}
+		<div class="w-full max-w-[280px]">
+			<div class="relative mb-3 flex aspect-video items-center justify-center rounded-xl bg-black/50 ring-1 ring-white/10">
+				<span class="flex h-11 w-11 items-center justify-center rounded-full bg-accent text-white shadow-lg">
+					<Icon icon={Play} weight="fill" size={18} />
+				</span>
+				<span class="absolute top-2 right-2 rounded-md bg-black/50 px-1.5 py-0.5 text-[10px] font-medium text-white/80">AUTO · 1080p</span>
+				<div class="absolute bottom-2 left-2 flex items-end gap-[3px]">
+					{#each [7, 12, 9, 14, 8] as h, k (k)}
+						<span class="w-[3px] rounded-sm bg-accent" style={`height:${h}px`}></span>
+					{/each}
+				</div>
+			</div>
+			<div class="flex flex-wrap gap-1.5">
+				{#each [{ q: '2160p' }, { q: '1080p', on: true }, { q: '720p' }, { q: '480p' }] as r (r.q)}
+					<span class={`rounded-md border px-2 py-0.5 text-[11px] ${r.on ? 'border-accent/40 bg-accent-soft text-accent' : 'border-border text-muted'}`}>{r.q}</span>
+				{/each}
+			</div>
+		</div>
+	{:else if kind === 'fair'}
+		<div class="w-full max-w-[280px] space-y-2.5">
+			{#each [{ n: 'Acme', c: 'bg-accent' }, { n: 'LoopTV', c: 'bg-success' }, { n: 'Vayu', c: 'bg-warning' }] as row, ri (row.n)}
+				<div class="flex items-center gap-2">
+					<span class="w-12 shrink-0 text-[10px] text-muted">{row.n}</span>
+					<div class="flex flex-1 gap-1">
+						{#each Array(9) as _, k (k)}
+							<span class={`h-3 flex-1 rounded-sm ${k % 3 === ri ? row.c : 'bg-surface-2'}`}></span>
+						{/each}
+					</div>
+				</div>
+			{/each}
+			<p class="pt-1 text-center text-[10px] text-muted">round-robin — everyone gets a turn</p>
+		</div>
+	{:else if kind === 'live'}
+		<div class="w-full max-w-[280px]">
+			<div class="relative mb-3 flex aspect-video items-center justify-center rounded-xl bg-black/50 ring-1 ring-white/10">
+				<span class="absolute top-2 left-2 flex items-center gap-1 rounded-md bg-danger px-1.5 py-0.5 text-[10px] font-semibold text-white">
+					<span class="h-1.5 w-1.5 rounded-full bg-white"></span> LIVE
+				</span>
+				<Icon icon={Broadcast} size={30} class="text-white/60" />
+			</div>
+			<div class="flex items-center gap-2.5 rounded-xl border border-border bg-surface-2 p-2.5">
+				<span class="flex h-8 w-8 items-center justify-center rounded-lg bg-success/15 text-success"><Icon icon={CheckCircle} size={16} /></span>
+				<div class="text-[11px] leading-tight">
+					<span class="font-medium">Replay ready</span><br /><span class="text-muted">saved to on-demand</span>
+				</div>
+			</div>
+		</div>
+	{:else}
+		<div class="w-full max-w-[280px] space-y-2">
+			<div class="flex items-center gap-2 rounded-xl border border-border bg-surface-2 px-3 py-2.5">
+				<span class="text-accent"><Icon icon={LockKey} size={15} /></span>
+				<code class="mono flex-1 truncate text-[11px] text-muted">…/play?token=•••&amp;exp=…</code>
+			</div>
+			<div class="flex items-center justify-between rounded-xl border border-border bg-surface-2 px-3 py-2.5 text-[11px]">
+				<span class="text-muted">Link expires in</span>
+				<span class="mono rounded-md bg-accent-soft px-1.5 py-0.5 font-medium text-accent">14:59</span>
+			</div>
+			<p class="flex items-center gap-1.5 pt-1 text-[11px] text-muted">
+				<span class="text-success"><Icon icon={ShieldCheck} size={13} /></span> Signed &amp; scoped to one viewer
+			</p>
+		</div>
+	{/if}
+{/snippet}
+
 <!-- Why Ferrite — plain-language benefits for non-technical readers -->
 <section id="benefits" class="border-t border-border">
 	<div class="mx-auto max-w-6xl px-6 py-20" use:reveal>
@@ -380,29 +467,57 @@
 				Encoding, delivery, and playback that just work — so you can focus on your content.
 			</p>
 		</div>
-		<div class="mt-16 flex flex-col gap-16">
-			{#each benefits as b, i (b.title)}
-				<div class="grid items-center gap-8 md:grid-cols-2">
-					<div class={i % 2 === 1 ? 'md:order-2' : ''}>
-						<span class="text-xs font-semibold tracking-wide text-accent uppercase">{b.eyebrow}</span
-						>
-						<h3 class="mt-2 text-2xl font-semibold tracking-tight">{b.title}</h3>
-						<p class="mt-3 text-muted">{b.plain}</p>
-						<p class="mt-4 flex items-start gap-2 text-sm font-medium">
-							<span class="mt-0.5 text-accent"><Icon icon={CheckCircle} size={16} /></span>
-							{b.benefit}
-						</p>
-					</div>
-					<div class={i % 2 === 1 ? 'md:order-1' : ''}>
-						<div
-							class="flex aspect-[4/3] items-center justify-center rounded-2xl border border-border bg-surface"
-							style="background-image: radial-gradient(60% 60% at 50% 40%, var(--accent-soft) 0%, transparent 70%);"
-						>
-							<span class="text-accent"><Icon icon={b.icon} size={72} /></span>
-						</div>
-					</div>
+		<!-- Bento: alternating wide/narrow cells. -->
+		<div class="mt-14 grid grid-cols-1 gap-4 md:grid-cols-3">
+			<!-- Wide: adaptive playback -->
+			<article
+				class="group flex flex-col gap-6 overflow-hidden rounded-2xl border border-border bg-surface p-6 transition-colors hover:border-accent/40 sm:flex-row sm:items-center md:col-span-2"
+				style="background-image: radial-gradient(70% 90% at 15% 0%, var(--accent-soft) 0%, transparent 55%);"
+			>
+				<div class="flex-1">
+					<span class="text-xs font-semibold tracking-wide text-accent uppercase">{benefits[0].eyebrow}</span>
+					<h3 class="mt-2 text-xl font-semibold tracking-tight">{benefits[0].title}</h3>
+					<p class="mt-2 text-sm text-muted">{benefits[0].plain}</p>
+					<p class="mt-3 flex items-start gap-2 text-sm font-medium">
+						<span class="mt-0.5 text-accent"><Icon icon={CheckCircle} size={15} /></span>
+						{benefits[0].benefit}
+					</p>
 				</div>
-			{/each}
+				<div class="flex shrink-0 justify-center sm:justify-end">{@render benefitVisual('adaptive')}</div>
+			</article>
+
+			<!-- Narrow: fair queue -->
+			<article class="group flex flex-col overflow-hidden rounded-2xl border border-border bg-surface p-6 transition-colors hover:border-accent/40">
+				<span class="text-xs font-semibold tracking-wide text-accent uppercase">{benefits[1].eyebrow}</span>
+				<h3 class="mt-2 text-lg font-semibold tracking-tight">{benefits[1].title}</h3>
+				<p class="mt-2 text-sm text-muted">{benefits[1].benefit}</p>
+				<div class="mt-auto flex justify-center pt-6">{@render benefitVisual('fair')}</div>
+			</article>
+
+			<!-- Narrow: live -> replay -->
+			<article class="group flex flex-col overflow-hidden rounded-2xl border border-border bg-surface p-6 transition-colors hover:border-accent/40">
+				<span class="text-xs font-semibold tracking-wide text-accent uppercase">{benefits[2].eyebrow}</span>
+				<h3 class="mt-2 text-lg font-semibold tracking-tight">{benefits[2].title}</h3>
+				<p class="mt-2 text-sm text-muted">{benefits[2].benefit}</p>
+				<div class="mt-auto flex justify-center pt-6">{@render benefitVisual('live')}</div>
+			</article>
+
+			<!-- Wide: private by default -->
+			<article
+				class="group flex flex-col gap-6 overflow-hidden rounded-2xl border border-border bg-surface p-6 transition-colors hover:border-accent/40 sm:flex-row sm:items-center md:col-span-2"
+				style="background-image: radial-gradient(70% 90% at 85% 100%, var(--accent-soft) 0%, transparent 55%);"
+			>
+				<div class="flex-1">
+					<span class="text-xs font-semibold tracking-wide text-accent uppercase">{benefits[3].eyebrow}</span>
+					<h3 class="mt-2 text-xl font-semibold tracking-tight">{benefits[3].title}</h3>
+					<p class="mt-2 text-sm text-muted">{benefits[3].plain}</p>
+					<p class="mt-3 flex items-start gap-2 text-sm font-medium">
+						<span class="mt-0.5 text-accent"><Icon icon={CheckCircle} size={15} /></span>
+						{benefits[3].benefit}
+					</p>
+				</div>
+				<div class="flex shrink-0 justify-center sm:justify-end">{@render benefitVisual('private')}</div>
+			</article>
 		</div>
 
 		<!-- The jargon, in human terms — cards, not a spec sheet. -->
@@ -623,29 +738,45 @@
 				delivery. Self-host it free, or let us run it. 14-day free trial on cloud plans.
 			</p>
 		</div>
-		<div class="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-4 lg:items-stretch">
-			{#each tiers as t (t.name)}
+
+		<!-- Currency switcher (auto-detected by region) -->
+		<div class="mt-8 flex items-center justify-center gap-2 text-sm">
+			<span class="text-muted">Show prices in</span>
+			<div class="flex items-center gap-1 rounded-lg border border-border bg-surface-2 p-0.5">
+				{#each CURRENCY_CODES as code (code)}
+					<button
+						onclick={() => (currency = code)}
+						class={`rounded-md px-2.5 py-1 text-xs transition-colors ${currency === code ? 'bg-surface font-medium text-fg shadow-sm' : 'text-muted hover:text-fg'}`}
+					>{code}</button>
+				{/each}
+			</div>
+		</div>
+
+		<div class="mt-10 grid gap-6 md:grid-cols-3 md:items-stretch">
+			{#each mainTiers as t (t.name)}
 				<div
-					class={`flex flex-col rounded-xl border p-6 ${
-						t.highlight ? 'border-accent bg-surface shadow-lg ring-1 ring-accent' : 'border-border bg-surface'
+					class={`relative flex flex-col rounded-2xl border p-6 ${
+						t.highlight ? 'border-accent bg-surface shadow-xl ring-1 ring-accent' : 'border-border bg-surface'
 					}`}
 				>
-					<div class="flex items-center justify-between">
-						<h3 class="text-lg font-semibold">{t.name}</h3>
-						{#if t.highlight}
-							<span class="mono rounded-full bg-accent-soft px-2 py-0.5 text-xs text-accent"
-								>Popular</span
-							>
-						{/if}
-					</div>
+					{#if t.highlight}
+						<span class="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-accent px-3 py-0.5 text-xs font-medium text-accent-fg shadow">
+							Most popular
+						</span>
+					{/if}
+					<h3 class="text-lg font-semibold">{t.name}</h3>
 					<p class="mt-1 min-h-10 text-sm text-muted">{t.blurb}</p>
 					<div class="mt-4 flex items-end gap-1">
-						<span class="text-3xl font-semibold tracking-tight">{t.price}</span>
-						{#if t.cadence}<span class="mb-1 text-sm text-muted">{t.cadence}</span>{/if}
+						{#if t.name === 'Free'}
+							<span class="text-4xl font-semibold tracking-tight">Free</span>
+						{:else}
+							<span class="text-4xl font-semibold tracking-tight">{formatPrice(t.priceUsd ?? 0, currency)}</span>
+							<span class="mb-1.5 text-sm text-muted">{t.cadence}</span>
+						{/if}
 					</div>
 
 					{#if t.caps}
-						<div class="mt-4 grid grid-cols-3 gap-2 rounded-lg border border-border bg-surface-2 p-3 text-center">
+						<div class="mt-5 grid grid-cols-3 gap-2 rounded-xl border border-border bg-surface-2 p-3 text-center">
 							{#each [['Storage', t.caps.storage], ['Transcode', t.caps.minutes], ['Delivery', t.caps.delivery]] as [label, val] (label)}
 								<div>
 									<p class="mono text-xs font-semibold">{val}</p>
@@ -654,14 +785,14 @@
 							{/each}
 						</div>
 					{:else}
-						<p class="mt-4 rounded-lg border border-border bg-surface-2 p-3 text-center text-xs text-muted">
+						<p class="mt-5 rounded-xl border border-border bg-surface-2 p-3 text-center text-xs text-muted">
 							{t.capsNote}
 						</p>
 					{/if}
 
 					<a
 						href={t.href}
-						class={`mt-4 inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
+						class={`mt-5 inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
 							t.highlight
 								? 'bg-accent text-accent-fg hover:opacity-90'
 								: 'border border-border hover:bg-surface-2'
@@ -672,9 +803,7 @@
 					<ul class="mt-6 flex flex-col gap-2.5 border-t border-border pt-6">
 						{#each t.features as f (f)}
 							<li class="flex items-start gap-2.5 text-sm">
-								<span class="mt-0.5 text-accent"
-									><Icon icon={CheckCircle} size={16} /></span
-								>
+								<span class="mt-0.5 text-accent"><Icon icon={CheckCircle} size={16} /></span>
 								<span>{f}</span>
 							</li>
 						{/each}
@@ -682,9 +811,31 @@
 				</div>
 			{/each}
 		</div>
+
+		<!-- Enterprise band -->
+		<div class="mt-6 flex flex-col items-center justify-between gap-5 rounded-2xl border border-border bg-surface p-6 sm:flex-row sm:p-7">
+			<div class="min-w-0">
+				<h3 class="text-lg font-semibold">{enterprise.name}</h3>
+				<p class="mt-1 text-sm text-muted">{enterprise.blurb}</p>
+				<div class="mt-3 flex flex-wrap gap-x-4 gap-y-1.5">
+					{#each enterprise.features as f (f)}
+						<span class="flex items-center gap-1.5 text-xs text-muted">
+							<span class="text-accent"><Icon icon={CheckCircle} size={13} /></span> {f}
+						</span>
+					{/each}
+				</div>
+			</div>
+			<a
+				href={enterprise.href}
+				class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border border-border px-5 py-2.5 text-sm font-medium transition-colors hover:bg-surface-2"
+			>
+				{enterprise.cta} <Icon icon={ArrowRight} size={15} />
+			</a>
+		</div>
+
 		<p class="mt-8 text-center text-xs text-muted">
-			Exceeded a limit? Upgrade any time — no overage bill lands without warning. Prices
-			illustrative.
+			Prices shown in {currency}, converted from USD at an approximate rate — final billing may vary.
+			Upgrade any time; no overage bill lands without warning.
 		</p>
 	</div>
 </section>
