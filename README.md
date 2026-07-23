@@ -20,6 +20,13 @@ bucket.
 - **Auto-captions** (WebVTT) — local `whisper.cpp` or any OpenAI-compatible endpoint
 - **AI vertical shorts** — pick highlights (agnostic LLM or local heuristic),
   reframe to 9:16, burn in captions → new assets
+- **Multi-language captions** — translate transcripts to any language (agnostic)
+- **Content moderation** — classify the transcript for policy safety on ingest
+
+**Discover, verify & experience** (what hosted platforms don't offer)
+- **In-video search** — search the spoken words across your library, jump to the moment
+- **Content provenance** — Ed25519-signed, tamper-evident credentials with edit lineage
+- **Interactive transcript** — click a line to seek; copy a link to any moment
 
 **Live**
 - **RTMP + SRT** ingest, low-latency HTTP-FLV playback (via SRS)
@@ -110,6 +117,33 @@ falls back), so Ferrite builds and runs without any of them.
   without it). Nothing is provider-locked.
 - **Live**: the bundled SRS service (`deploy/srs.conf`) with hooks back to the
   API (`FERRITE_LIVE_*`, `FERRITE_LIVE_HOOK_SECRET`).
+
+## Running fully offline / air-gapped
+
+Every AI feature is provider-agnostic and can run **entirely on your own
+hardware** — no content ever leaves your network. This is the compliance story
+hosted platforms structurally can't offer (healthcare, legal, defense, EU data
+residency):
+
+- **Transcription / captions / shorts / search index** → local **whisper.cpp**
+  (`FERRITE_WHISPER_BIN` + `FERRITE_WHISPER_MODEL`).
+- **Translation, moderation, AI highlight selection** → point `FERRITE_AI_BASE_URL`
+  at a **local OpenAI-compatible server** (e.g. [Ollama](https://ollama.com) or
+  vLLM) instead of a cloud API:
+
+  ```sh
+  # .env — fully local AI via Ollama (no data egress)
+  FERRITE_AI_BASE_URL=http://localhost:11434/v1
+  FERRITE_AI_KEY=ollama                 # any non-empty value
+  FERRITE_AI_CHAT_MODEL=llama3.1        # translation / moderation / highlights
+  ```
+
+- **Provenance signing** is local Ed25519 (`FERRITE_PROVENANCE_SECRET`).
+
+Differentiator features vs hosted platforms: **in-video search**, **content
+provenance / verifiable credentials**, **multi-language captions**, **on-ingest
+moderation**, and an **interactive transcript** — all self-hosted and, when you
+want, fully offline.
 
 ## API surface (v1)
 
