@@ -1,5 +1,8 @@
 <script lang="ts">
+	import { fly } from 'svelte/transition';
+	import { cubicOut } from 'svelte/easing';
 	import { Icon } from '$lib/ui';
+	import { dur } from '$lib/motion';
 	import { HdIcon, ArrowDown01Icon } from '@hugeicons/core-free-icons';
 
 	interface Props {
@@ -136,6 +139,7 @@
 			{#if menuOpen}
 				<div
 					class="absolute right-0 bottom-full mb-1 min-w-28 overflow-hidden rounded-md bg-black/90 text-white"
+					transition:fly={{ y: 6, duration: dur(140), easing: cubicOut }}
 				>
 					<button
 						onclick={() => pick(-1)}

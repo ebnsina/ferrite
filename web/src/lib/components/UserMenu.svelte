@@ -1,7 +1,10 @@
 <script lang="ts">
+	import { fly } from 'svelte/transition';
+	import { cubicOut } from 'svelte/easing';
 	import { Icon } from '$lib/ui';
 	import { session } from '$lib/api/session.svelte';
 	import { nameFromEmail } from '$lib/format';
+	import { dur } from '$lib/motion';
 	import { Settings01Icon, Logout01Icon, ArrowDown01Icon } from '@hugeicons/core-free-icons';
 
 	let open = $state(false);
@@ -34,7 +37,8 @@
 
 	{#if open}
 		<div
-			class="absolute right-0 mt-2 w-60 overflow-hidden rounded-xl border border-border bg-surface shadow-lg"
+			class="absolute right-0 mt-2 w-60 origin-top-right overflow-hidden rounded-xl border border-border bg-surface shadow-lg"
+			transition:fly={{ y: -8, duration: dur(150), easing: cubicOut }}
 		>
 			<div class="border-b border-border p-4">
 				<p class="truncate text-sm font-medium">{session.user?.email}</p>

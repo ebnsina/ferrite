@@ -14,7 +14,7 @@
 	let { variant = 'primary', size = 'md', class: klass = '', children, ...rest }: Props = $props();
 
 	const base =
-		'inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors focus-visible:outline-2 disabled:opacity-50 disabled:pointer-events-none';
+		'inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-[background-color,opacity,transform] duration-150 active:scale-[0.97] focus-visible:outline-2 disabled:opacity-50 disabled:pointer-events-none';
 
 	const variants: Record<Variant, string> = {
 		primary: 'bg-accent text-accent-fg hover:opacity-90',

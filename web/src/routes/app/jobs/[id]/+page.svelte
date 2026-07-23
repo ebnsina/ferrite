@@ -1,6 +1,9 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
+	import { fly } from 'svelte/transition';
+	import { cubicOut } from 'svelte/easing';
 	import { page } from '$app/state';
+	import { dur } from '$lib/motion';
 	import { Card, StatusPill, ProgressBar, Icon } from '$lib/ui';
 	import {
 		getJob,
@@ -224,6 +227,7 @@
 						{#if menuOpen}
 							<div
 								class="absolute bottom-full left-0 z-10 mb-1 min-w-32 overflow-hidden rounded-lg border border-border bg-surface shadow-lg"
+								transition:fly={{ y: 6, duration: dur(140), easing: cubicOut }}
 							>
 								<button
 									onclick={() => selectQuality(-1)}

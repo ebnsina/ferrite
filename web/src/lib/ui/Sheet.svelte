@@ -3,6 +3,7 @@
 	import { fade, fly } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
 	import { Icon } from '$lib/ui';
+	import { dur } from '$lib/motion';
 	import { Cancel01Icon } from '@hugeicons/core-free-icons';
 
 	interface Props {
@@ -43,7 +44,7 @@
 		class="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
 		aria-label="Close"
 		onclick={onclose}
-		transition:fade={{ duration: 180 }}
+		transition:fade={{ duration: dur(180) }}
 	></button>
 
 	<!-- Panel -->
@@ -52,7 +53,7 @@
 		role="dialog"
 		aria-modal="true"
 		aria-label={title}
-		transition:fly={{ x: 520, duration: 280, easing: cubicOut }}
+		transition:fly={{ x: 520, duration: dur(280), easing: cubicOut }}
 	>
 		<div class="flex items-start justify-between border-b border-border px-6 py-5">
 			<div>

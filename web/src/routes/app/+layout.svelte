@@ -12,8 +12,11 @@
 		Cancel01Icon
 	} from '@hugeicons/core-free-icons';
 	import { afterNavigate } from '$app/navigation';
+	import { fly, fade } from 'svelte/transition';
+	import { cubicOut } from 'svelte/easing';
 	import { Icon, Logo } from '$lib/ui';
 	import { session } from '$lib/api/session.svelte';
+	import { dur } from '$lib/motion';
 	import Auth from '$lib/components/Auth.svelte';
 	import UserMenu from '$lib/components/UserMenu.svelte';
 
@@ -70,9 +73,11 @@
 			class="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm md:hidden"
 			aria-label="Close menu"
 			onclick={() => (mobileOpen = false)}
+			transition:fade={{ duration: dur(180) }}
 		></button>
 		<aside
 			class="fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-border bg-surface md:hidden"
+			transition:fly={{ x: -280, duration: dur(260), easing: cubicOut }}
 		>
 			<div class="flex h-16 items-center justify-between border-b border-border px-5">
 				<a href="/app"><Logo size={24} /></a>
@@ -120,7 +125,11 @@
 			</div>
 		</header>
 		<main class="flex-1 px-6 py-8">
-			{@render children()}
+			{#key page.url.pathname}
+				<div in:fly={{ y: 10, duration: dur(220), easing: cubicOut }}>
+					{@render children()}
+				</div>
+			{/key}
 		</main>
 	</div>
 </div>
