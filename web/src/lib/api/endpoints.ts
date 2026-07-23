@@ -261,6 +261,10 @@ export function listAssets() {
 	return apiRequest<Asset[]>('/v1/assets');
 }
 
+export function getAsset(id: string) {
+	return apiRequest<Asset>(`/v1/assets/${id}`);
+}
+
 export interface TranscodeOptions {
 	encrypt?: boolean;
 	mp4?: boolean;

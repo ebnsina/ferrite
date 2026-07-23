@@ -279,11 +279,16 @@
 			<div class="flex flex-col divide-y divide-border">
 				{#each assets as a (a.id)}
 					<div class="flex items-center gap-4 py-3">
-						<AssetThumb asset={a} />
-						<div class="min-w-0 flex-1">
-							<p class="truncate text-sm font-medium">{a.filename}</p>
-							<p class="mono text-xs text-muted">{bytes(a.bytes)} · {timeAgo(a.created_at)}</p>
-						</div>
+						<a
+							href={`/app/assets/${a.id}`}
+							class="flex min-w-0 flex-1 items-center gap-4 transition-opacity hover:opacity-80"
+						>
+							<AssetThumb asset={a} />
+							<div class="min-w-0 flex-1">
+								<p class="truncate text-sm font-medium">{a.filename}</p>
+								<p class="mono text-xs text-muted">{bytes(a.bytes)} · {timeAgo(a.created_at)}</p>
+							</div>
+						</a>
 						<span class="mono text-xs text-muted">{a.status}</span>
 						{#if a.status === 'ready'}
 							<button
