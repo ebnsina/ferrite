@@ -40,8 +40,12 @@ bucket.
 - **Playback analytics** — views, watch-time, completion rate
 
 **Platform**
-- Multi-tenant **auth** (email/password JWT + `frt_` API keys), team **members**
-  & roles, invites, password reset
+- Multi-tenant **auth** (HttpOnly-cookie sessions + `frt_` API keys), team
+  **members** & roles, invites, password reset, config-driven **superadmin**
+- **Two-layer tenant isolation** — every query scoped by `tenant_id`, backed by
+  Postgres **row-level security** so a missing filter still can't cross tenants
+- **CSRF, CORS allowlist & OWASP headers** — double-submit CSRF, credentialed
+  CORS to the app origin, `nosniff` / frame-`DENY` / HSTS / referrer-policy
 - **Fair queue** — per-tenant round-robin with an in-flight cap (one tenant's
   10,000 jobs can't starve another's)
 - Webhooks, usage metering (mock billing), Prometheus `/metrics`
@@ -161,8 +165,35 @@ want, fully offline.
   `POST /playback/beacon`
 - **Ops**: `GET /v1/usage`, `GET /metrics`, `GET|POST /v1/webhooks`
 
-Programmatic clients authenticate with an `frt_` API key; the dashboard uses a
-session JWT. Both resolve to the same `TenantContext`.
+Programmatic clients authenticate with an `frt_` API key (`Authorization:
+Bearer`); the dashboard uses an HttpOnly session cookie. Both resolve to the
+same `TenantContext`.
+
+## Security
+
+- **Tenant isolation, two layers.** Every tenant query is scoped by `tenant_id`
+  (the belt) *and* by Postgres **row-level security** (the suspenders): even a
+  query that forgot its filter returns nothing across tenants. RLS binds only
+  for a non-superuser role, so the **API connects as `ferrite_app`**
+  (`FERRITE_API_DATABASE_URL`) and sets `app.current_tenant` per request; the
+  **worker keeps the owner role** and does its cross-tenant work by bypass. See
+  migration `0017_rls`.
+- **Dashboard auth.** The session JWT lives in an **HttpOnly, SameSite=Lax**
+  cookie (unreadable to JS, so XSS can't steal it), `Secure` whenever the app is
+  served over HTTPS. State-changing requests carry a **double-submit CSRF**
+  token (`ferrite_csrf` cookie ↔ `X-CSRF-Token` header); `Authorization: Bearer`
+  (API keys) is CSRF-exempt.
+- **Boundary.** `/v1` uses **credentialed CORS locked to `FERRITE_APP_BASE_URL`**;
+  public embed/media/playback/waitlist routes stay permissive so third-party
+  embeds work. Every response carries OWASP headers (`nosniff`, frame-`DENY`,
+  HSTS, `Referrer-Policy`, CORP).
+- **Superadmin** is config-driven via `FERRITE_SUPERADMIN_EMAILS` → a `superadmin`
+  JWT claim gating the cross-tenant `/admin` console.
+
+Production notes: create the `ferrite_app` role with a real password and point
+`FERRITE_API_DATABASE_URL` at it (the migration seeds a dev-only default). If the
+API is served from a different *site* than the dashboard (not just a subdomain),
+switch the session cookie to `SameSite=None`.
 
 ## Deploy
 
