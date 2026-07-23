@@ -356,8 +356,10 @@
 		<label class="flex items-start gap-3">
 			<input type="checkbox" bind:checked={txWatermark} class="mt-0.5 accent-accent" />
 			<span>
-				<span class="block text-sm font-medium">Watermark the MP4</span>
-				<span class="block text-xs text-muted">Overlay your brand logo (set it in Settings).</span>
+				<span class="block text-sm font-medium">Watermark</span>
+				<span class="block text-xs text-muted"
+					>Overlay your brand logo on the stream + MP4 (set it in Settings).</span
+				>
 			</span>
 		</label>
 		{#if txWatermark}

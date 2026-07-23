@@ -74,9 +74,9 @@ async fn run(
     let media = encoder.probe(&source_str).await?;
     tracing::info!(job = %job.id, w = media.width, h = media.height, "probed");
 
-    // Cap the ladder to the source resolution — never upscale.
+    // Per-title: tailor the ladder to the source (cap resolution + bitrate).
     let mut job = job.clone();
-    job.ladder = job.ladder.cap_to_source(&media);
+    job.ladder = job.ladder.content_aware(&media);
 
     // For encrypted HLS: mint a per-job AES-128 key, persist it for the key
     // endpoint, and hand it to the encoder. The key never touches object storage.
@@ -121,7 +121,23 @@ async fn run(
         let _ = progress_task.await;
         a
     } else {
-        cmaf::generate(job, &media, &source_str, &output_dir, encode).await?
+        // For a watermarked stream, fetch the logo so CMAF can overlay it.
+        let logo_path = if let Some(wm) = &job.watermark {
+            let p = job_dir.join("wm_logo.png");
+            let ps = p.to_string_lossy().to_string();
+            storage.get_file(&wm.logo_key, &ps).await.ok().map(|_| ps)
+        } else {
+            None
+        };
+        cmaf::generate(
+            job,
+            &media,
+            &source_str,
+            &output_dir,
+            encode,
+            logo_path.as_deref(),
+        )
+        .await?
     };
 
     // Optional poster + sprite + VTT storyboard. Non-essential: failure logs
