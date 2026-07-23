@@ -1,8 +1,11 @@
-//! Tenant bootstrap and API-key management.
+//! Tenant view (`/me`) and API-key management. Tenant creation happens only via
+//! signup (`/v1/auth/signup`) — there is no open bootstrap endpoint.
 
-use axum::extract::State;
+use axum::extract::{Path, State};
+use axum::http::StatusCode;
 use axum::Json;
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 use validator::Validate;
 
 use crate::auth::{self, TenantContext};
@@ -10,48 +13,11 @@ use crate::db;
 use crate::error::{ApiError, ApiResult};
 use crate::state::AppState;
 
-#[derive(Deserialize, Validate)]
-pub struct CreateTenantRequest {
-    #[validate(length(min = 1, max = 100))]
-    pub name: String,
-}
-
 #[derive(Serialize)]
 pub struct TenantView {
-    pub id: uuid::Uuid,
+    pub id: Uuid,
     pub name: String,
     pub plan: String,
-}
-
-#[derive(Serialize)]
-pub struct CreateTenantResponse {
-    pub tenant: TenantView,
-    /// Shown exactly once — store it now, it cannot be retrieved again.
-    pub api_key: String,
-}
-
-/// `POST /v1/tenants` — bootstrap a tenant and its first API key.
-///
-/// NOTE: open in dev for convenience. Before production this must be gated
-/// behind an admin credential or invite flow.
-pub async fn create_tenant(
-    State(state): State<AppState>,
-    Json(body): Json<CreateTenantRequest>,
-) -> ApiResult<Json<CreateTenantResponse>> {
-    body.validate().map_err(ApiError::Validation)?;
-
-    let tenant = db::create_tenant(state.db(), &body.name).await?;
-    let key = auth::generate_key();
-    db::create_api_key(state.db(), tenant.id, "default", &key.hash, &key.prefix).await?;
-
-    Ok(Json(CreateTenantResponse {
-        tenant: TenantView {
-            id: tenant.id,
-            name: tenant.name,
-            plan: tenant.plan,
-        },
-        api_key: key.plaintext,
-    }))
 }
 
 #[derive(Deserialize, Validate)]
@@ -62,12 +28,12 @@ pub struct CreateApiKeyRequest {
 
 #[derive(Serialize)]
 pub struct CreateApiKeyResponse {
-    pub id: uuid::Uuid,
+    pub id: Uuid,
     pub prefix: String,
     pub api_key: String,
 }
 
-/// `POST /v1/api-keys` — issue an additional key for the caller's tenant.
+/// `POST /v1/api-keys` — issue a new key for the caller's tenant.
 pub async fn create_api_key(
     State(state): State<AppState>,
     ctx: TenantContext,
@@ -90,6 +56,52 @@ pub async fn create_api_key(
         prefix: key.prefix,
         api_key: key.plaintext,
     }))
+}
+
+#[derive(Serialize)]
+pub struct ApiKeyView {
+    pub id: Uuid,
+    pub name: String,
+    pub prefix: String,
+    pub last_used_at: Option<String>,
+    pub revoked: bool,
+    pub created_at: String,
+}
+
+/// `GET /v1/api-keys` — list the tenant's keys (active and revoked).
+pub async fn list_api_keys(
+    State(state): State<AppState>,
+    ctx: TenantContext,
+) -> ApiResult<Json<Vec<ApiKeyView>>> {
+    let keys = db::list_api_keys(state.db(), ctx.tenant_id).await?;
+    let views = keys
+        .into_iter()
+        .map(|k| ApiKeyView {
+            id: k.id,
+            name: k.name,
+            prefix: k.prefix,
+            last_used_at: k.last_used_at.map(|t| t.to_rfc3339()),
+            revoked: k.revoked_at.is_some(),
+            created_at: k.created_at.to_rfc3339(),
+        })
+        .collect();
+    Ok(Json(views))
+}
+
+/// `DELETE /v1/api-keys/{id}` — revoke a key (owner only).
+pub async fn revoke_api_key(
+    State(state): State<AppState>,
+    ctx: TenantContext,
+    Path(id): Path<Uuid>,
+) -> ApiResult<StatusCode> {
+    if !ctx.is_owner() {
+        return Err(ApiError::Forbidden);
+    }
+    let revoked = db::revoke_api_key(state.db(), ctx.tenant_id, id).await?;
+    if !revoked {
+        return Err(ApiError::NotFound);
+    }
+    Ok(StatusCode::NO_CONTENT)
 }
 
 /// `GET /v1/me` — return the authenticated tenant (verifies auth works).

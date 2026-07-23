@@ -8,6 +8,7 @@ use metrics_exporter_prometheus::PrometheusHandle;
 use sqlx::PgPool;
 
 use crate::config::Settings;
+use crate::email::Mailer;
 
 /// Cloneable handle to shared resources. Cheap to clone (inner `Arc`s / pools).
 #[derive(Clone)]
@@ -21,6 +22,7 @@ struct Inner {
     queue: RedisQueue,
     settings: Settings,
     metrics: PrometheusHandle,
+    mailer: Mailer,
 }
 
 impl AppState {
@@ -30,6 +32,7 @@ impl AppState {
         queue: RedisQueue,
         settings: Settings,
         metrics: PrometheusHandle,
+        mailer: Mailer,
     ) -> Self {
         Self {
             inner: Arc::new(Inner {
@@ -38,8 +41,13 @@ impl AppState {
                 queue,
                 settings,
                 metrics,
+                mailer,
             }),
         }
+    }
+
+    pub fn mailer(&self) -> &Mailer {
+        &self.inner.mailer
     }
 
     pub fn db(&self) -> &PgPool {

@@ -188,6 +188,120 @@ pub async fn touch_api_key(pool: &PgPool, id: Uuid) {
         .await;
 }
 
+#[derive(Debug, sqlx::FromRow)]
+pub struct ApiKeyListItem {
+    pub id: Uuid,
+    pub name: String,
+    pub prefix: String,
+    pub last_used_at: Option<DateTime<Utc>>,
+    pub revoked_at: Option<DateTime<Utc>>,
+    pub created_at: DateTime<Utc>,
+}
+
+pub async fn list_api_keys(
+    pool: &PgPool,
+    tenant_id: Uuid,
+) -> Result<Vec<ApiKeyListItem>, sqlx::Error> {
+    sqlx::query_as::<_, ApiKeyListItem>(
+        "SELECT id, name, prefix, last_used_at, revoked_at, created_at FROM api_keys
+         WHERE tenant_id = $1 ORDER BY created_at DESC",
+    )
+    .bind(tenant_id)
+    .fetch_all(pool)
+    .await
+}
+
+/// Revoke a key (tenant-scoped). Returns true if a row was affected.
+pub async fn revoke_api_key(pool: &PgPool, tenant_id: Uuid, id: Uuid) -> Result<bool, sqlx::Error> {
+    let res = sqlx::query(
+        "UPDATE api_keys SET revoked_at = now()
+         WHERE id = $1 AND tenant_id = $2 AND revoked_at IS NULL",
+    )
+    .bind(id)
+    .bind(tenant_id)
+    .execute(pool)
+    .await?;
+    Ok(res.rows_affected() > 0)
+}
+
+// --- Member management -------------------------------------------------------
+
+/// A member within a tenant (for owner-only role/removal checks).
+pub async fn find_member(
+    pool: &PgPool,
+    tenant_id: Uuid,
+    id: Uuid,
+) -> Result<Option<Member>, sqlx::Error> {
+    sqlx::query_as::<_, Member>(
+        "SELECT id, email, name, role, created_at FROM users WHERE id = $1 AND tenant_id = $2",
+    )
+    .bind(id)
+    .bind(tenant_id)
+    .fetch_optional(pool)
+    .await
+}
+
+pub async fn update_member_role(
+    pool: &PgPool,
+    tenant_id: Uuid,
+    id: Uuid,
+    role: &str,
+) -> Result<(), sqlx::Error> {
+    sqlx::query("UPDATE users SET role = $3 WHERE id = $1 AND tenant_id = $2")
+        .bind(id)
+        .bind(tenant_id)
+        .bind(role)
+        .execute(pool)
+        .await?;
+    Ok(())
+}
+
+pub async fn delete_user(pool: &PgPool, tenant_id: Uuid, id: Uuid) -> Result<(), sqlx::Error> {
+    sqlx::query("DELETE FROM users WHERE id = $1 AND tenant_id = $2")
+        .bind(id)
+        .bind(tenant_id)
+        .execute(pool)
+        .await?;
+    Ok(())
+}
+
+// --- Password resets ---------------------------------------------------------
+
+pub async fn create_password_reset(
+    pool: &PgPool,
+    token: &str,
+    user_id: Uuid,
+    expires_at: DateTime<Utc>,
+) -> Result<(), sqlx::Error> {
+    sqlx::query("INSERT INTO password_resets (token, user_id, expires_at) VALUES ($1, $2, $3)")
+        .bind(token)
+        .bind(user_id)
+        .bind(expires_at)
+        .execute(pool)
+        .await?;
+    Ok(())
+}
+
+/// Return the user id for a valid (unused, unexpired) reset token.
+pub async fn find_valid_reset(pool: &PgPool, token: &str) -> Result<Option<Uuid>, sqlx::Error> {
+    let row: Option<(Uuid,)> = sqlx::query_as(
+        "SELECT user_id FROM password_resets
+         WHERE token = $1 AND used_at IS NULL AND expires_at > now()",
+    )
+    .bind(token)
+    .fetch_optional(pool)
+    .await?;
+    Ok(row.map(|r| r.0))
+}
+
+pub async fn mark_reset_used(pool: &PgPool, token: &str) -> Result<(), sqlx::Error> {
+    sqlx::query("UPDATE password_resets SET used_at = now() WHERE token = $1")
+        .bind(token)
+        .execute(pool)
+        .await?;
+    Ok(())
+}
+
 // --- Assets ------------------------------------------------------------------
 
 #[derive(Debug, sqlx::FromRow)]

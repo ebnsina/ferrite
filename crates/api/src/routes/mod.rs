@@ -29,11 +29,23 @@ pub fn build(state: AppState) -> Router {
         .route("/ready", get(health::ready))
         .route("/auth/signup", post(session::signup))
         .route("/auth/login", post(session::login))
-        .route("/tenants", post(tenants::create_tenant))
-        .route("/api-keys", post(tenants::create_api_key))
+        .route("/auth/forgot-password", post(session::forgot_password))
+        .route("/auth/reset-password", post(session::reset_password))
+        .route(
+            "/api-keys",
+            get(tenants::list_api_keys).post(tenants::create_api_key),
+        )
+        .route(
+            "/api-keys/{id}",
+            axum::routing::delete(tenants::revoke_api_key),
+        )
         .route(
             "/members",
             get(members::list_members).post(members::invite_member),
+        )
+        .route(
+            "/members/{id}",
+            axum::routing::patch(members::update_member).delete(members::remove_member),
         )
         .route("/me", get(tenants::me))
         .route(

@@ -38,6 +38,23 @@ pub struct Settings {
     pub live_api_url: String,
     /// Shared secret the ingest server includes when calling Ferrite's DVR hook.
     pub live_hook_secret: String,
+
+    /// Public base URL of the dashboard/frontend (e.g. `http://localhost:5173`),
+    /// used to build links in emails (password reset, invites).
+    pub app_base_url: String,
+
+    // --- Email (SMTP) — all optional; unset = dev "log the email" mode ---
+    #[serde(default)]
+    pub smtp_host: Option<String>,
+    #[serde(default)]
+    pub smtp_port: Option<u16>,
+    #[serde(default)]
+    pub smtp_user: Option<String>,
+    #[serde(default)]
+    pub smtp_password: Option<String>,
+    /// From address, e.g. `Ferrite <no-reply@yourdomain.com>`.
+    #[serde(default)]
+    pub smtp_from: Option<String>,
 }
 
 impl Settings {

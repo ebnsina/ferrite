@@ -42,7 +42,9 @@ pub async fn get_profile(
     ctx: TenantContext,
 ) -> ApiResult<Json<ProfileView>> {
     let id = user_id(&ctx)?;
-    let profile = db::find_profile(state.db(), id).await?.ok_or(ApiError::NotFound)?;
+    let profile = db::find_profile(state.db(), id)
+        .await?
+        .ok_or(ApiError::NotFound)?;
     Ok(Json(profile.into()))
 }
 
@@ -61,7 +63,9 @@ pub async fn update_profile(
     let id = user_id(&ctx)?;
     body.validate().map_err(ApiError::Validation)?;
     db::update_user_name(state.db(), id, body.name.trim()).await?;
-    let profile = db::find_profile(state.db(), id).await?.ok_or(ApiError::NotFound)?;
+    let profile = db::find_profile(state.db(), id)
+        .await?
+        .ok_or(ApiError::NotFound)?;
     Ok(Json(profile.into()))
 }
 
@@ -81,7 +85,9 @@ pub async fn change_password(
     let id = user_id(&ctx)?;
     body.validate().map_err(ApiError::Validation)?;
 
-    let profile = db::find_profile(state.db(), id).await?.ok_or(ApiError::NotFound)?;
+    let profile = db::find_profile(state.db(), id)
+        .await?
+        .ok_or(ApiError::NotFound)?;
     if !auth::verify_password(&body.current_password, &profile.password_hash) {
         return Err(ApiError::BadRequest("current password is incorrect".into()));
     }

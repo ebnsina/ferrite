@@ -64,6 +64,9 @@ hex = "0.4"
 argon2 = "0.5"
 jsonwebtoken = { version = "10", default-features = false, features = ["rust_crypto"] }
 
+# email (SMTP) — creds optional; unconfigured = dev log mode
+lettre = { version = "0.11", default-features = false, features = ["builder", "smtp-transport", "tokio1-rustls-tls", "hostname"] }
+
 # internal crates
 ferrite-core = { path = "crates/core" }
 ferrite-storage = { path = "crates/storage" }

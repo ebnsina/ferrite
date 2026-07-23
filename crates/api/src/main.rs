@@ -3,6 +3,7 @@
 mod auth;
 mod config;
 mod db;
+mod email;
 mod error;
 mod metrics;
 mod routes;
@@ -116,12 +117,15 @@ async fn init_state(
         )
     })?;
 
+    let mailer = crate::email::Mailer::from_settings(settings);
+
     Ok(AppState::new(
         db,
         storage,
         queue,
         settings.clone(),
         metrics_handle,
+        mailer,
     ))
 }
 
