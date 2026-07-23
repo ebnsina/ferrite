@@ -1,26 +1,38 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { Card, Button, Icon, Sheet } from '$lib/ui';
-	import { listMembers, inviteMember, createApiKey } from '$lib/api/endpoints';
+	import {
+		listMembers,
+		inviteMember,
+		createApiKey,
+		updateMemberRole,
+		removeMember,
+		listApiKeys,
+		revokeApiKey
+	} from '$lib/api/endpoints';
 	import { ApiError } from '$lib/api/client';
 	import { session } from '$lib/api/session.svelte';
 	import { inviteSchema, apiKeySchema, validate } from '$lib/schemas';
-	import type { Member, MemberInvited } from '$lib/api/types';
+	import type { Member, MemberInvited, ApiKey } from '$lib/api/types';
 	import { timeAgo, nameFromEmail } from '$lib/format';
 	import {
 		UserGroupIcon,
 		Copy01Icon,
 		Tick01Icon,
 		UserAdd01Icon,
-		KeyframeIcon
+		KeyframeIcon,
+		Delete02Icon
 	} from '@hugeicons/core-free-icons';
 
 	const isOwner = $derived(session.user?.role === 'owner');
 
 	let members = $state<Member[]>([]);
+	let apiKeys = $state<ApiKey[]>([]);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
 	let copied = $state<string | null>(null);
+	let rowBusy = $state<string | null>(null);
+	let confirmingRemove = $state<string | null>(null);
 
 	// Invite sheet
 	let inviteOpen = $state(false);
@@ -41,6 +53,7 @@
 		loading = true;
 		try {
 			members = await listMembers();
+			if (isOwner) apiKeys = await listApiKeys();
 			error = null;
 		} catch (e) {
 			error = e instanceof ApiError ? e.message : 'Failed to load team.';
@@ -49,6 +62,44 @@
 		}
 	}
 	onMount(load);
+
+	async function changeRole(m: Member, role: 'admin' | 'member') {
+		if (m.role === role) return;
+		rowBusy = m.id;
+		try {
+			await updateMemberRole(m.id, role);
+			await load();
+		} catch (e) {
+			error = e instanceof ApiError ? e.message : 'Could not update role.';
+		} finally {
+			rowBusy = null;
+		}
+	}
+
+	async function remove(m: Member) {
+		rowBusy = m.id;
+		try {
+			await removeMember(m.id);
+			confirmingRemove = null;
+			await load();
+		} catch (e) {
+			error = e instanceof ApiError ? e.message : 'Could not remove member.';
+		} finally {
+			rowBusy = null;
+		}
+	}
+
+	async function revoke(k: ApiKey) {
+		rowBusy = k.id;
+		try {
+			await revokeApiKey(k.id);
+			await load();
+		} catch (e) {
+			error = e instanceof ApiError ? e.message : 'Could not revoke key.';
+		} finally {
+			rowBusy = null;
+		}
+	}
 
 	function openInvite() {
 		inviteEmail = '';
@@ -88,6 +139,7 @@
 		try {
 			const res = await createApiKey(v.data.name);
 			newKey = res.api_key;
+			await load();
 		} catch (e) {
 			keyError = e instanceof ApiError ? e.message : 'Could not create key.';
 		} finally {
@@ -142,7 +194,7 @@
 		{:else}
 			<div class="divide-y divide-border">
 				{#each members as m (m.id)}
-					<div class="flex items-center justify-between py-3">
+					<div class="flex items-center justify-between gap-3 py-3">
 						<div class="flex min-w-0 items-center gap-3">
 							<span
 								class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent-soft text-sm font-semibold text-accent"
@@ -153,15 +205,87 @@
 								<p class="truncate text-xs text-muted">{m.email} · joined {timeAgo(m.created_at)}</p>
 							</div>
 						</div>
-						<span
-							class="mono rounded-full border border-border bg-surface-2 px-2 py-0.5 text-xs text-muted"
-							>{m.role}</span
-						>
+
+						{#if isOwner && m.role !== 'owner'}
+							<div class="flex shrink-0 items-center gap-2">
+								<select
+									value={m.role}
+									disabled={rowBusy === m.id}
+									onchange={(e) => changeRole(m, e.currentTarget.value as 'admin' | 'member')}
+									class="rounded-lg border border-border bg-surface-2 px-2 py-1 text-xs outline-none focus:border-accent"
+								>
+									<option value="member">Member</option>
+									<option value="admin">Admin</option>
+								</select>
+								{#if confirmingRemove === m.id}
+									<button
+										onclick={() => remove(m)}
+										disabled={rowBusy === m.id}
+										class="rounded-lg bg-danger/10 px-2 py-1 text-xs font-medium text-danger hover:bg-danger/20"
+										>Confirm</button
+									>
+									<button
+										onclick={() => (confirmingRemove = null)}
+										class="text-xs text-muted hover:text-fg">Cancel</button
+									>
+								{:else}
+									<button
+										onclick={() => (confirmingRemove = m.id)}
+										aria-label="Remove member"
+										class="rounded-lg p-1.5 text-muted transition-colors hover:bg-danger/10 hover:text-danger"
+									>
+										<Icon icon={Delete02Icon} size={16} />
+									</button>
+								{/if}
+							</div>
+						{:else}
+							<span
+								class="mono rounded-full border border-border bg-surface-2 px-2 py-0.5 text-xs text-muted"
+								>{m.role}</span
+							>
+						{/if}
 					</div>
 				{/each}
 			</div>
 		{/if}
 	</Card>
+
+	{#if isOwner}
+		<Card class="mt-6">
+			<h2 class="mb-4 flex items-center gap-2 text-sm font-medium text-muted">
+				<Icon icon={KeyframeIcon} size={16} /> API keys
+			</h2>
+			{#if apiKeys.length === 0}
+				<p class="py-6 text-center text-sm text-muted">
+					No API keys yet. Create one with the button above.
+				</p>
+			{:else}
+				<div class="divide-y divide-border">
+					{#each apiKeys as k (k.id)}
+						<div class="flex items-center justify-between gap-3 py-3">
+							<div class="min-w-0">
+								<p class="truncate text-sm font-medium">
+									{k.name}
+									{#if k.revoked}<span class="ml-2 text-xs text-danger">revoked</span>{/if}
+								</p>
+								<p class="mono truncate text-xs text-muted">
+									{k.prefix}… · {k.last_used_at ? `used ${timeAgo(k.last_used_at)}` : 'never used'}
+								</p>
+							</div>
+							{#if !k.revoked}
+								<button
+									onclick={() => revoke(k)}
+									disabled={rowBusy === k.id}
+									class="shrink-0 rounded-lg px-2.5 py-1 text-xs font-medium text-danger transition-colors hover:bg-danger/10"
+									>Revoke</button
+								>
+							{/if}
+						</div>
+					{/each}
+				</div>
+			{/if}
+		</Card>
+	{/if}
 </div>
 
 <!-- Invite sheet -->

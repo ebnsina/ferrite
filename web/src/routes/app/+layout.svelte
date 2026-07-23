@@ -7,14 +7,20 @@
 		LiveStreaming01Icon,
 		UserGroupIcon,
 		Analytics01Icon,
-		Settings01Icon
+		Settings01Icon,
+		Menu01Icon,
+		Cancel01Icon
 	} from '@hugeicons/core-free-icons';
+	import { afterNavigate } from '$app/navigation';
 	import { Icon, Logo } from '$lib/ui';
 	import { session } from '$lib/api/session.svelte';
 	import Auth from '$lib/components/Auth.svelte';
 	import UserMenu from '$lib/components/UserMenu.svelte';
 
 	let { children } = $props();
+
+	let mobileOpen = $state(false);
+	afterNavigate(() => (mobileOpen = false));
 
 	const nav = [
 		{ href: '/app', label: 'Dashboard', icon: DashboardSquare01Icon },
@@ -58,10 +64,55 @@
 		</nav>
 	</aside>
 
+	<!-- Mobile nav drawer -->
+	{#if mobileOpen}
+		<button
+			class="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm md:hidden"
+			aria-label="Close menu"
+			onclick={() => (mobileOpen = false)}
+		></button>
+		<aside
+			class="fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-border bg-surface md:hidden"
+		>
+			<div class="flex h-16 items-center justify-between border-b border-border px-5">
+				<a href="/app"><Logo size={24} /></a>
+				<button
+					onclick={() => (mobileOpen = false)}
+					aria-label="Close menu"
+					class="rounded-lg p-1.5 text-muted hover:bg-surface-2 hover:text-fg"
+				>
+					<Icon icon={Cancel01Icon} size={18} />
+				</button>
+			</div>
+			<nav class="flex flex-1 flex-col gap-1 p-3">
+				{#each nav as item (item.href)}
+					<a
+						href={item.href}
+						class={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${
+							isActive(item.href)
+								? 'bg-accent-soft text-accent'
+								: 'text-muted hover:bg-surface-2 hover:text-fg'
+						}`}
+					>
+						<Icon icon={item.icon} size={18} />
+						{item.label}
+					</a>
+				{/each}
+			</nav>
+		</aside>
+	{/if}
+
 	<!-- Main -->
 	<div class="flex min-w-0 flex-1 flex-col">
 		<header class="flex h-16 items-center justify-between border-b border-border px-6">
-			<div class="md:hidden">
+			<div class="flex items-center gap-2 md:hidden">
+				<button
+					onclick={() => (mobileOpen = true)}
+					aria-label="Open menu"
+					class="rounded-lg p-1.5 text-muted hover:bg-surface-2 hover:text-fg"
+				>
+					<Icon icon={Menu01Icon} size={20} />
+				</button>
 				<Logo size={24} />
 			</div>
 			<div class="ml-auto">

@@ -13,6 +13,20 @@ export const signupSchema = z.object({
 	password: z.string().min(8, 'Password must be at least 8 characters')
 });
 
+export const forgotSchema = z.object({
+	email: z.string().trim().min(1, 'Email is required').email('Enter a valid email')
+});
+
+export const resetSchema = z
+	.object({
+		new_password: z.string().min(8, 'Password must be at least 8 characters'),
+		confirm: z.string().min(1, 'Confirm your new password')
+	})
+	.refine((v) => v.new_password === v.confirm, {
+		message: 'Passwords do not match',
+		path: ['confirm']
+	});
+
 export const profileNameSchema = z.object({
 	name: z.string().trim().min(1, 'Name is required').max(80, 'Name is too long')
 });

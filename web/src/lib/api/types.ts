@@ -79,6 +79,15 @@ export interface MemberInvited {
 	temp_password: string;
 }
 
+export interface ApiKey {
+	id: string;
+	name: string;
+	prefix: string;
+	last_used_at: string | null;
+	revoked: boolean;
+	created_at: string;
+}
+
 // Matches the API's error envelope: { error: { code, message, fields? } }
 export interface ApiErrorBody {
 	error: {

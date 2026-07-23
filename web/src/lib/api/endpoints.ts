@@ -2,6 +2,7 @@
 import { apiRequest, API_BASE } from './client';
 import { session } from './session.svelte';
 import type {
+	ApiKey,
 	Asset,
 	AuthResponse,
 	Job,
@@ -28,6 +29,20 @@ export function login(email: string, password: string) {
 	});
 }
 
+export function forgotPassword(email: string) {
+	return apiRequest<void>('/v1/auth/forgot-password', {
+		method: 'POST',
+		body: JSON.stringify({ email })
+	});
+}
+
+export function resetPassword(token: string, new_password: string) {
+	return apiRequest<void>('/v1/auth/reset-password', {
+		method: 'POST',
+		body: JSON.stringify({ token, new_password })
+	});
+}
+
 // --- Team --------------------------------------------------------------------
 
 export function listMembers() {
@@ -39,6 +54,17 @@ export function inviteMember(email: string, role: 'admin' | 'member') {
 		method: 'POST',
 		body: JSON.stringify({ email, role })
 	});
+}
+
+export function updateMemberRole(id: string, role: 'admin' | 'member') {
+	return apiRequest<Member>(`/v1/members/${id}`, {
+		method: 'PATCH',
+		body: JSON.stringify({ role })
+	});
+}
+
+export function removeMember(id: string) {
+	return apiRequest<void>(`/v1/members/${id}`, { method: 'DELETE' });
 }
 
 // --- Profile -----------------------------------------------------------------
@@ -64,6 +90,14 @@ export function createApiKey(name: string) {
 	});
 }
 
+export function listApiKeys() {
+	return apiRequest<ApiKey[]>('/v1/api-keys');
+}
+
+export function revokeApiKey(id: string) {
+	return apiRequest<void>(`/v1/api-keys/${id}`, { method: 'DELETE' });
+}
+
 export function getUsage() {
 	return apiRequest<Usage>('/v1/usage');
 }
@@ -81,18 +115,6 @@ export function listLiveStreams() {
 
 export function getLiveStream(id: string) {
 	return apiRequest<LiveStream>(`/v1/live/streams/${id}`);
-}
-
-export interface TenantCreated {
-	tenant: { id: string; name: string; plan: string };
-	api_key: string;
-}
-
-export function createTenant(name: string) {
-	return apiRequest<TenantCreated>('/v1/tenants', {
-		method: 'POST',
-		body: JSON.stringify({ name })
-	});
 }
 
 export function getMe() {
