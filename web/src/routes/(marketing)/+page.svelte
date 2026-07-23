@@ -90,16 +90,14 @@
 		}
 	];
 
-	// One-line, plain meaning for the acronyms used across the page.
+	// Friendly, grouped explanations of the jargon — what it means for you, not a spec.
 	const glossary = [
-		{ term: 'HLS', desc: 'Apple’s streaming format — how most phones and TVs play adaptive video.' },
-		{ term: 'DASH', desc: 'The open-standard counterpart to HLS, for everything that isn’t Apple.' },
-		{ term: 'CMAF', desc: 'One packaging format that feeds both HLS and DASH, so you encode only once.' },
-		{ term: 'ABR', desc: 'Adaptive bitrate — the player switches quality on the fly to avoid buffering.' },
-		{ term: 'AES-128', desc: 'Encrypts each video chunk so only allowed players can decode it.' },
-		{ term: 'RTMP', desc: 'The classic protocol for sending a live stream from an encoder to a server.' },
-		{ term: 'SRT', desc: 'A modern live-ingest protocol that holds up over shaky, real-world networks.' },
-		{ term: 'NVENC', desc: 'NVIDIA’s GPU video encoder — transcodes far faster than a CPU alone.' }
+		{ term: 'HLS + DASH', desc: 'The two ways video streams to phones, TVs, and browsers. We make both from one upload.' },
+		{ term: 'ABR', desc: 'The picture quality adjusts itself to each viewer’s connection — no spinning wheel.' },
+		{ term: 'CMAF', desc: 'Lets us build HLS and DASH from a single file, so you encode once instead of twice.' },
+		{ term: 'RTMP + SRT', desc: 'The two common ways to send a live stream in. SRT keeps going even on shaky WiFi.' },
+		{ term: 'AES-128', desc: 'Locks each piece of the video so only the viewers you approve can press play.' },
+		{ term: 'NVENC', desc: 'Encodes on the graphics card — the same job, done much faster when you need speed.' }
 	];
 
 	const stats = [
@@ -303,14 +301,16 @@
 			{/each}
 		</div>
 
-		<!-- The terms behind the features, explained in a line each. -->
-		<div class="mt-14">
-			<p class="text-xs font-semibold tracking-wide text-muted uppercase">The acronyms, decoded</p>
-			<div class="mt-5 grid gap-x-10 gap-y-5 sm:grid-cols-2">
+		<!-- The jargon, in human terms — cards, not a spec sheet. -->
+		<div class="mt-16">
+			<p class="text-center text-muted">
+				You'll see a few acronyms around. Here's all you need to know:
+			</p>
+			<div class="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
 				{#each glossary as g (g.term)}
-					<div class="flex items-baseline gap-3">
-						<span class="mono shrink-0 text-sm font-semibold text-accent">{g.term}</span>
-						<p class="text-sm text-muted">{g.desc}</p>
+					<div class="rounded-xl border border-border bg-surface p-5">
+						<span class="mono text-sm font-semibold text-accent">{g.term}</span>
+						<p class="mt-2 text-sm text-muted">{g.desc}</p>
 					</div>
 				{/each}
 			</div>
