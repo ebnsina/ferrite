@@ -68,6 +68,29 @@ pub async fn set_has_captions(pool: &PgPool, job_id: Uuid, value: bool) -> Resul
     Ok(())
 }
 
+/// Insert a fully-produced (ready) asset — used by AI shorts.
+pub async fn create_ready_asset(
+    pool: &PgPool,
+    tenant_id: Uuid,
+    id: Uuid,
+    filename: &str,
+    original_key: &str,
+    bytes: Option<i64>,
+) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        "INSERT INTO assets (id, tenant_id, filename, original_key, bytes, status)
+         VALUES ($1, $2, $3, $4, $5, 'ready')",
+    )
+    .bind(id)
+    .bind(tenant_id)
+    .bind(filename)
+    .bind(original_key)
+    .bind(bytes)
+    .execute(pool)
+    .await?;
+    Ok(())
+}
+
 pub async fn set_asset_status(
     pool: &PgPool,
     asset_id: Uuid,

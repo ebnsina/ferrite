@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use validator::Validate;
 
-use ferrite_core::{Clip, Ladder, TranscodeJob};
+use ferrite_core::{Clip, Ladder, ShortsSpec, TranscodeJob};
 use ferrite_queue::JobQueue;
 
 use crate::auth::TenantContext;
@@ -209,6 +209,7 @@ pub async fn clip_asset(
             dest_asset_id: dest_id,
             dest_key,
         }),
+        shorts: None,
         mp4: false,
         audio: false,
         captions: false,
@@ -221,6 +222,61 @@ pub async fn clip_asset(
         asset: asset_view(&state, ctx.tenant_id, dest),
         job_id,
     }))
+}
+
+#[derive(Deserialize)]
+pub struct ShortsRequest {
+    #[serde(default)]
+    pub count: Option<u32>,
+}
+
+#[derive(Serialize)]
+pub struct ShortsResponse {
+    pub job_id: Uuid,
+}
+
+/// `POST /v1/assets/{id}/shorts` — generate AI vertical shorts from a source.
+/// Produced shorts land as new assets once the job completes.
+pub async fn shorts_asset(
+    State(state): State<AppState>,
+    ctx: TenantContext,
+    Path(id): Path<Uuid>,
+    Json(body): Json<ShortsRequest>,
+) -> ApiResult<Json<ShortsResponse>> {
+    let source = db::find_asset(state.db(), ctx.tenant_id, id)
+        .await?
+        .ok_or(ApiError::NotFound)?;
+    if source.status != "ready" {
+        return Err(ApiError::BadRequest("source asset is not ready".into()));
+    }
+    let count = body.count.unwrap_or(3).clamp(1, 10);
+
+    let job_id = Uuid::new_v4();
+    db::create_shorts_job(state.db(), ctx.tenant_id, job_id, id).await?;
+
+    let transcode = TranscodeJob {
+        id: job_id,
+        tenant_id: ctx.tenant_id,
+        asset_id: id,
+        source_key: source.original_key,
+        output_prefix: format!("{}/outputs/{job_id}", ctx.tenant_id),
+        ladder: Ladder::default_abr(),
+        hls: false,
+        dash: false,
+        thumbnails: false,
+        encrypt: false,
+        encryption_key: None,
+        clip: None,
+        shorts: Some(ShortsSpec { count }),
+        mp4: false,
+        audio: false,
+        captions: false,
+        watermark: None,
+    };
+    state.queue().enqueue(&transcode).await?;
+    tracing::info!(job = %job_id, source = %id, count, "shorts enqueued");
+
+    Ok(Json(ShortsResponse { job_id }))
 }
 
 /// Object-storage key for a source upload. Filename is sanitized to a basename

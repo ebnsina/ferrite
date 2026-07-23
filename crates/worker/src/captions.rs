@@ -2,7 +2,7 @@
 //! prefers a fully local whisper.cpp CLI, otherwise any OpenAI-compatible
 //! `/audio/transcriptions` endpoint. Unconfigured → skipped (no failure).
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use ferrite_core::{Artifact, ArtifactKind, TranscodeJob};
 use tokio::process::Command;
@@ -41,57 +41,112 @@ impl Backend {
     }
 }
 
-/// Produce `captions.vtt` for the job. `None` if unconfigured or on failure
-/// (best-effort — never fails the transcode).
+/// A transcript cue with absolute timestamps (seconds).
+#[derive(Debug, Clone)]
+pub struct Cue {
+    pub start: f64,
+    pub end: f64,
+    pub text: String,
+}
+
+/// Transcribe `source` into `{base}.vtt` inside `dir`; returns its path.
+/// `None` if unconfigured or on failure (best-effort).
+pub async fn to_vtt(
+    backend: &Backend,
+    source: &str,
+    dir: &Path,
+    base: &str,
+    job_id: uuid::Uuid,
+) -> Option<PathBuf> {
+    if !backend.is_configured() {
+        tracing::info!(job = %job_id, "transcription requested but no transcriber configured");
+        return None;
+    }
+
+    let wav = dir.join("audio16k.wav");
+    let wav_str = wav.to_string_lossy().to_string();
+    if let Err(e) = extract_wav(source, &wav_str).await {
+        tracing::warn!(job = %job_id, error = %e, "audio extract failed");
+        return None;
+    }
+
+    let vtt = dir.join(format!("{base}.vtt"));
+    let result = match backend {
+        Backend::WhisperCpp(bin, model) => whisper_cpp(bin, model, &wav_str, &vtt, dir, base).await,
+        Backend::OpenAiCompatible(b, key, model) => {
+            openai_compatible(b, key, model, &wav_str, &vtt.to_string_lossy()).await
+        }
+        Backend::None => Err("no backend".into()),
+    };
+
+    match result {
+        Ok(()) => Some(vtt),
+        Err(e) => {
+            tracing::warn!(job = %job_id, error = %e, "transcription failed");
+            None
+        }
+    }
+}
+
+/// Produce a `captions.vtt` artifact for a job.
 pub async fn generate(
     backend: &Backend,
     job: &TranscodeJob,
     source: &str,
     dir: &Path,
 ) -> Option<Artifact> {
-    if !backend.is_configured() {
-        tracing::info!(job = %job.id, "captions requested but no transcriber configured — skipping");
-        return None;
-    }
+    let vtt = to_vtt(backend, source, dir, "captions", job.id).await?;
+    let bytes = tokio::fs::metadata(&vtt)
+        .await
+        .map(|m| m.len())
+        .unwrap_or(0);
+    Some(Artifact {
+        kind: ArtifactKind::HlsPlaylist, // text sidecar; served as-is
+        local_path: vtt.to_string_lossy().to_string(),
+        key: format!("{}/captions.vtt", job.output_prefix),
+        rendition: None,
+        bytes,
+    })
+}
 
-    // 16 kHz mono WAV is what whisper models expect.
-    let wav = dir.join("audio16k.wav");
-    let wav_str = wav.to_string_lossy().to_string();
-    if let Err(e) = extract_wav(source, &wav_str).await {
-        tracing::warn!(job = %job.id, error = %e, "captions: audio extract failed");
-        return None;
-    }
-
-    let vtt = dir.join("captions.vtt");
-    let vtt_str = vtt.to_string_lossy().to_string();
-
-    let result = match backend {
-        Backend::WhisperCpp(bin, model) => whisper_cpp(bin, model, &wav_str, &vtt, dir).await,
-        Backend::OpenAiCompatible(base, key, model) => {
-            openai_compatible(base, key, model, &wav_str, &vtt_str).await
+/// Parse a WebVTT string into cues.
+pub fn parse_cues(vtt: &str) -> Vec<Cue> {
+    let mut cues = Vec::new();
+    let mut lines = vtt.lines().peekable();
+    while let Some(line) = lines.next() {
+        let Some((a, b)) = line.split_once("-->") else {
+            continue;
+        };
+        let (Some(start), Some(end)) = (parse_ts(a.trim()), parse_ts(b.trim())) else {
+            continue;
+        };
+        let mut text = String::new();
+        while let Some(&next) = lines.peek() {
+            if next.trim().is_empty() {
+                break;
+            }
+            if !text.is_empty() {
+                text.push(' ');
+            }
+            text.push_str(next.trim());
+            lines.next();
         }
-        Backend::None => Err("no backend".into()),
-    };
-
-    match result {
-        Ok(()) => {
-            let bytes = tokio::fs::metadata(&vtt)
-                .await
-                .map(|m| m.len())
-                .unwrap_or(0);
-            Some(Artifact {
-                kind: ArtifactKind::HlsPlaylist, // text sidecar; served as-is
-                local_path: vtt_str,
-                key: format!("{}/captions.vtt", job.output_prefix),
-                rendition: None,
-                bytes,
-            })
-        }
-        Err(e) => {
-            tracing::warn!(job = %job.id, error = %e, "captions: transcription failed");
-            None
+        if !text.is_empty() {
+            cues.push(Cue { start, end, text });
         }
     }
+    cues
+}
+
+/// `HH:MM:SS.mmm` or `MM:SS.mmm` → seconds.
+fn parse_ts(s: &str) -> Option<f64> {
+    let s = s.split_whitespace().next()?; // drop cue settings after the time
+    let parts: Vec<&str> = s.split(':').collect();
+    let mut secs = 0.0;
+    for p in &parts {
+        secs = secs * 60.0 + p.replace(',', ".").parse::<f64>().ok()?;
+    }
+    Some(secs)
 }
 
 async fn extract_wav(source: &str, out: &str) -> Result<(), String> {
@@ -121,15 +176,15 @@ async fn extract_wav(source: &str, out: &str) -> Result<(), String> {
     }
 }
 
-/// whisper.cpp writes `{of}.vtt`; we point `-of` at the captions path (minus ext).
 async fn whisper_cpp(
     bin: &str,
     model: &str,
     wav: &str,
     vtt: &Path,
     dir: &Path,
+    base: &str,
 ) -> Result<(), String> {
-    let of = dir.join("captions"); // whisper.cpp appends .vtt
+    let of = dir.join(base); // whisper.cpp appends .vtt
     let status = Command::new(bin)
         .args([
             "-m",

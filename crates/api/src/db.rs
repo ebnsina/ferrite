@@ -441,6 +441,25 @@ pub async fn create_clip_job(
     Ok(())
 }
 
+/// Create an AI-shorts job row (kind='shorts'); produced shorts become assets.
+pub async fn create_shorts_job(
+    pool: &PgPool,
+    tenant_id: Uuid,
+    id: Uuid,
+    source_asset_id: Uuid,
+) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        "INSERT INTO jobs (id, tenant_id, asset_id, output_prefix, kind)
+         VALUES ($1, $2, $3, '', 'shorts')",
+    )
+    .bind(id)
+    .bind(tenant_id)
+    .bind(source_asset_id)
+    .execute(pool)
+    .await?;
+    Ok(())
+}
+
 /// Idempotent create: a reused `idempotency_key` returns the existing job with
 /// `created = false`, so the caller skips re-enqueuing.
 pub async fn create_job(

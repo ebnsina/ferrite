@@ -58,6 +58,9 @@ pub struct TranscodeJob {
     /// transcoding it (the transcode ladder/flags are ignored).
     #[serde(default)]
     pub clip: Option<Clip>,
+    /// When set, this job generates AI vertical shorts from the source.
+    #[serde(default)]
+    pub shorts: Option<ShortsSpec>,
     /// Also emit a progressive MP4 download (`download.mp4`).
     #[serde(default)]
     pub mp4: bool,
@@ -70,6 +73,13 @@ pub struct TranscodeJob {
     /// Overlay a logo on the MP4 download.
     #[serde(default)]
     pub watermark: Option<Watermark>,
+}
+
+/// Parameters for AI vertical-shorts generation.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ShortsSpec {
+    /// How many shorts to try to produce.
+    pub count: u32,
 }
 
 /// A logo overlay burned into the MP4 download.

@@ -52,6 +52,10 @@ pub struct Settings {
     /// Transcription model name (default `whisper-1`).
     #[serde(default)]
     pub ai_model: Option<String>,
+    /// Chat model for AI highlight selection (default `gpt-4o-mini`). Without it,
+    /// shorts fall back to an even-split heuristic (no LLM needed).
+    #[serde(default)]
+    pub ai_chat_model: Option<String>,
 }
 
 fn default_consumer() -> String {

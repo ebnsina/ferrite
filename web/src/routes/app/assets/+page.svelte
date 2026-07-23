@@ -9,7 +9,8 @@
 		completeAsset,
 		createJob,
 		createJobsBatch,
-		clipAsset
+		clipAsset,
+		makeShorts
 	} from '$lib/api/endpoints';
 	import { ApiError } from '$lib/api/client';
 	import { clipSchema, validate } from '$lib/schemas';
@@ -22,7 +23,8 @@
 		Loading03Icon,
 		PlayIcon,
 		CloudUploadIcon,
-		Scissor01Icon
+		Scissor01Icon,
+		AiVideoIcon
 	} from '@hugeicons/core-free-icons';
 
 	let assets = $state<Asset[]>([]);
@@ -138,6 +140,34 @@
 		}
 	}
 
+	// AI shorts sheet
+	let shortsOpen = $state(false);
+	let shortsAsset = $state<Asset | null>(null);
+	let shortsCount = $state(3);
+	let shortsBusy = $state(false);
+	let shortsErr = $state<string | null>(null);
+
+	function openShorts(a: Asset) {
+		shortsAsset = a;
+		shortsCount = 3;
+		shortsErr = null;
+		shortsOpen = true;
+	}
+
+	async function doShorts() {
+		if (!shortsAsset) return;
+		shortsBusy = true;
+		shortsErr = null;
+		try {
+			await makeShorts(shortsAsset.id, shortsCount);
+			shortsOpen = false;
+			goto('/app/jobs');
+		} catch (e) {
+			shortsErr = e instanceof ApiError ? e.message : 'Could not start.';
+			shortsBusy = false;
+		}
+	}
+
 	// Transcode options sheet
 	let txOpen = $state(false);
 	let txAsset = $state<Asset | null>(null);
@@ -230,6 +260,9 @@
 						</div>
 						<span class="mono text-xs text-muted">{a.status}</span>
 						{#if a.status === 'ready'}
+							<Button size="sm" variant="ghost" onclick={() => openShorts(a)}>
+								<Icon icon={AiVideoIcon} size={15} /> Shorts
+							</Button>
 							<Button size="sm" variant="ghost" onclick={() => openClip(a)}>
 								<Icon icon={Scissor01Icon} size={15} /> Clip
 							</Button>
@@ -380,6 +413,45 @@
 			<Button variant="secondary" onclick={() => (txOpen = false)}>Cancel</Button>
 			<Button disabled={txBusy} onclick={startTranscode}>
 				{txBusy ? 'Starting…' : 'Start transcode'}
+			</Button>
+		</div>
+	{/snippet}
+</Sheet>
+
+<Sheet
+	open={shortsOpen}
+	onclose={() => (shortsOpen = false)}
+	title="Generate AI shorts"
+	description={shortsAsset
+		? `Find highlights in ${shortsAsset.filename} and turn them into vertical clips.`
+		: ''}
+>
+	<div class="flex flex-col gap-4">
+		<div>
+			<label for="shorts-count" class="mb-1.5 block text-xs font-medium text-muted"
+				>Number of shorts</label
+			>
+			<input
+				id="shorts-count"
+				type="number"
+				min="1"
+				max="10"
+				bind:value={shortsCount}
+				class={inputCls}
+			/>
+		</div>
+		<p class="rounded-lg border border-border bg-surface-2 p-3 text-xs text-muted">
+			Ferrite transcribes the audio, picks the best moments, and reframes each to 9:16 with
+			captions. Finished shorts appear here as new assets.
+		</p>
+		{#if shortsErr}<p class="text-sm text-danger">{shortsErr}</p>{/if}
+	</div>
+
+	{#snippet footer()}
+		<div class="flex justify-end gap-2">
+			<Button variant="secondary" onclick={() => (shortsOpen = false)}>Cancel</Button>
+			<Button disabled={shortsBusy} onclick={doShorts}>
+				{shortsBusy ? 'Starting…' : 'Generate'}
 			</Button>
 		</div>
 	{/snippet}

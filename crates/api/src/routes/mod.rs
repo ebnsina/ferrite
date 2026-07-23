@@ -73,6 +73,7 @@ pub fn build(state: AppState) -> Router {
         .route("/assets/{id}", get(assets::get_asset))
         .route("/assets/{id}/complete", post(assets::complete_asset))
         .route("/assets/{id}/clip", post(assets::clip_asset))
+        .route("/assets/{id}/shorts", post(assets::shorts_asset))
         .route("/jobs", get(jobs::list_jobs).post(jobs::create_job))
         .route("/jobs/batch", post(jobs::create_jobs_batch))
         .route("/jobs/{id}", get(jobs::get_job))

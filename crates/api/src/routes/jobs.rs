@@ -173,6 +173,7 @@ pub(crate) async fn submit_job(
             encrypt: options.encrypt,
             encryption_key: None,
             clip: None,
+            shorts: None,
             mp4: want_mp4,
             audio: options.audio,
             captions: options.captions,
