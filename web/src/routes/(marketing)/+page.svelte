@@ -11,10 +11,51 @@
 		QueueIcon,
 		Rocket01Icon,
 		ArrowRight01Icon,
-		ArrowDown01Icon
+		ArrowDown01Icon,
+		CheckmarkCircle02Icon
 	} from '@hugeicons/core-free-icons';
 
+	function scrollTo(id: string) {
+		document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+	}
+
 	const clients = ['NORTHWIND', 'LOOPTV', 'VAYU MEDIA', 'CANTOR', 'HELIX', 'ORBIT'];
+
+	// Plain-language explainers for non-technical readers: what it is + why it matters.
+	const benefits = [
+		{
+			icon: Layers01Icon,
+			eyebrow: 'Smooth playback',
+			title: 'Plays perfectly on any connection',
+			plain:
+				'Ferrite automatically makes several versions of your video at different qualities. The viewer’s player picks the best one for their internet speed, moment to moment.',
+			benefit: 'No buffering, no spinning wheels — on a laptop, a phone, or a smart TV.'
+		},
+		{
+			icon: DistributionIcon,
+			eyebrow: 'Fair for everyone',
+			title: 'Every customer gets their turn',
+			plain:
+				'When lots of videos are uploaded at once, Ferrite shares the processing evenly instead of working through one big pile first.',
+			benefit: 'One customer uploading 200 videos never makes everyone else wait in line.'
+		},
+		{
+			icon: LiveStreaming01Icon,
+			eyebrow: 'Live, then on-demand',
+			title: 'Go live and keep the replay',
+			plain:
+				'Broadcast a live stream through the same platform, and Ferrite quietly records it while it happens.',
+			benefit: 'The moment your event ends, an on-demand version is ready to watch.'
+		},
+		{
+			icon: SecurityLockIcon,
+			eyebrow: 'Private by default',
+			title: 'Your videos stay yours',
+			plain:
+				'Instead of public links, videos are served through signed links that expire — so they can’t be copied around or scraped.',
+			benefit: 'Only the people you allow can press play.'
+		}
+	];
 
 	const features = [
 		{
@@ -95,6 +136,55 @@
 		}
 	];
 
+	const tiers = [
+		{
+			name: 'Hobby',
+			price: '$0',
+			cadence: '/mo',
+			blurb: 'For side projects and evaluation.',
+			cta: 'Start free',
+			highlight: false,
+			features: [
+				'1 workspace',
+				'CPU transcoding',
+				'HLS + DASH output',
+				'5 GB storage',
+				'Community support'
+			]
+		},
+		{
+			name: 'Pro',
+			price: '$49',
+			cadence: '/mo',
+			blurb: 'For teams shipping video to production.',
+			cta: 'Get started',
+			highlight: true,
+			features: [
+				'Unlimited team members',
+				'Priority fair-queue lane',
+				'Live streaming (RTMP + SRT)',
+				'500 GB storage',
+				'Signed playback URLs',
+				'Email support'
+			]
+		},
+		{
+			name: 'Scale',
+			price: 'Custom',
+			cadence: '',
+			blurb: 'For high-volume video platforms.',
+			cta: 'Contact us',
+			highlight: false,
+			features: [
+				'GPU (NVENC) encoding',
+				'Dedicated workers',
+				'Custom storage & regions',
+				'DRM & advanced security',
+				'SLA & priority support'
+			]
+		}
+	];
+
 	const faqs = [
 		{
 			q: 'Can I run Ferrite on my own infrastructure?',
@@ -144,10 +234,10 @@
 			>
 				Start transcoding <Icon icon={ArrowRight01Icon} size={16} />
 			</a>
-			<a
-				href="/pricing"
+			<button
+				onclick={() => scrollTo('benefits')}
 				class="rounded-lg border border-border bg-surface px-5 py-3 text-sm font-medium transition-colors hover:bg-surface-2"
-				>View pricing</a
+				>See how it helps</button
 			>
 		</div>
 	</div>
@@ -167,8 +257,44 @@
 	</div>
 </section>
 
+<!-- Why Ferrite — plain-language benefits for non-technical readers -->
+<section id="benefits" class="border-t border-border">
+	<div class="mx-auto max-w-6xl px-6 py-20">
+		<div class="mx-auto max-w-2xl text-center">
+			<h2 class="text-3xl font-semibold tracking-tight">What Ferrite does, in plain English</h2>
+			<p class="mt-3 text-muted">
+				No jargon. Here's what each part means for you and your viewers.
+			</p>
+		</div>
+		<div class="mt-16 flex flex-col gap-16">
+			{#each benefits as b, i (b.title)}
+				<div class="grid items-center gap-8 md:grid-cols-2">
+					<div class={i % 2 === 1 ? 'md:order-2' : ''}>
+						<span class="text-xs font-semibold tracking-wide text-accent uppercase">{b.eyebrow}</span
+						>
+						<h3 class="mt-2 text-2xl font-semibold tracking-tight">{b.title}</h3>
+						<p class="mt-3 text-muted">{b.plain}</p>
+						<p class="mt-4 flex items-start gap-2 text-sm font-medium">
+							<span class="mt-0.5 text-accent"><Icon icon={CheckmarkCircle02Icon} size={16} /></span>
+							{b.benefit}
+						</p>
+					</div>
+					<div class={i % 2 === 1 ? 'md:order-1' : ''}>
+						<div
+							class="flex aspect-[4/3] items-center justify-center rounded-2xl border border-border bg-surface"
+							style="background-image: radial-gradient(60% 60% at 50% 40%, var(--accent-soft) 0%, transparent 70%);"
+						>
+							<span class="text-accent"><Icon icon={b.icon} size={72} /></span>
+						</div>
+					</div>
+				</div>
+			{/each}
+		</div>
+	</div>
+</section>
+
 <!-- Features -->
-<section id="features" class="border-t border-border">
+<section id="features" class="border-t border-border bg-surface/40">
 	<div class="mx-auto max-w-6xl px-6 py-20">
 		<div class="mx-auto max-w-2xl text-center">
 			<h2 class="text-3xl font-semibold tracking-tight">Everything the pipeline needs</h2>
@@ -193,7 +319,7 @@
 </section>
 
 <!-- Stats band -->
-<section class="border-t border-border bg-surface/40">
+<section class="border-t border-border">
 	<div class="mx-auto grid max-w-6xl grid-cols-2 gap-8 px-6 py-16 lg:grid-cols-4">
 		{#each stats as s (s.label)}
 			<div class="text-center">
@@ -205,7 +331,7 @@
 </section>
 
 <!-- How it works -->
-<section id="how" class="border-t border-border">
+<section id="how" class="border-t border-border bg-surface/40">
 	<div class="mx-auto max-w-6xl px-6 py-20">
 		<div class="mx-auto max-w-2xl text-center">
 			<h2 class="text-3xl font-semibold tracking-tight">Three steps to adaptive video</h2>
@@ -231,7 +357,7 @@
 </section>
 
 <!-- Testimonials -->
-<section class="border-t border-border bg-surface/40">
+<section class="border-t border-border">
 	<div class="mx-auto max-w-6xl px-6 py-20">
 		<div class="mx-auto max-w-2xl text-center">
 			<h2 class="text-3xl font-semibold tracking-tight">Teams ship faster on Ferrite</h2>
@@ -252,6 +378,61 @@
 						</span>
 					</figcaption>
 				</figure>
+			{/each}
+		</div>
+	</div>
+</section>
+
+<!-- Pricing -->
+<section id="pricing" class="border-t border-border bg-surface/40">
+	<div class="mx-auto max-w-6xl px-6 py-20">
+		<div class="mx-auto max-w-2xl text-center">
+			<h2 class="text-3xl font-semibold tracking-tight">Simple, scalable pricing</h2>
+			<p class="mt-3 text-muted">
+				Start free, upgrade when you grow. Billing is mocked in this demo environment.
+			</p>
+		</div>
+		<div class="mt-14 grid gap-6 lg:grid-cols-3">
+			{#each tiers as t (t.name)}
+				<div
+					class={`flex flex-col rounded-xl border p-6 ${
+						t.highlight ? 'border-accent bg-surface ring-1 ring-accent' : 'border-border bg-surface'
+					}`}
+				>
+					<div class="flex items-center justify-between">
+						<h3 class="text-lg font-semibold">{t.name}</h3>
+						{#if t.highlight}
+							<span class="mono rounded-full bg-accent-soft px-2 py-0.5 text-xs text-accent"
+								>Popular</span
+							>
+						{/if}
+					</div>
+					<p class="mt-1 text-sm text-muted">{t.blurb}</p>
+					<div class="mt-5 flex items-end gap-1">
+						<span class="text-4xl font-semibold tracking-tight">{t.price}</span>
+						{#if t.cadence}<span class="mb-1 text-sm text-muted">{t.cadence}</span>{/if}
+					</div>
+					<a
+						href="/app"
+						class={`mt-6 inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
+							t.highlight
+								? 'bg-accent text-accent-fg hover:opacity-90'
+								: 'border border-border hover:bg-surface-2'
+						}`}
+					>
+						{t.cta} <Icon icon={ArrowRight01Icon} size={15} />
+					</a>
+					<ul class="mt-6 flex flex-col gap-3 border-t border-border pt-6">
+						{#each t.features as f (f)}
+							<li class="flex items-start gap-2.5 text-sm">
+								<span class="mt-0.5 text-accent"
+									><Icon icon={CheckmarkCircle02Icon} size={16} /></span
+								>
+								<span>{f}</span>
+							</li>
+						{/each}
+					</ul>
+				</div>
 			{/each}
 		</div>
 	</div>

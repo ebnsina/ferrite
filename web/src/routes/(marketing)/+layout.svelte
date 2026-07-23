@@ -3,37 +3,42 @@
 
 	let { children } = $props();
 
-	const links = [
-		{ href: '/#features', label: 'Features' },
-		{ href: '/#how', label: 'How it works' },
-		{ href: '/pricing', label: 'Pricing' }
+	// Smooth-scroll to a section by id without pushing a #hash onto the URL.
+	function scrollTo(id: string) {
+		document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+	}
+
+	const nav = [
+		{ id: 'features', label: 'Features' },
+		{ id: 'benefits', label: 'Why Ferrite' },
+		{ id: 'pricing', label: 'Pricing' }
 	];
 
 	const footerCols = [
 		{
 			title: 'Product',
 			links: [
-				{ href: '/#features', label: 'Features' },
-				{ href: '/#how', label: 'How it works' },
-				{ href: '/pricing', label: 'Pricing' },
-				{ href: '/app', label: 'Dashboard' }
+				{ scroll: 'features', label: 'Features' },
+				{ scroll: 'benefits', label: 'Why Ferrite' },
+				{ scroll: 'how', label: 'How it works' },
+				{ scroll: 'pricing', label: 'Pricing' }
 			]
 		},
 		{
 			title: 'Platform',
 			links: [
-				{ href: '/#features', label: 'HLS & DASH' },
-				{ href: '/#features', label: 'Live streaming' },
-				{ href: '/#features', label: 'Signed playback' },
-				{ href: '/#features', label: 'GPU encoding' }
+				{ scroll: 'features', label: 'HLS & DASH' },
+				{ scroll: 'features', label: 'Live streaming' },
+				{ scroll: 'features', label: 'Signed playback' },
+				{ scroll: 'features', label: 'GPU encoding' }
 			]
 		},
 		{
-			title: 'Company',
+			title: 'Get started',
 			links: [
-				{ href: '/', label: 'About' },
-				{ href: '/pricing', label: 'Pricing' },
-				{ href: '/app', label: 'Sign in' }
+				{ href: '/app', label: 'Sign in' },
+				{ href: '/app', label: 'Create workspace' },
+				{ scroll: 'pricing', label: 'View pricing' }
 			]
 		}
 	];
@@ -45,8 +50,11 @@
 		<div class="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
 			<a href="/" aria-label="Ferrite home"><Logo /></a>
 			<nav class="hidden items-center gap-8 md:flex">
-				{#each links as l (l.label)}
-					<a href={l.href} class="text-sm text-muted transition-colors hover:text-fg">{l.label}</a>
+				{#each nav as l (l.label)}
+					<button
+						onclick={() => scrollTo(l.id)}
+						class="text-sm text-muted transition-colors hover:text-fg">{l.label}</button
+					>
 				{/each}
 			</nav>
 			<div class="flex items-center gap-2">
@@ -84,9 +92,16 @@
 						<ul class="flex flex-col gap-2.5">
 							{#each col.links as l (l.label)}
 								<li>
-									<a href={l.href} class="text-sm text-muted transition-colors hover:text-fg"
-										>{l.label}</a
-									>
+									{#if l.href}
+										<a href={l.href} class="text-sm text-muted transition-colors hover:text-fg"
+											>{l.label}</a
+										>
+									{:else}
+										<button
+											onclick={() => scrollTo(l.scroll!)}
+											class="text-sm text-muted transition-colors hover:text-fg">{l.label}</button
+										>
+									{/if}
 								</li>
 							{/each}
 						</ul>
