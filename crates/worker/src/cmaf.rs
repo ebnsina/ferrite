@@ -7,14 +7,17 @@
 //! jobs keep the TS + AES-128 path.
 
 use std::path::Path;
+use std::process::Stdio;
 
 use ferrite_core::{Artifact, ArtifactKind, MediaInfo, TranscodeError, TranscodeJob};
+use tokio::io::{AsyncBufReadExt, AsyncReadExt, BufReader};
 use tokio::process::Command;
 
 use crate::encoding::EncodeParams;
 
 /// Produce the CMAF package (HLS + DASH) into the job's output dir.
 /// `logo` is a local path to the watermark image, overlaid on every rendition.
+/// `on_progress` is called with 0.0–0.99 as ffmpeg advances (real, not stepped).
 pub async fn generate(
     job: &TranscodeJob,
     media: &MediaInfo,
@@ -22,6 +25,8 @@ pub async fn generate(
     dir: &Path,
     encode: EncodeParams,
     logo: Option<&str>,
+    total_secs: f64,
+    on_progress: &(dyn Fn(f32) + Send + Sync),
 ) -> Result<Vec<Artifact>, TranscodeError> {
     tokio::fs::create_dir_all(dir)
         .await
@@ -40,15 +45,48 @@ pub async fn generate(
         logo,
     );
 
-    let output = Command::new("ffmpeg")
+    // Spawn (not .output()) so we can stream `-progress` and report real
+    // percentage. stderr is drained concurrently for the error message.
+    let mut child = Command::new("ffmpeg")
         .args(&args)
-        .output()
-        .await
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
         .map_err(|e| TranscodeError::Ffmpeg(format!("failed to spawn ffmpeg: {e}")))?;
-    if !output.status.success() {
-        return Err(TranscodeError::Ffmpeg(
-            String::from_utf8_lossy(&output.stderr).trim().to_string(),
-        ));
+
+    let stderr = child.stderr.take().expect("piped stderr");
+    let err_task = tokio::spawn(async move {
+        let mut s = String::new();
+        let _ = BufReader::new(stderr).read_to_string(&mut s).await;
+        s
+    });
+
+    if let Some(stdout) = child.stdout.take() {
+        let mut lines = BufReader::new(stdout).lines();
+        while let Ok(Some(line)) = lines.next_line().await {
+            // ffmpeg -progress emits key=value; out_time_us is microseconds
+            // (older builds mislabel it out_time_ms — same units).
+            let us = line
+                .strip_prefix("out_time_us=")
+                .or_else(|| line.strip_prefix("out_time_ms="));
+            if let Some(v) = us {
+                if let Ok(n) = v.trim().parse::<i64>() {
+                    if n >= 0 && total_secs > 0.0 {
+                        let pct = (((n as f64) / 1_000_000.0) / total_secs).clamp(0.0, 0.99);
+                        on_progress(pct as f32);
+                    }
+                }
+            }
+        }
+    }
+
+    let status = child
+        .wait()
+        .await
+        .map_err(|e| TranscodeError::Ffmpeg(format!("ffmpeg wait failed: {e}")))?;
+    let stderr_str = err_task.await.unwrap_or_default();
+    if !status.success() {
+        return Err(TranscodeError::Ffmpeg(stderr_str.trim().to_string()));
     }
 
     collect(job, dir).await
@@ -124,6 +162,8 @@ fn build_args(
         }
     }
 
+    // Stream machine-readable progress to stdout so the worker can report %.
+    a.extend(["-progress", "pipe:1"].map(String::from));
     a.extend(
         [
             "-use_timeline",

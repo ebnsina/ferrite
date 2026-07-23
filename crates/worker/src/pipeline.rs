@@ -144,15 +144,40 @@ async fn run(
         } else {
             None
         };
-        cmaf::generate(
+
+        // Stream ffmpeg's real progress to throttled DB writes (same pattern as
+        // the encrypted path) so the bar advances instead of jumping 0→100.
+        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<f32>();
+        let progress_task = {
+            let pool = pool.clone();
+            let job_id = job.id;
+            tokio::spawn(async move {
+                let mut last = 0.0;
+                while let Some(p) = rx.recv().await {
+                    if p - last >= 0.01 || p >= 1.0 {
+                        let _ = db::set_progress(&pool, job_id, p).await;
+                        last = p;
+                    }
+                }
+            })
+        };
+        let on_prog = move |pct: f32| {
+            let _ = tx.send(pct);
+        };
+        let a = cmaf::generate(
             job,
             &media,
             &source_str,
             &output_dir,
             encode,
             logo_path.as_deref(),
+            media.duration_secs,
+            &on_prog,
         )
-        .await?
+        .await?;
+        drop(on_prog);
+        let _ = progress_task.await;
+        a
     };
 
     // Optional poster + sprite + VTT storyboard. Non-essential: failure logs

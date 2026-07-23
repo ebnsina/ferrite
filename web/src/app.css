@@ -139,3 +139,13 @@
 @media (prefers-reduced-motion: reduce) {
 	.eq-bar, .rr-cell, .rr-line, .shimmer { animation: none !important; }
 }
+
+/* Indeterminate progress (setup phase, before real % is known) */
+@keyframes pb-indeterminate {
+	0% { transform: translateX(-120%); }
+	100% { transform: translateX(360%); }
+}
+.pb-indeterminate { animation: pb-indeterminate 1.3s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+	.pb-indeterminate { animation: none; transform: translateX(100%); }
+}
