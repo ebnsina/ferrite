@@ -302,6 +302,25 @@
 				</div>
 			{/each}
 		</div>
+
+		<!-- The terms behind the features, explained in a line each. -->
+		<div class="mt-20 border-t border-border pt-12">
+			<h3 class="text-center text-lg font-semibold">The acronyms, decoded</h3>
+			<p class="mx-auto mt-2 max-w-xl text-center text-sm text-muted">
+				The terms you'll see below — and what each one actually does.
+			</p>
+			<div class="mt-10 grid gap-x-10 gap-y-6 sm:grid-cols-2">
+				{#each glossary as g (g.term)}
+					<div class="flex gap-4 border-b border-border pb-6">
+						<span
+							class="mono shrink-0 rounded-md bg-accent-soft px-2 py-1 text-sm font-semibold text-accent"
+							>{g.term}</span
+						>
+						<p class="text-sm text-muted">{g.desc}</p>
+					</div>
+				{/each}
+			</div>
+		</div>
 	</div>
 </section>
 
@@ -324,27 +343,6 @@
 					</span>
 					<h3 class="text-base font-semibold">{f.title}</h3>
 					<p class="mt-2 text-sm text-muted">{f.body}</p>
-				</div>
-			{/each}
-		</div>
-	</div>
-</section>
-
-<!-- Glossary — what the acronyms mean -->
-<section id="glossary" class="border-t border-border">
-	<div class="mx-auto max-w-6xl px-6 py-20">
-		<div class="mx-auto max-w-2xl text-center">
-			<h2 class="text-3xl font-semibold tracking-tight">The acronyms, decoded</h2>
-			<p class="mt-3 text-muted">The terms you'll see above — and what each one actually does.</p>
-		</div>
-		<div class="mt-14 grid gap-x-10 gap-y-6 sm:grid-cols-2">
-			{#each glossary as g (g.term)}
-				<div class="flex gap-4 border-b border-border pb-6">
-					<span
-						class="mono shrink-0 rounded-md bg-accent-soft px-2 py-1 text-sm font-semibold text-accent"
-						>{g.term}</span
-					>
-					<p class="text-sm text-muted">{g.desc}</p>
 				</div>
 			{/each}
 		</div>
