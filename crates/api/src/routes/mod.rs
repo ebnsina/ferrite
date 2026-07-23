@@ -85,7 +85,16 @@ pub fn build(state: AppState) -> Router {
             "/live/streams",
             get(live::list_streams).post(live::create_stream),
         )
-        .route("/live/streams/{id}", get(live::get_stream));
+        .route("/live/streams/{id}", get(live::get_stream))
+        .route("/live/streams/{id}/clip", post(live::clip_live))
+        .route(
+            "/live/streams/{id}/targets",
+            get(live::list_targets).post(live::create_target),
+        )
+        .route(
+            "/live/streams/{id}/targets/{target_id}",
+            axum::routing::delete(live::delete_target),
+        );
 
     Router::new()
         .nest("/v1", api)
@@ -100,6 +109,9 @@ pub fn build(state: AppState) -> Router {
         .route("/playback/beacon", post(analytics::beacon))
         // Ingest-server DVR callback (secret-gated) → archive live recording to VOD.
         .route("/internal/live/dvr", post(live::dvr_hook))
+        // Ingest-server publish hooks (secret-gated) → start/stop simulcast relays.
+        .route("/internal/live/publish", post(live::publish_hook))
+        .route("/internal/live/unpublish", post(live::unpublish_hook))
         // Prometheus scrape endpoint.
         .route(
             "/metrics",

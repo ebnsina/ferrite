@@ -9,6 +9,7 @@ use sqlx::PgPool;
 
 use crate::config::Settings;
 use crate::email::Mailer;
+use crate::relay::RelayManager;
 
 /// Cloneable handle to shared resources. Cheap to clone (inner `Arc`s / pools).
 #[derive(Clone)]
@@ -23,6 +24,7 @@ struct Inner {
     settings: Settings,
     metrics: PrometheusHandle,
     mailer: Mailer,
+    relay: RelayManager,
 }
 
 impl AppState {
@@ -42,12 +44,17 @@ impl AppState {
                 settings,
                 metrics,
                 mailer,
+                relay: RelayManager::default(),
             }),
         }
     }
 
     pub fn mailer(&self) -> &Mailer {
         &self.inner.mailer
+    }
+
+    pub fn relay(&self) -> &RelayManager {
+        &self.inner.relay
     }
 
     pub fn db(&self) -> &PgPool {

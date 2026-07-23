@@ -382,6 +382,16 @@ pub async fn list_assets(pool: &PgPool, tenant_id: Uuid) -> Result<Vec<Asset>, s
     .await
 }
 
+/// Mark a produced asset as failed (tenant-scoped).
+pub async fn set_asset_error(pool: &PgPool, tenant_id: Uuid, id: Uuid) -> Result<(), sqlx::Error> {
+    sqlx::query("UPDATE assets SET status = 'error' WHERE id = $1 AND tenant_id = $2")
+        .bind(id)
+        .bind(tenant_id)
+        .execute(pool)
+        .await?;
+    Ok(())
+}
+
 /// Mark an upload complete. Returns false if the asset does not belong to the tenant.
 pub async fn mark_asset_ready(
     pool: &PgPool,
@@ -535,6 +545,79 @@ pub async fn find_job(
     .bind(id)
     .bind(tenant_id)
     .fetch_optional(pool)
+    .await
+}
+
+// --- Simulcast targets -------------------------------------------------------
+
+#[derive(Debug, sqlx::FromRow)]
+pub struct SimulcastTarget {
+    pub id: Uuid,
+    pub name: String,
+    pub url: String,
+    pub stream_key: String,
+    pub enabled: bool,
+    pub created_at: DateTime<Utc>,
+}
+
+pub async fn create_target(
+    pool: &PgPool,
+    tenant_id: Uuid,
+    live_stream_id: Uuid,
+    name: &str,
+    url: &str,
+    stream_key: &str,
+) -> Result<SimulcastTarget, sqlx::Error> {
+    sqlx::query_as::<_, SimulcastTarget>(
+        "INSERT INTO simulcast_targets (tenant_id, live_stream_id, name, url, stream_key)
+         VALUES ($1, $2, $3, $4, $5)
+         RETURNING id, name, url, stream_key, enabled, created_at",
+    )
+    .bind(tenant_id)
+    .bind(live_stream_id)
+    .bind(name)
+    .bind(url)
+    .bind(stream_key)
+    .fetch_one(pool)
+    .await
+}
+
+pub async fn list_targets(
+    pool: &PgPool,
+    tenant_id: Uuid,
+    live_stream_id: Uuid,
+) -> Result<Vec<SimulcastTarget>, sqlx::Error> {
+    sqlx::query_as::<_, SimulcastTarget>(
+        "SELECT id, name, url, stream_key, enabled, created_at FROM simulcast_targets
+         WHERE live_stream_id = $1 AND tenant_id = $2 ORDER BY created_at",
+    )
+    .bind(live_stream_id)
+    .bind(tenant_id)
+    .fetch_all(pool)
+    .await
+}
+
+pub async fn delete_target(pool: &PgPool, tenant_id: Uuid, id: Uuid) -> Result<bool, sqlx::Error> {
+    let r = sqlx::query("DELETE FROM simulcast_targets WHERE id = $1 AND tenant_id = $2")
+        .bind(id)
+        .bind(tenant_id)
+        .execute(pool)
+        .await?;
+    Ok(r.rows_affected() > 0)
+}
+
+/// Enabled (url, stream_key) destinations for a publishing stream key.
+pub async fn enabled_targets_by_stream_key(
+    pool: &PgPool,
+    stream_key: &str,
+) -> Result<Vec<(String, String)>, sqlx::Error> {
+    sqlx::query_as::<_, (String, String)>(
+        "SELECT t.url, t.stream_key FROM simulcast_targets t
+         JOIN live_streams l ON l.id = t.live_stream_id
+         WHERE l.stream_key = $1 AND t.enabled = true",
+    )
+    .bind(stream_key)
+    .fetch_all(pool)
     .await
 }
 

@@ -117,6 +117,37 @@ export function getLiveStream(id: string) {
 	return apiRequest<LiveStream>(`/v1/live/streams/${id}`);
 }
 
+export interface SimulcastTarget {
+	id: string;
+	name: string;
+	url: string;
+	stream_key: string;
+	enabled: boolean;
+	created_at: string;
+}
+
+export function listTargets(streamId: string) {
+	return apiRequest<SimulcastTarget[]>(`/v1/live/streams/${streamId}/targets`);
+}
+
+export function createTarget(streamId: string, name: string, url: string, stream_key: string) {
+	return apiRequest<SimulcastTarget>(`/v1/live/streams/${streamId}/targets`, {
+		method: 'POST',
+		body: JSON.stringify({ name, url, stream_key })
+	});
+}
+
+export function deleteTarget(streamId: string, targetId: string) {
+	return apiRequest<void>(`/v1/live/streams/${streamId}/targets/${targetId}`, { method: 'DELETE' });
+}
+
+export function clipLive(streamId: string, duration: number) {
+	return apiRequest<{ asset_id: string; filename: string; status: string }>(
+		`/v1/live/streams/${streamId}/clip`,
+		{ method: 'POST', body: JSON.stringify({ duration }) }
+	);
+}
+
 export function getMe() {
 	return apiRequest<{ id: string; name: string; plan: string }>('/v1/me');
 }

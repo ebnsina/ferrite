@@ -6,6 +6,7 @@ mod db;
 mod email;
 mod error;
 mod metrics;
+mod relay;
 mod routes;
 mod state;
 
