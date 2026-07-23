@@ -1,9 +1,10 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { fade } from 'svelte/transition';
 	import { browser } from '$app/environment';
 	import { Icon } from '$lib/ui';
 	import { reveal } from '$lib/actions/reveal';
-	import { detectCurrency, formatPrice, CURRENCY_CODES, CURRENCIES } from '$lib/currency';
+	import { detectCurrency, formatPrice, CURRENCY_LIST, CURRENCIES } from '$lib/currency';
 	import { Stack, ShareNetwork, Cpu, Broadcast, LockKey, Image, CloudArrowUp, Queue, Rocket, ArrowRight, CaretDown, CheckCircle, MagicWand, ClosedCaptioning, Scissors, Code, Database, Coins, Package, X, MagnifyingGlass, ShieldCheck, Play } from 'phosphor-svelte';
 
 	function scrollTo(id: string) {
@@ -12,6 +13,8 @@
 
 	// Region-aware pricing: detect on the client, allow override, persist choice.
 	let currency = $state('USD');
+	let currencyOpen = $state(false);
+	const cur = $derived(CURRENCIES[currency] ?? CURRENCIES.USD);
 	onMount(() => {
 		const saved = localStorage.getItem('ferrite.currency');
 		currency = saved && CURRENCIES[saved] ? saved : detectCurrency();
@@ -19,6 +22,10 @@
 	$effect(() => {
 		if (browser) localStorage.setItem('ferrite.currency', currency);
 	});
+	function pickCurrency(code: string) {
+		currency = code;
+		currencyOpen = false;
+	}
 
 	const clients = ['NORTHWIND', 'LOOPTV', 'VAYU MEDIA', 'CANTOR', 'HELIX', 'ORBIT'];
 
@@ -739,16 +746,40 @@
 			</p>
 		</div>
 
-		<!-- Currency switcher (auto-detected by region) -->
-		<div class="mt-8 flex items-center justify-center gap-2 text-sm">
-			<span class="text-muted">Show prices in</span>
-			<div class="flex items-center gap-1 rounded-lg border border-border bg-surface-2 p-0.5">
-				{#each CURRENCY_CODES as code (code)}
-					<button
-						onclick={() => (currency = code)}
-						class={`rounded-md px-2.5 py-1 text-xs transition-colors ${currency === code ? 'bg-surface font-medium text-fg shadow-sm' : 'text-muted hover:text-fg'}`}
-					>{code}</button>
-				{/each}
+		<!-- Currency dropdown (auto-detected by region) -->
+		<div class="mt-8 flex items-center justify-center gap-2.5 text-sm">
+			<span class="text-muted">Prices in</span>
+			<div class="relative">
+				<button
+					onclick={() => (currencyOpen = !currencyOpen)}
+					class="flex items-center gap-2 rounded-lg border border-border bg-surface px-3 py-1.5 transition-colors hover:bg-surface-2"
+				>
+					<span class="text-base leading-none">{cur.flag}</span>
+					<span class="font-medium">{cur.code}</span>
+					<span class="text-muted">{cur.symbol}</span>
+					<span class={`text-muted transition-transform ${currencyOpen ? 'rotate-180' : ''}`}>
+						<Icon icon={CaretDown} size={14} />
+					</span>
+				</button>
+				{#if currencyOpen}
+					<button class="fixed inset-0 z-30 cursor-default" aria-label="Close" onclick={() => (currencyOpen = false)}></button>
+					<div
+						class="absolute left-1/2 z-40 mt-2 w-56 -translate-x-1/2 overflow-hidden rounded-xl border border-border bg-surface p-1 shadow-xl"
+						transition:fade={{ duration: 120 }}
+					>
+						{#each CURRENCY_LIST as c (c.code)}
+							<button
+								onclick={() => pickCurrency(c.code)}
+								class={`flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-surface-2 ${c.code === currency ? 'text-accent' : ''}`}
+							>
+								<span class="text-base leading-none">{c.flag}</span>
+								<span class="w-9 font-medium">{c.code}</span>
+								<span class="truncate text-xs text-muted">{c.name}</span>
+								{#if c.code === currency}<span class="ml-auto"><Icon icon={CheckCircle} size={15} /></span>{/if}
+							</button>
+						{/each}
+					</div>
+				{/if}
 			</div>
 		</div>
 

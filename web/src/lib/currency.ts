@@ -6,18 +6,22 @@ export interface Currency {
 	code: string;
 	rate: number; // multiplier from USD
 	round: number; // round the converted amount to the nearest this
+	symbol: string;
+	name: string;
+	flag: string;
 }
 
 export const CURRENCIES: Record<string, Currency> = {
-	USD: { code: 'USD', rate: 1, round: 1 },
-	BDT: { code: 'BDT', rate: 118, round: 10 },
-	EUR: { code: 'EUR', rate: 0.92, round: 1 },
-	GBP: { code: 'GBP', rate: 0.79, round: 1 },
-	INR: { code: 'INR', rate: 83, round: 10 },
-	AED: { code: 'AED', rate: 3.67, round: 1 },
-	SAR: { code: 'SAR', rate: 3.75, round: 1 }
+	USD: { code: 'USD', rate: 1, round: 1, symbol: '$', name: 'US Dollar', flag: '🇺🇸' },
+	BDT: { code: 'BDT', rate: 118, round: 10, symbol: '৳', name: 'Bangladeshi Taka', flag: '🇧🇩' },
+	EUR: { code: 'EUR', rate: 0.92, round: 1, symbol: '€', name: 'Euro', flag: '🇪🇺' },
+	GBP: { code: 'GBP', rate: 0.79, round: 1, symbol: '£', name: 'British Pound', flag: '🇬🇧' },
+	INR: { code: 'INR', rate: 83, round: 10, symbol: '₹', name: 'Indian Rupee', flag: '🇮🇳' },
+	AED: { code: 'AED', rate: 3.67, round: 1, symbol: 'AED', name: 'UAE Dirham', flag: '🇦🇪' },
+	SAR: { code: 'SAR', rate: 3.75, round: 1, symbol: 'SAR', name: 'Saudi Riyal', flag: '🇸🇦' }
 };
 
+export const CURRENCY_LIST = Object.values(CURRENCIES);
 export const CURRENCY_CODES = Object.keys(CURRENCIES);
 
 // Timezone → currency (checked in order). Covers the regions we call out.
