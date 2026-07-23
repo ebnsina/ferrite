@@ -7,27 +7,14 @@
 		LiveStreaming01Icon,
 		UserGroupIcon,
 		Analytics01Icon,
-		Moon02Icon,
-		Sun03Icon,
-		Logout01Icon
+		Settings01Icon
 	} from '@hugeicons/core-free-icons';
-	import { browser } from '$app/environment';
 	import { Icon, Logo } from '$lib/ui';
 	import { session } from '$lib/api/session.svelte';
 	import Auth from '$lib/components/Auth.svelte';
+	import UserMenu from '$lib/components/UserMenu.svelte';
 
 	let { children } = $props();
-
-	// Initial theme is set by the inline script in app.html (before paint); mirror it here.
-	let theme = $state<'dark' | 'light'>(
-		browser && document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark'
-	);
-
-	function toggleTheme() {
-		theme = theme === 'dark' ? 'light' : 'dark';
-		document.documentElement.setAttribute('data-theme', theme);
-		localStorage.setItem('ferrite.theme', theme);
-	}
 
 	const nav = [
 		{ href: '/app', label: 'Dashboard', icon: DashboardSquare01Icon },
@@ -35,7 +22,8 @@
 		{ href: '/app/jobs', label: 'Jobs', icon: PlayListIcon },
 		{ href: '/app/live', label: 'Live', icon: LiveStreaming01Icon },
 		{ href: '/app/metrics', label: 'Metrics', icon: Analytics01Icon },
-		{ href: '/app/team', label: 'Team', icon: UserGroupIcon }
+		{ href: '/app/team', label: 'Team', icon: UserGroupIcon },
+		{ href: '/app/settings', label: 'Settings', icon: Settings01Icon }
 	];
 
 	function isActive(href: string) {
@@ -68,12 +56,6 @@
 				</a>
 			{/each}
 		</nav>
-		{#if session.tenant}
-			<div class="border-t border-border p-4">
-				<p class="truncate text-sm font-medium">{session.tenant.name}</p>
-				<p class="truncate text-xs text-muted">{session.user?.email}</p>
-			</div>
-		{/if}
 	</aside>
 
 	<!-- Main -->
@@ -82,24 +64,8 @@
 			<div class="md:hidden">
 				<Logo size={24} />
 			</div>
-			<div class="ml-auto flex items-center gap-1">
-				<button
-					onclick={toggleTheme}
-					aria-label="Toggle theme"
-					class="rounded-lg p-2 text-muted transition-colors hover:bg-surface-2 hover:text-fg"
-				>
-					{#if theme === 'dark'}<Icon icon={Sun03Icon} size={18} />{:else}<Icon
-							icon={Moon02Icon}
-							size={18}
-						/>{/if}
-				</button>
-				<button
-					onclick={() => session.clear()}
-					aria-label="Sign out"
-					class="rounded-lg p-2 text-muted transition-colors hover:bg-surface-2 hover:text-fg"
-				>
-					<Icon icon={Logout01Icon} size={18} />
-				</button>
+			<div class="ml-auto">
+				<UserMenu />
 			</div>
 		</header>
 		<main class="flex-1 px-6 py-8">

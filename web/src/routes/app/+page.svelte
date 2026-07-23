@@ -4,8 +4,11 @@
 	import { listAssets, listJobs, getUsage } from '$lib/api/endpoints';
 	import { ApiError } from '$lib/api/client';
 	import type { Asset, Job, JobState, Usage } from '$lib/api/types';
-	import { bytes, timeAgo } from '$lib/format';
+	import { bytes, timeAgo, greeting, nameFromEmail, longDate } from '$lib/format';
+	import { session } from '$lib/api/session.svelte';
 	import { Upload01Icon, Film01Icon, PlayListIcon, HardDriveIcon } from '@hugeicons/core-free-icons';
+
+	const name = $derived(nameFromEmail(session.user?.email));
 
 	let assets = $state<Asset[]>([]);
 	let jobs = $state<Job[]>([]);
@@ -33,10 +36,21 @@
 </script>
 
 <div class="mx-auto max-w-5xl">
-	<div class="mb-8 flex items-center justify-between">
+	<div class="mb-8 flex flex-wrap items-end justify-between gap-4">
 		<div>
-			<h1 class="text-2xl font-semibold tracking-tight">Dashboard</h1>
-			<p class="mt-1 text-sm text-muted">Transcode overview for your workspace.</p>
+			<p class="text-sm text-muted">{longDate()}</p>
+			<h1 class="mt-1 text-2xl font-semibold tracking-tight">
+				{greeting()}, {name} <span class="text-accent">👋</span>
+			</h1>
+			<p class="mt-1 text-sm text-muted">
+				{#if activeCount > 0}
+					{activeCount} job{activeCount === 1 ? '' : 's'} transcoding right now.
+				{:else if jobs.length > 0}
+					All caught up — nothing in the queue.
+				{:else}
+					Upload your first video to get started.
+				{/if}
+			</p>
 		</div>
 		<a href="/app/assets"><Button><Icon icon={Upload01Icon} size={16} /> Upload video</Button></a>
 	</div>
