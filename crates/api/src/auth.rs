@@ -19,7 +19,7 @@ use crate::state::AppState;
 
 const KEY_PREFIX: &str = "frt_";
 const DISPLAY_PREFIX_LEN: usize = KEY_PREFIX.len() + 8;
-const SESSION_TTL_SECS: u64 = 7 * 24 * 60 * 60;
+pub const SESSION_TTL_SECS: u64 = 7 * 24 * 60 * 60;
 
 // --- Passwords ---------------------------------------------------------------
 
@@ -151,19 +151,38 @@ impl FromRequestParts<AppState> for TenantContext {
         parts: &mut Parts,
         state: &AppState,
     ) -> Result<Self, Self::Rejection> {
-        let token = parts
+        // Two credential sources. Programmatic clients send `Authorization:
+        // Bearer` (API keys, or a JWT from the login body); browsers send the
+        // HttpOnly session cookie. Header wins so a stray cookie can't shadow an
+        // explicit key.
+        let bearer = parts
             .headers
             .get(AUTHORIZATION)
             .and_then(|v| v.to_str().ok())
             .and_then(|v| v.strip_prefix("Bearer "))
             .map(str::trim)
-            .filter(|t| !t.is_empty())
-            .ok_or(ApiError::Unauthorized)?;
+            .filter(|t| !t.is_empty());
+
+        let (token, from_cookie) = match bearer {
+            Some(t) => (t.to_string(), false),
+            None => (
+                crate::cookies::read(&parts.headers, crate::cookies::SESSION_COOKIE)
+                    .filter(|t| !t.is_empty())
+                    .ok_or(ApiError::Unauthorized)?,
+                true,
+            ),
+        };
+
+        // Cookie auth is ambient, so mutating requests must prove they originate
+        // from our own page via the double-submit CSRF token. Header requests
+        // (Bearer) aren't CSRF-able and are exempt.
+        if from_cookie && is_mutating(&parts.method) {
+            verify_csrf(&parts.headers)?;
+        }
 
         // API keys carry the frt_ prefix; everything else is a session JWT.
-        if let Some(rest) = token.strip_prefix(KEY_PREFIX) {
-            let _ = rest;
-            let key = db::find_active_api_key(state.db(), &hash_key(token))
+        if token.starts_with(KEY_PREFIX) {
+            let key = db::find_active_api_key(state.db(), &hash_key(&token))
                 .await?
                 .ok_or(ApiError::Unauthorized)?;
             db::touch_api_key(state.db(), key.id).await;
@@ -174,7 +193,7 @@ impl FromRequestParts<AppState> for TenantContext {
                 superadmin: false,
             })
         } else {
-            let claims = decode_session(&state.settings().auth_secret, token)
+            let claims = decode_session(&state.settings().auth_secret, &token)
                 .ok_or(ApiError::Unauthorized)?;
             Ok(TenantContext {
                 tenant_id: claims.tenant_id,
@@ -183,5 +202,28 @@ impl FromRequestParts<AppState> for TenantContext {
                 superadmin: claims.superadmin,
             })
         }
+    }
+}
+
+fn is_mutating(method: &axum::http::Method) -> bool {
+    !matches!(
+        *method,
+        axum::http::Method::GET | axum::http::Method::HEAD | axum::http::Method::OPTIONS
+    )
+}
+
+/// Double-submit check: the `X-CSRF-Token` header must be present and equal the
+/// `ferrite_csrf` cookie. A cross-site attacker can neither read that cookie
+/// (same-origin policy) nor set a custom header without a blocked preflight.
+fn verify_csrf(headers: &axum::http::HeaderMap) -> Result<(), ApiError> {
+    let header = headers
+        .get(crate::cookies::CSRF_HEADER)
+        .and_then(|v| v.to_str().ok())
+        .map(str::trim)
+        .filter(|t| !t.is_empty());
+    let cookie = crate::cookies::read(headers, crate::cookies::CSRF_COOKIE);
+    match (header, cookie) {
+        (Some(h), Some(c)) if h == c => Ok(()),
+        _ => Err(ApiError::Forbidden),
     }
 }

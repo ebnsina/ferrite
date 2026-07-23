@@ -8,7 +8,8 @@
 		changePassword,
 		getBrand,
 		uploadBrandLogo,
-		uploadToPresigned
+		uploadToPresigned,
+		logout
 	} from '$lib/api/endpoints';
 	import { ApiError } from '$lib/api/client';
 	import { profileNameSchema, passwordSchema, validate } from '$lib/schemas';
@@ -262,7 +263,7 @@
 	<Card>
 		<h2 class="mb-1 text-sm font-medium text-muted">Session</h2>
 		<p class="mb-4 text-xs text-muted">Sign out of Ferrite on this device.</p>
-		<Button variant="secondary" onclick={() => session.clear()}>
+		<Button variant="secondary" onclick={async () => { await logout().catch(() => {}); session.clear(); }}>
 			<Icon icon={Logout01Icon} size={16} /> Sign out
 		</Button>
 	</Card>

@@ -1,4 +1,7 @@
-// Reactive session: the dashboard user's JWT + identity, persisted to localStorage.
+// Reactive session: the dashboard user's identity only. The auth token is NOT
+// stored here — it lives in an HttpOnly cookie the browser sends automatically,
+// so no credential is reachable from JavaScript (XSS can't exfiltrate it). What
+// we persist is non-sensitive identity used purely for UI (name, role, etc.).
 import { browser } from '$app/environment';
 
 const STORAGE_KEY = 'ferrite.session';
@@ -6,7 +9,6 @@ const STORAGE_KEY = 'ferrite.session';
 import type { User } from './types';
 
 export interface SessionData {
-	token: string;
 	user: User;
 	tenant: { id: string; name: string };
 }
@@ -24,9 +26,6 @@ function load(): SessionData | null {
 let data = $state<SessionData | null>(load());
 
 export const session = {
-	get token() {
-		return data?.token ?? null;
-	},
 	get user() {
 		return data?.user ?? null;
 	},

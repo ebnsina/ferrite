@@ -1,17 +1,38 @@
 //! Dashboard authentication: sign up (creates a workspace + owner) and log in.
 
 use axum::extract::State;
+use axum::http::header::SET_COOKIE;
 use axum::http::StatusCode;
+use axum::response::{AppendHeaders, IntoResponse};
 use axum::Json;
 use rand::RngCore;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use validator::Validate;
 
-use crate::auth;
+use crate::auth::{self, SESSION_TTL_SECS};
+use crate::cookies;
 use crate::db;
 use crate::error::{ApiError, ApiResult};
 use crate::state::AppState;
+
+/// Set the HttpOnly session cookie + the readable CSRF cookie for a new session.
+fn session_cookies(
+    state: &AppState,
+    token: &str,
+) -> AppendHeaders<[(axum::http::HeaderName, String); 2]> {
+    let secure = state.settings().cookie_secure();
+    AppendHeaders([
+        (
+            SET_COOKIE,
+            cookies::set_session(token, secure, SESSION_TTL_SECS),
+        ),
+        (
+            SET_COOKIE,
+            cookies::set_csrf(&cookies::random_token(), secure, SESSION_TTL_SECS),
+        ),
+    ])
+}
 
 #[derive(Serialize)]
 pub struct UserView {
@@ -46,10 +67,12 @@ pub struct SignupRequest {
 }
 
 /// `POST /v1/auth/signup` — create a workspace and its owner, return a session.
+/// The JWT is delivered in an HttpOnly cookie (browsers) and echoed in the body
+/// (non-browser clients); a CSRF cookie is set alongside.
 pub async fn signup(
     State(state): State<AppState>,
     Json(body): Json<SignupRequest>,
-) -> ApiResult<Json<AuthResponse>> {
+) -> ApiResult<impl IntoResponse> {
     body.validate().map_err(ApiError::Validation)?;
     let email = body.email.trim().to_lowercase();
 
@@ -70,20 +93,24 @@ pub async fn signup(
         "owner",
         superadmin,
     );
-    Ok(Json(AuthResponse {
-        token,
-        user: UserView {
-            id: user_id,
-            email,
-            name: None,
-            role: "owner".into(),
-            superadmin,
-        },
-        tenant: TenantView {
-            id: tenant.id,
-            name: tenant.name,
-        },
-    }))
+    let cookies = session_cookies(&state, &token);
+    Ok((
+        cookies,
+        Json(AuthResponse {
+            token,
+            user: UserView {
+                id: user_id,
+                email,
+                name: None,
+                role: "owner".into(),
+                superadmin,
+            },
+            tenant: TenantView {
+                id: tenant.id,
+                name: tenant.name,
+            },
+        }),
+    ))
 }
 
 #[derive(Deserialize)]
@@ -92,11 +119,12 @@ pub struct LoginRequest {
     pub password: String,
 }
 
-/// `POST /v1/auth/login` — verify credentials, return a session.
+/// `POST /v1/auth/login` — verify credentials, return a session (HttpOnly cookie
+/// + CSRF cookie; JWT also echoed in the body for non-browser clients).
 pub async fn login(
     State(state): State<AppState>,
     Json(body): Json<LoginRequest>,
-) -> ApiResult<Json<AuthResponse>> {
+) -> ApiResult<impl IntoResponse> {
     let email = body.email.trim().to_lowercase();
     let user = db::find_user_by_email(state.db(), &email)
         .await?
@@ -117,20 +145,37 @@ pub async fn login(
         &user.role,
         superadmin,
     );
-    Ok(Json(AuthResponse {
-        token,
-        user: UserView {
-            id: user.id,
-            email,
-            name: user.name,
-            role: user.role,
-            superadmin,
-        },
-        tenant: TenantView {
-            id: tenant.id,
-            name: tenant.name,
-        },
-    }))
+    let cookies = session_cookies(&state, &token);
+    Ok((
+        cookies,
+        Json(AuthResponse {
+            token,
+            user: UserView {
+                id: user.id,
+                email,
+                name: user.name,
+                role: user.role,
+                superadmin,
+            },
+            tenant: TenantView {
+                id: tenant.id,
+                name: tenant.name,
+            },
+        }),
+    ))
+}
+
+/// `POST /v1/auth/logout` — expire the session + CSRF cookies. Unauthenticated
+/// and idempotent (clearing cookies changes no server state).
+pub async fn logout(State(state): State<AppState>) -> impl IntoResponse {
+    let secure = state.settings().cookie_secure();
+    (
+        AppendHeaders([
+            (SET_COOKIE, cookies::clear(cookies::SESSION_COOKIE, secure)),
+            (SET_COOKIE, cookies::clear(cookies::CSRF_COOKIE, secure)),
+        ]),
+        StatusCode::NO_CONTENT,
+    )
 }
 
 // --- Password reset ----------------------------------------------------------

@@ -1,6 +1,5 @@
 // Typed API calls. Thin wrappers over apiRequest; components never build URLs.
 import { apiRequest, API_BASE } from './client';
-import { session } from './session.svelte';
 import type {
 	ApiKey,
 	Asset,
@@ -27,6 +26,11 @@ export function login(email: string, password: string) {
 		method: 'POST',
 		body: JSON.stringify({ email, password })
 	});
+}
+
+/** Clear the server-side session + CSRF cookies. */
+export function logout() {
+	return apiRequest<void>('/v1/auth/logout', { method: 'POST' });
 }
 
 export function forgotPassword(email: string) {
@@ -337,15 +341,16 @@ export function getJobAnalytics(id: string) {
 
 /**
  * Stream a job's status via SSE until it reaches a terminal state.
- * Uses fetch (not EventSource) so the Bearer auth header can be sent.
- * Returns a cleanup function that aborts the stream.
+ * Uses fetch (not EventSource) so the session cookie rides along via
+ * `credentials: 'include'`. Returns a cleanup function that aborts the stream.
  */
 export function streamJob(id: string, onUpdate: (job: Job) => void): () => void {
 	const controller = new AbortController();
 
 	(async () => {
 		const res = await fetch(`${API_BASE}/v1/jobs/${id}/events`, {
-			headers: { Authorization: `Bearer ${session.token}`, Accept: 'text/event-stream' },
+			credentials: 'include',
+			headers: { Accept: 'text/event-stream' },
 			signal: controller.signal
 		});
 		if (!res.ok || !res.body) return;

@@ -3,6 +3,7 @@
 mod ai;
 mod auth;
 mod config;
+mod cookies;
 mod db;
 mod email;
 mod error;

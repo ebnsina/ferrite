@@ -20,6 +20,9 @@ mod usage;
 mod waitlist;
 mod webhooks;
 
+use axum::http::header::{ACCEPT, AUTHORIZATION, CONTENT_TYPE};
+use axum::http::{HeaderName, HeaderValue, Method};
+use axum::response::Response;
 use axum::routing::{get, post};
 use axum::Router;
 use tower_http::cors::CorsLayer;
@@ -28,6 +31,62 @@ use tower_http::trace::TraceLayer;
 
 use crate::error::not_found;
 use crate::state::AppState;
+
+/// OWASP baseline response headers, applied to every response.
+async fn security_headers(req: axum::extract::Request, next: axum::middleware::Next) -> Response {
+    let mut res = next.run(req).await;
+    let h = res.headers_mut();
+    // Don't let browsers MIME-sniff; block framing of API responses; trim the
+    // referer on cross-origin; force HTTPS on any compliant client.
+    h.insert(
+        "x-content-type-options",
+        HeaderValue::from_static("nosniff"),
+    );
+    h.insert("x-frame-options", HeaderValue::from_static("DENY"));
+    h.insert(
+        "referrer-policy",
+        HeaderValue::from_static("strict-origin-when-cross-origin"),
+    );
+    h.insert(
+        "strict-transport-security",
+        HeaderValue::from_static("max-age=63072000; includeSubDomains"),
+    );
+    // Media/playback must remain loadable by cross-origin embed players.
+    h.insert(
+        "cross-origin-resource-policy",
+        HeaderValue::from_static("cross-origin"),
+    );
+    res
+}
+
+/// Credentialed CORS for the dashboard: only the configured app origin may send
+/// cookies. Falls back to permissive (dev) if the origin can't be parsed.
+fn dashboard_cors(state: &AppState) -> CorsLayer {
+    match state.settings().app_origin().parse::<HeaderValue>() {
+        Ok(origin) => CorsLayer::new()
+            .allow_origin(origin)
+            .allow_credentials(true)
+            .allow_methods([
+                Method::GET,
+                Method::POST,
+                Method::PATCH,
+                Method::DELETE,
+                Method::OPTIONS,
+            ])
+            .allow_headers([
+                CONTENT_TYPE,
+                ACCEPT,
+                AUTHORIZATION,
+                HeaderName::from_static(crate::cookies::CSRF_HEADER),
+            ]),
+        Err(_) => {
+            tracing::warn!(
+                "FERRITE_APP_BASE_URL is not a valid CORS origin; using permissive CORS"
+            );
+            CorsLayer::permissive()
+        }
+    }
+}
 
 /// Build the full application router with shared state and middleware.
 pub fn build(state: AppState) -> Router {
@@ -38,6 +97,7 @@ pub fn build(state: AppState) -> Router {
         .route("/auth/login", post(session::login))
         .route("/auth/forgot-password", post(session::forgot_password))
         .route("/auth/reset-password", post(session::reset_password))
+        .route("/auth/logout", post(session::logout))
         .route(
             "/api-keys",
             get(tenants::list_api_keys).post(tenants::create_api_key),
@@ -111,8 +171,14 @@ pub fn build(state: AppState) -> Router {
             axum::routing::delete(live::delete_target),
         );
 
-    Router::new()
-        .nest("/v1", api)
+    // Dashboard (/v1) is cookie-authenticated → credentialed CORS to the app
+    // origin only. Applied to the nested router so it isn't double-wrapped by
+    // the public CORS below.
+    let api = api.layer(dashboard_cors(&state));
+
+    // Public routes: token- or secret-gated (embed player, media, waitlist,
+    // ingest hooks, metrics) → permissive CORS, no credentials, any origin.
+    let public = Router::new()
         // Also expose /health at the root for load-balancer defaults.
         .route("/health", get(health::health))
         // Token-authorized playback proxy (not API-key auth; scoped by signed token).
@@ -134,10 +200,16 @@ pub fn build(state: AppState) -> Router {
             "/metrics",
             get(|state: axum::extract::State<AppState>| async move { state.render_metrics() }),
         )
+        .layer(CorsLayer::permissive());
+
+    Router::new()
+        .nest("/v1", api)
+        .merge(public)
         .fallback(not_found)
+        // Non-CORS cross-cutting layers apply to both groups.
+        .layer(axum::middleware::from_fn(security_headers))
         .layer(axum::middleware::from_fn(crate::metrics::track))
         .layer(TraceLayer::new_for_http())
-        .layer(CorsLayer::permissive())
         // Guard against oversized JSON bodies (uploads go direct-to-S3, not here).
         .layer(RequestBodyLimitLayer::new(1024 * 1024))
         .with_state(state)

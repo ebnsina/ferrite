@@ -12,6 +12,16 @@ import { PUBLIC_API_URL } from '$env/static/public';
 /** API base URL. Required — build fails if PUBLIC_API_URL is unset. */
 export const API_BASE = PUBLIC_API_URL;
 
+const CSRF_COOKIE = 'ferrite_csrf';
+const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
+
+/** Read the CSRF token the API set as a (non-HttpOnly) cookie. */
+function csrfToken(): string | null {
+	if (typeof document === 'undefined') return null;
+	const match = document.cookie.match(new RegExp(`(?:^|; )${CSRF_COOKIE}=([^;]*)`));
+	return match ? decodeURIComponent(match[1]) : null;
+}
+
 export class ApiError extends Error {
 	readonly status: number;
 	readonly code: string;
@@ -45,14 +55,20 @@ export async function apiRequest<T>(path: string, opts: RequestOptions = {}): Pr
 	const { fetch: fetchImpl = fetch, headers, ...rest } = opts;
 	const url = path.startsWith('http') ? path : `${API_BASE}${path}`;
 
+	// Auth rides in the HttpOnly session cookie (credentials: 'include'); state-
+	// changing requests add the double-submit CSRF header the API validates.
+	const method = (rest.method ?? 'GET').toUpperCase();
+	const csrf = SAFE_METHODS.has(method) ? null : csrfToken();
+
 	let res: Response;
 	try {
 		res = await fetchImpl(url, {
 			...rest,
+			credentials: 'include',
 			headers: {
 				Accept: 'application/json',
 				...(rest.body ? { 'Content-Type': 'application/json' } : {}),
-				...(session.token ? { Authorization: `Bearer ${session.token}` } : {}),
+				...(csrf ? { 'X-CSRF-Token': csrf } : {}),
 				...headers
 			}
 		});
@@ -69,6 +85,9 @@ export async function apiRequest<T>(path: string, opts: RequestOptions = {}): Pr
 	const parsed = raw ? safeJsonParse(raw) : undefined;
 
 	if (!res.ok) {
+		// A rejected session (expired/cleared cookie, or stale local identity from
+		// before cookie auth) drops us back to the sign-in screen.
+		if (res.status === 401) session.clear();
 		const body = parsed as ApiErrorBody | undefined;
 		throw new ApiError(
 			res.status,

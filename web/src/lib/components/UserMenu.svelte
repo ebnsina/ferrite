@@ -3,11 +3,22 @@
 	import { cubicOut } from 'svelte/easing';
 	import { Icon } from '$lib/ui';
 	import { session } from '$lib/api/session.svelte';
+	import { logout } from '$lib/api/endpoints';
 	import { nameFromEmail } from '$lib/format';
 	import { dur } from '$lib/motion';
 	import { Settings01Icon, Logout01Icon, ArrowDown01Icon } from '@hugeicons/core-free-icons';
 
 	let open = $state(false);
+
+	// Clear the server cookies first (best-effort), then the local identity.
+	async function signOut() {
+		try {
+			await logout();
+		} catch {
+			// ignore — clear local state regardless
+		}
+		session.clear();
+	}
 	const name = $derived(session.user?.name || nameFromEmail(session.user?.email));
 	const initial = $derived((session.user?.name || session.user?.email || '?').charAt(0).toUpperCase());
 </script>
@@ -58,7 +69,7 @@
 					<Icon icon={Settings01Icon} size={16} /> Profile & settings
 				</a>
 				<button
-					onclick={() => session.clear()}
+					onclick={signOut}
 					class="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm text-danger transition-colors hover:bg-danger/10"
 				>
 					<Icon icon={Logout01Icon} size={16} /> Sign out

@@ -51,7 +51,9 @@
 				mode === 'signup'
 					? await signup(email.trim(), password, workspace.trim())
 					: await login(email.trim(), password);
-			session.set(res);
+			// The auth token is set as an HttpOnly cookie by the response; we keep
+			// only non-sensitive identity for the UI.
+			session.set({ user: res.user, tenant: res.tenant });
 			// Role-based redirect: superadmins land in the admin console.
 			if (res.user.superadmin) goto('/admin');
 		} catch (e) {

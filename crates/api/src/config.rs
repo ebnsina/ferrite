@@ -80,6 +80,19 @@ pub struct Settings {
 }
 
 impl Settings {
+    /// Session/CSRF cookies get the `Secure` attribute only when the dashboard
+    /// is served over HTTPS — otherwise the browser would drop them on
+    /// plain-HTTP localhost during development.
+    pub fn cookie_secure(&self) -> bool {
+        self.app_base_url.starts_with("https://")
+    }
+
+    /// The dashboard's browser origin (scheme://host[:port], no trailing slash),
+    /// used as the credentialed-CORS allowlist entry.
+    pub fn app_origin(&self) -> &str {
+        self.app_base_url.trim_end_matches('/')
+    }
+
     pub fn load() -> anyhow::Result<Self> {
         config::Config::builder()
             .add_source(
