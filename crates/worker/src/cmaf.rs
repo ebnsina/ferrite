@@ -79,7 +79,7 @@ fn build_args(
     if let Some((wm, _)) = watermark {
         let n = renditions.len();
         a.push("-filter_complex".into());
-        a.push(watermark_graph(wm, renditions));
+        a.push(watermark_graph(wm, renditions, media.width, media.height));
         for i in 0..n {
             a.push("-map".into());
             a.push(format!("[o{i}]"));
@@ -113,7 +113,14 @@ fn build_args(
             a.push(format!("-b:v:{i}"));
             a.push(format!("{}k", r.bitrate_kbps));
             a.push(format!("-filter:v:{i}"));
-            a.push(format!("scale=-2:{}", r.height));
+            // Pin SAR=1 and force the source's display aspect ratio on every
+            // rendition. Without this, rounding each height to an even width
+            // yields slightly different ARs, and the DASH muxer refuses to write
+            // ("Conflicting stream aspect ratios in Adaptation Set").
+            a.push(format!(
+                "scale=-2:{},setsar=1,setdar={}/{}",
+                r.height, media.width, media.height
+            ));
         }
     }
 
@@ -145,7 +152,12 @@ fn build_args(
 
 /// filter_complex that overlays the logo on the source, then splits and scales
 /// it into one output per rendition: `[o0]`, `[o1]`, …
-fn watermark_graph(wm: &ferrite_core::Watermark, renditions: &[ferrite_core::Rendition]) -> String {
+fn watermark_graph(
+    wm: &ferrite_core::Watermark,
+    renditions: &[ferrite_core::Rendition],
+    src_w: u32,
+    src_h: u32,
+) -> String {
     let op = wm.opacity.clamp(0.0, 1.0);
     let m = 24;
     let pos = match wm.position.as_str() {
@@ -163,7 +175,10 @@ fn watermark_graph(wm: &ferrite_core::Watermark, renditions: &[ferrite_core::Ren
     }
     g.push(';');
     for (i, r) in renditions.iter().enumerate() {
-        g.push_str(&format!("[s{i}]scale=-2:{}[o{i}]", r.height));
+        g.push_str(&format!(
+            "[s{i}]scale=-2:{},setsar=1,setdar={src_w}/{src_h}[o{i}]",
+            r.height
+        ));
         if i + 1 < n {
             g.push(';');
         }
