@@ -90,6 +90,18 @@
 		}
 	];
 
+	// One-line, plain meaning for the acronyms used across the page.
+	const glossary = [
+		{ term: 'HLS', desc: 'Apple’s streaming format — how most phones and TVs play adaptive video.' },
+		{ term: 'DASH', desc: 'The open-standard counterpart to HLS, for everything that isn’t Apple.' },
+		{ term: 'CMAF', desc: 'One packaging format that feeds both HLS and DASH, so you encode only once.' },
+		{ term: 'ABR', desc: 'Adaptive bitrate — the player switches quality on the fly to avoid buffering.' },
+		{ term: 'AES-128', desc: 'Encrypts each video chunk so only allowed players can decode it.' },
+		{ term: 'RTMP', desc: 'The classic protocol for sending a live stream from an encoder to a server.' },
+		{ term: 'SRT', desc: 'A modern live-ingest protocol that holds up over shaky, real-world networks.' },
+		{ term: 'NVENC', desc: 'NVIDIA’s GPU video encoder — transcodes far faster than a CPU alone.' }
+	];
+
 	const stats = [
 		{ value: '12M+', label: 'minutes transcoded' },
 		{ value: '40+', label: 'renditions / second' },
@@ -312,6 +324,27 @@
 					</span>
 					<h3 class="text-base font-semibold">{f.title}</h3>
 					<p class="mt-2 text-sm text-muted">{f.body}</p>
+				</div>
+			{/each}
+		</div>
+	</div>
+</section>
+
+<!-- Glossary — what the acronyms mean -->
+<section id="glossary" class="border-t border-border">
+	<div class="mx-auto max-w-6xl px-6 py-20">
+		<div class="mx-auto max-w-2xl text-center">
+			<h2 class="text-3xl font-semibold tracking-tight">The acronyms, decoded</h2>
+			<p class="mt-3 text-muted">The terms you'll see above — and what each one actually does.</p>
+		</div>
+		<div class="mt-14 grid gap-x-10 gap-y-6 sm:grid-cols-2">
+			{#each glossary as g (g.term)}
+				<div class="flex gap-4 border-b border-border pb-6">
+					<span
+						class="mono shrink-0 rounded-md bg-accent-soft px-2 py-1 text-sm font-semibold text-accent"
+						>{g.term}</span
+					>
+					<p class="text-sm text-muted">{g.desc}</p>
 				</div>
 			{/each}
 		</div>
