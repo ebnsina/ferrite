@@ -16,9 +16,18 @@
 	let currency = $state('USD');
 	let currencyOpen = $state(false);
 	const cur = $derived(CURRENCIES[currency] ?? CURRENCIES.USD);
+
+	// Live "link expires in" countdown for the privacy bento visual.
+	let secondsLeft = $state(899);
+	const expiry = $derived(
+		`${String(Math.floor(secondsLeft / 60)).padStart(2, '0')}:${String(secondsLeft % 60).padStart(2, '0')}`
+	);
+
 	onMount(() => {
 		const saved = localStorage.getItem('ferrite.currency');
 		currency = saved && CURRENCIES[saved] ? saved : detectCurrency();
+		const t = setInterval(() => (secondsLeft = secondsLeft > 0 ? secondsLeft - 1 : 899), 1000);
+		return () => clearInterval(t);
 	});
 	$effect(() => {
 		if (browser) localStorage.setItem('ferrite.currency', currency);
@@ -411,15 +420,18 @@
 
 {#snippet benefitVisual(kind: string)}
 	{#if kind === 'adaptive'}
-		<div class="w-full max-w-[280px]">
-			<div class="relative mb-3 flex aspect-video items-center justify-center rounded-xl bg-black/50 ring-1 ring-white/10">
-				<span class="flex h-11 w-11 items-center justify-center rounded-full bg-accent text-white shadow-lg">
-					<Icon icon={Play} weight="fill" size={18} />
+		<div class="w-full max-w-[300px]">
+			<div class="relative mb-3 flex aspect-video items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-black/75 to-black/40 ring-1 ring-white/10">
+				<span class="relative flex h-11 w-11 items-center justify-center">
+					<span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-40"></span>
+					<span class="relative flex h-11 w-11 items-center justify-center rounded-full bg-accent text-white shadow-lg shadow-accent/40">
+						<Icon icon={Play} weight="fill" size={18} />
+					</span>
 				</span>
-				<span class="absolute top-2 right-2 rounded-md bg-black/50 px-1.5 py-0.5 text-[10px] font-medium text-white/80">AUTO · 1080p</span>
-				<div class="absolute bottom-2 left-2 flex items-end gap-[3px]">
-					{#each [7, 12, 9, 14, 8] as h, k (k)}
-						<span class="w-[3px] rounded-sm bg-accent" style={`height:${h}px`}></span>
+				<span class="absolute top-2 right-2 rounded-md bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-white/80">AUTO · 1080p</span>
+				<div class="absolute bottom-2.5 left-2.5 flex h-5 items-end gap-[3px]">
+					{#each [0, 1, 2, 3, 4] as k (k)}
+						<span class="eq-bar h-4 w-[3px] rounded-sm bg-accent" style={`animation-delay:${k * 130}ms`}></span>
 					{/each}
 				</div>
 			</div>
@@ -430,26 +442,37 @@
 			</div>
 		</div>
 	{:else if kind === 'fair'}
-		<div class="w-full max-w-[280px] space-y-2.5">
-			{#each [{ n: 'Team A', c: 'bg-accent' }, { n: 'Team B', c: 'bg-success' }, { n: 'Team C', c: 'bg-warning' }] as row, ri (row.n)}
-				<div class="flex items-center gap-2">
-					<span class="w-12 shrink-0 text-[10px] text-muted">{row.n}</span>
-					<div class="flex flex-1 gap-1">
-						{#each Array(9) as _, k (k)}
-							<span class={`h-3 flex-1 rounded-sm ${k % 3 === ri ? row.c : 'bg-surface-2'}`}></span>
-						{/each}
+		<div class="w-full max-w-[300px]">
+			<div class="relative space-y-2.5">
+				{#each [{ n: 'Team A', c: 'bg-accent' }, { n: 'Team B', c: 'bg-success' }, { n: 'Team C', c: 'bg-warning' }] as row, ri (row.n)}
+					<div class="flex items-center gap-2">
+						<span class="w-12 shrink-0 text-[10px] text-muted">{row.n}</span>
+						<div class="flex flex-1 gap-1">
+							{#each Array(9) as _, k (k)}
+								{#if k % 3 === ri}
+									<span class={`rr-cell h-3 flex-1 rounded-sm ${row.c}`} style={`animation-delay:${((k / 9) * 2.7).toFixed(2)}s`}></span>
+								{:else}
+									<span class="h-3 flex-1 rounded-sm bg-surface-2"></span>
+								{/if}
+							{/each}
+						</div>
 					</div>
+				{/each}
+				<div class="pointer-events-none absolute inset-y-0 right-0 left-[3.5rem] overflow-hidden">
+					<span class="rr-line absolute inset-y-0 w-8"></span>
 				</div>
-			{/each}
-			<p class="pt-1 text-center text-[10px] text-muted">round-robin — everyone gets a turn</p>
+			</div>
+			<p class="pt-2.5 text-center text-[10px] text-muted">round-robin — everyone gets a turn</p>
 		</div>
 	{:else if kind === 'live'}
-		<div class="w-full max-w-[280px]">
-			<div class="relative mb-3 flex aspect-video items-center justify-center rounded-xl bg-black/50 ring-1 ring-white/10">
-				<span class="absolute top-2 left-2 flex items-center gap-1 rounded-md bg-danger px-1.5 py-0.5 text-[10px] font-semibold text-white">
-					<span class="h-1.5 w-1.5 rounded-full bg-white"></span> LIVE
+		<div class="w-full max-w-[300px]">
+			<div class="relative mb-3 flex aspect-video items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-black/75 to-black/40 ring-1 ring-white/10">
+				<span class="absolute top-2 left-2 z-10 flex items-center gap-1 rounded-md bg-danger px-1.5 py-0.5 text-[10px] font-semibold text-white">
+					<span class="h-1.5 w-1.5 animate-pulse rounded-full bg-white"></span> LIVE
 				</span>
-				<Icon icon={Broadcast} size={30} class="text-white/60" />
+				<span class="absolute h-9 w-9 animate-ping rounded-full border border-white/25"></span>
+				<span class="absolute h-9 w-9 animate-ping rounded-full border border-white/15" style="animation-delay:1s"></span>
+				<span class="relative text-white/70"><Icon icon={Broadcast} size={30} /></span>
 			</div>
 			<div class="flex items-center gap-2.5 rounded-xl border border-border bg-surface-2 p-2.5">
 				<span class="flex h-8 w-8 items-center justify-center rounded-lg bg-success/15 text-success"><Icon icon={CheckCircle} size={16} /></span>
@@ -459,14 +482,15 @@
 			</div>
 		</div>
 	{:else}
-		<div class="w-full max-w-[280px] space-y-2">
-			<div class="flex items-center gap-2 rounded-xl border border-border bg-surface-2 px-3 py-2.5">
+		<div class="w-full max-w-[300px] space-y-2">
+			<div class="relative flex items-center gap-2 overflow-hidden rounded-xl border border-border bg-surface-2 px-3 py-2.5">
 				<span class="text-accent"><Icon icon={LockKey} size={15} /></span>
 				<code class="mono flex-1 truncate text-[11px] text-muted">…/play?token=•••&amp;exp=…</code>
+				<span class="shimmer pointer-events-none absolute inset-y-0 -left-16 w-16 bg-gradient-to-r from-transparent via-white/10 to-transparent"></span>
 			</div>
 			<div class="flex items-center justify-between rounded-xl border border-border bg-surface-2 px-3 py-2.5 text-[11px]">
 				<span class="text-muted">Link expires in</span>
-				<span class="mono rounded-md bg-accent-soft px-1.5 py-0.5 font-medium text-accent">14:59</span>
+				<span class="mono rounded-md bg-accent-soft px-1.5 py-0.5 font-medium text-accent tabular-nums">{expiry}</span>
 			</div>
 			<p class="flex items-center gap-1.5 pt-1 text-[11px] text-muted">
 				<span class="text-success"><Icon icon={ShieldCheck} size={13} /></span> Signed &amp; scoped to one viewer

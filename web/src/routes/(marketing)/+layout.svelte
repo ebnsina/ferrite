@@ -10,7 +10,7 @@
 
 	const nav = [
 		{ id: 'features', label: 'Features' },
-		{ id: 'why', label: 'Why Ferrite' },
+		{ id: 'benefits', label: 'Why Ferrite' },
 		{ id: 'pricing', label: 'Pricing' }
 	];
 

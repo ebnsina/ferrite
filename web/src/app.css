@@ -105,3 +105,37 @@
 	opacity: 1;
 	transform: none;
 }
+
+/* --- Marketing bento visual animations (global so dynamic classes aren't pruned) --- */
+@keyframes eq {
+	0%, 100% { transform: scaleY(0.35); }
+	50% { transform: scaleY(1); }
+}
+.eq-bar { transform-origin: bottom; animation: eq 0.9s ease-in-out infinite; }
+
+@keyframes rrcell {
+	0%, 55%, 100% { opacity: 0.35; transform: scaleY(1); }
+	70% { opacity: 1; transform: scaleY(1.25); }
+}
+.rr-cell { animation: rrcell 2.7s ease-in-out infinite; }
+
+@keyframes rrline {
+	0% { left: -2rem; opacity: 0; }
+	10%, 90% { opacity: 1; }
+	100% { left: 100%; opacity: 0; }
+}
+.rr-line {
+	left: -2rem;
+	background: linear-gradient(90deg, transparent, rgba(255, 62, 0, 0.5), transparent);
+	animation: rrline 2.7s linear infinite;
+}
+
+@keyframes shimmer {
+	0% { transform: translateX(0); }
+	60%, 100% { transform: translateX(320px); }
+}
+.shimmer { animation: shimmer 3.6s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+	.eq-bar, .rr-cell, .rr-line, .shimmer { animation: none !important; }
+}
