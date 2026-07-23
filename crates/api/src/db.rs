@@ -651,6 +651,37 @@ pub async fn enabled_targets_by_stream_key(
     .await
 }
 
+// --- Waitlist ----------------------------------------------------------------
+
+#[allow(clippy::too_many_arguments)]
+pub async fn insert_waitlist(
+    pool: &PgPool,
+    name: &str,
+    email: &str,
+    whatsapp: Option<&str>,
+    country: Option<&str>,
+    use_case: Option<&str>,
+    volume: Option<&str>,
+    plan: Option<&str>,
+    payment: Option<&str>,
+) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        "INSERT INTO waitlist (name, email, whatsapp, country, use_case, volume, plan, payment)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
+    )
+    .bind(name)
+    .bind(email)
+    .bind(whatsapp)
+    .bind(country)
+    .bind(use_case)
+    .bind(volume)
+    .bind(plan)
+    .bind(payment)
+    .execute(pool)
+    .await?;
+    Ok(())
+}
+
 // --- In-video search ---------------------------------------------------------
 
 #[derive(Debug, sqlx::FromRow)]

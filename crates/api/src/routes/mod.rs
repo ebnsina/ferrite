@@ -16,6 +16,7 @@ mod search;
 mod session;
 mod tenants;
 mod usage;
+mod waitlist;
 mod webhooks;
 
 use axum::routing::{get, post};
@@ -118,6 +119,8 @@ pub fn build(state: AppState) -> Router {
         .route("/media/{asset_id}/preview", get(media::preview))
         // Public analytics beacon from the embed player (token-attributed).
         .route("/playback/beacon", post(analytics::beacon))
+        // Public early-access waitlist.
+        .route("/waitlist", post(waitlist::join))
         // Ingest-server DVR callback (secret-gated) → archive live recording to VOD.
         .route("/internal/live/dvr", post(live::dvr_hook))
         // Ingest-server publish hooks (secret-gated) → start/stop simulcast relays.

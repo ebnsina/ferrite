@@ -265,6 +265,7 @@
 			cadence: '',
 			blurb: 'Self-host it on your own infrastructure, forever.',
 			cta: 'Get the code',
+			href: '/app',
 			highlight: false,
 			caps: null,
 			capsNote: 'Your infrastructure — your limits.',
@@ -281,6 +282,7 @@
 			cadence: '/mo',
 			blurb: 'Managed cloud for side projects & small apps.',
 			cta: 'Start free trial',
+			href: '/waitlist?plan=Cloud%20%E2%80%94%20Starter',
 			highlight: false,
 			caps: { storage: '50 GB', minutes: '500 min', delivery: '100 GB' },
 			capsNote: '',
@@ -292,6 +294,7 @@
 			cadence: '/mo',
 			blurb: 'For teams shipping video to production.',
 			cta: 'Start free trial',
+			href: '/waitlist?plan=Cloud%20%E2%80%94%20Pro',
 			highlight: true,
 			caps: { storage: '500 GB', minutes: '3,000 min', delivery: '1 TB' },
 			capsNote: '',
@@ -309,6 +312,7 @@
 			cadence: '',
 			blurb: 'Self-hosted or dedicated, with the controls you need.',
 			cta: 'Contact us',
+			href: '/waitlist?plan=Enterprise',
 			highlight: false,
 			caps: null,
 			capsNote: 'Custom limits, regions & SLA.',
@@ -682,7 +686,7 @@
 					{/if}
 
 					<a
-						href="/app"
+						href={t.href}
 						class={`mt-4 inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
 							t.highlight
 								? 'bg-accent text-accent-fg hover:opacity-90'
