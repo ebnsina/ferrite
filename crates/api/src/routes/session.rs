@@ -63,8 +63,13 @@ pub async fn signup(
     db::create_user(state.db(), user_id, tenant.id, &email, &hash, "owner", None).await?;
 
     let superadmin = auth::is_superadmin(&state.settings().superadmin_emails, &email);
-    let token =
-        auth::issue_session(&state.settings().auth_secret, user_id, tenant.id, "owner", superadmin);
+    let token = auth::issue_session(
+        &state.settings().auth_secret,
+        user_id,
+        tenant.id,
+        "owner",
+        superadmin,
+    );
     Ok(Json(AuthResponse {
         token,
         user: UserView {

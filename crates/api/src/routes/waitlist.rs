@@ -32,10 +32,7 @@ fn clip(s: Option<String>, max: usize) -> Option<String> {
 }
 
 /// `POST /waitlist` — join the early-access list.
-pub async fn join(
-    State(state): State<AppState>,
-    Json(b): Json<WaitlistRequest>,
-) -> StatusCode {
+pub async fn join(State(state): State<AppState>, Json(b): Json<WaitlistRequest>) -> StatusCode {
     let name: String = b.name.trim().chars().take(120).collect();
     let email = b.email.trim().to_lowercase();
     if name.is_empty() || !email.contains('@') || email.len() > 254 {
