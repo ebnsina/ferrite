@@ -17,6 +17,7 @@
 		SecurityLockIcon,
 		LiveStreaming01Icon,
 		CodeIcon,
+		Search01Icon,
 		ArrowRight01Icon
 	} from '@hugeicons/core-free-icons';
 
@@ -48,6 +49,12 @@
 			title: 'Auto-captions',
 			body: 'Transcribe speech to a WebVTT track — local or provider-agnostic.',
 			href: '/app/assets'
+		},
+		{
+			icon: Search01Icon,
+			title: 'Search inside videos',
+			body: 'Search the spoken words across your library and jump to the moment.',
+			href: '/app/search'
 		},
 		{
 			icon: LiveStreaming01Icon,

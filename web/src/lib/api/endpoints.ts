@@ -98,6 +98,18 @@ export function revokeApiKey(id: string) {
 	return apiRequest<void>(`/v1/api-keys/${id}`, { method: 'DELETE' });
 }
 
+export interface SearchHit {
+	asset_id: string;
+	filename: string;
+	job_id: string;
+	start_secs: number;
+	snippet: string;
+}
+
+export function searchVideos(q: string) {
+	return apiRequest<SearchHit[]>(`/v1/search?q=${encodeURIComponent(q)}`);
+}
+
 export function getUsage() {
 	return apiRequest<Usage>('/v1/usage');
 }

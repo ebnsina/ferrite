@@ -11,6 +11,7 @@ mod media;
 mod members;
 mod playback;
 mod profile;
+mod search;
 mod session;
 mod tenants;
 mod usage;
@@ -58,6 +59,7 @@ pub fn build(state: AppState) -> Router {
             get(profile::get_profile).patch(profile::update_profile),
         )
         .route("/profile/password", post(profile::change_password))
+        .route("/search", get(search::search))
         .route("/usage", get(usage::get_usage))
         .route(
             "/webhooks",

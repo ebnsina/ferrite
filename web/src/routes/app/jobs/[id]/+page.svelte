@@ -33,6 +33,9 @@
 	let stop: (() => void) | undefined;
 	let format = $state<'hls' | 'dash'>('hls');
 
+	// Deep-link: ?t=<seconds> seeks the player to a moment (from in-video search).
+	const seekTo = $derived(Number(page.url.searchParams.get('t')) || 0);
+
 	// Rendition (quality) selection — driven by hls.js levels.
 	interface Rendition {
 		i: number;
@@ -75,6 +78,20 @@
 	// switching HLS/DASH remounts and re-attaches cleanly.
 	function player(node: HTMLVideoElement, opts: { format: 'hls' | 'dash'; src: string }) {
 		let instance: { destroy(): void } | undefined;
+		// Jump to the deep-linked moment once the media is ready.
+		if (seekTo > 0) {
+			node.addEventListener(
+				'loadedmetadata',
+				() => {
+					try {
+						node.currentTime = seekTo;
+					} catch {
+						/* ignore */
+					}
+				},
+				{ once: true }
+			);
+		}
 		(async () => {
 			if (opts.format === 'dash') {
 				const { MediaPlayer } = await import('dashjs');

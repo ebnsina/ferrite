@@ -58,6 +58,38 @@ pub async fn mark_asset_ready(
     Ok(())
 }
 
+/// Replace a job's transcript segments (idempotent across retries).
+pub async fn replace_transcript(
+    pool: &PgPool,
+    tenant_id: Uuid,
+    asset_id: Uuid,
+    job_id: Uuid,
+    segments: &[(f64, f64, String)],
+) -> Result<(), sqlx::Error> {
+    sqlx::query("DELETE FROM transcript_segments WHERE job_id = $1")
+        .bind(job_id)
+        .execute(pool)
+        .await?;
+    for (start, end, text) in segments {
+        if text.trim().is_empty() {
+            continue;
+        }
+        sqlx::query(
+            "INSERT INTO transcript_segments (tenant_id, asset_id, job_id, start_secs, end_secs, text)
+             VALUES ($1, $2, $3, $4, $5, $6)",
+        )
+        .bind(tenant_id)
+        .bind(asset_id)
+        .bind(job_id)
+        .bind(*start as f32)
+        .bind(*end as f32)
+        .bind(text)
+        .execute(pool)
+        .await?;
+    }
+    Ok(())
+}
+
 /// Correct the captions flag to what the pipeline actually produced.
 pub async fn set_has_captions(pool: &PgPool, job_id: Uuid, value: bool) -> Result<(), sqlx::Error> {
     sqlx::query("UPDATE jobs SET has_captions = $2 WHERE id = $1")

@@ -4,7 +4,6 @@
 
 use std::path::{Path, PathBuf};
 
-use ferrite_core::{Artifact, ArtifactKind, TranscodeJob};
 use tokio::process::Command;
 
 use crate::config::Settings;
@@ -86,27 +85,6 @@ pub async fn to_vtt(
             None
         }
     }
-}
-
-/// Produce a `captions.vtt` artifact for a job.
-pub async fn generate(
-    backend: &Backend,
-    job: &TranscodeJob,
-    source: &str,
-    dir: &Path,
-) -> Option<Artifact> {
-    let vtt = to_vtt(backend, source, dir, "captions", job.id).await?;
-    let bytes = tokio::fs::metadata(&vtt)
-        .await
-        .map(|m| m.len())
-        .unwrap_or(0);
-    Some(Artifact {
-        kind: ArtifactKind::HlsPlaylist, // text sidecar; served as-is
-        local_path: vtt.to_string_lossy().to_string(),
-        key: format!("{}/captions.vtt", job.output_prefix),
-        rendition: None,
-        bytes,
-    })
 }
 
 /// Parse a WebVTT string into cues.

@@ -165,18 +165,38 @@ async fn run(
     }
 
     // Auto-captions (WebVTT). Best-effort; skipped if no transcriber configured.
-    // Reflect what was actually produced so we never advertise a missing track.
+    // Also index the transcript for in-video search. Reflect what was actually
+    // produced so we never advertise a missing track.
     if job.captions {
-        let produced =
-            match crate::captions::generate(captions, job, &source_str, &output_dir).await {
-                Some(vtt) => {
-                    artifacts.push(vtt);
-                    true
+        match crate::captions::to_vtt(captions, &source_str, &output_dir, "captions", job.id).await
+        {
+            Some(path) => {
+                let bytes = tokio::fs::metadata(&path)
+                    .await
+                    .map(|m| m.len())
+                    .unwrap_or(0);
+                artifacts.push(ferrite_core::Artifact {
+                    kind: ferrite_core::ArtifactKind::HlsPlaylist,
+                    local_path: path.to_string_lossy().to_string(),
+                    key: format!("{}/captions.vtt", job.output_prefix),
+                    rendition: None,
+                    bytes,
+                });
+                // Index transcript segments for search.
+                if let Ok(vtt) = tokio::fs::read_to_string(&path).await {
+                    let segs: Vec<(f64, f64, String)> = crate::captions::parse_cues(&vtt)
+                        .into_iter()
+                        .map(|c| (c.start, c.end, c.text))
+                        .collect();
+                    if let Err(e) =
+                        db::replace_transcript(pool, job.tenant_id, job.asset_id, job.id, &segs)
+                            .await
+                    {
+                        tracing::warn!(job = %job.id, error = %e, "failed to index transcript");
+                    }
                 }
-                None => false,
-            };
-        if !produced {
-            db::set_has_captions(pool, job.id, false).await?;
+            }
+            None => db::set_has_captions(pool, job.id, false).await?,
         }
     }
 

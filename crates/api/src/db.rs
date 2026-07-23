@@ -621,6 +621,37 @@ pub async fn enabled_targets_by_stream_key(
     .await
 }
 
+// --- In-video search ---------------------------------------------------------
+
+#[derive(Debug, sqlx::FromRow)]
+pub struct SearchHit {
+    pub asset_id: Uuid,
+    pub filename: String,
+    pub job_id: Uuid,
+    pub start_secs: f32,
+    pub snippet: String,
+}
+
+/// Full-text search over transcript segments (tenant-scoped), ranked by relevance.
+pub async fn search_transcripts(
+    pool: &PgPool,
+    tenant_id: Uuid,
+    query: &str,
+) -> Result<Vec<SearchHit>, sqlx::Error> {
+    sqlx::query_as::<_, SearchHit>(
+        "SELECT s.asset_id, a.filename, s.job_id, s.start_secs, s.text AS snippet
+         FROM transcript_segments s
+         JOIN assets a ON a.id = s.asset_id
+         WHERE s.tenant_id = $1 AND s.tsv @@ plainto_tsquery('english', $2)
+         ORDER BY ts_rank(s.tsv, plainto_tsquery('english', $2)) DESC
+         LIMIT 40",
+    )
+    .bind(tenant_id)
+    .bind(query)
+    .fetch_all(pool)
+    .await
+}
+
 // --- Playback analytics ------------------------------------------------------
 
 pub async fn insert_playback_event(

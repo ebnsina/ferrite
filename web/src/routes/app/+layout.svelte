@@ -8,6 +8,7 @@
 		UserGroupIcon,
 		Analytics01Icon,
 		Settings01Icon,
+		Search01Icon,
 		Menu01Icon,
 		Cancel01Icon
 	} from '@hugeicons/core-free-icons';
@@ -29,6 +30,7 @@
 		{ href: '/app', label: 'Dashboard', icon: DashboardSquare01Icon },
 		{ href: '/app/assets', label: 'Assets', icon: Film01Icon },
 		{ href: '/app/jobs', label: 'Jobs', icon: PlayListIcon },
+		{ href: '/app/search', label: 'Search', icon: Search01Icon },
 		{ href: '/app/live', label: 'Live', icon: LiveStreaming01Icon },
 		{ href: '/app/metrics', label: 'Metrics', icon: Analytics01Icon },
 		{ href: '/app/team', label: 'Team', icon: UserGroupIcon },
