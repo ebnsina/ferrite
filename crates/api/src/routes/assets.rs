@@ -31,6 +31,10 @@ pub struct AssetView {
     /// Signed, embeddable derived-media URLs (present once the asset is ready).
     pub thumbnail_url: Option<String>,
     pub preview_url: Option<String>,
+    /// Presigned GET for the original file — lets the browser play the source
+    /// (or a clip) directly, before any transcode. Only set on the detail view.
+    #[serde(default)]
+    pub source_url: Option<String>,
 }
 
 /// Build a view, attaching signed thumbnail/preview URLs for ready assets.
@@ -49,6 +53,7 @@ fn asset_view(state: &AppState, tenant: Uuid, a: Asset) -> AssetView {
         created_at: a.created_at.to_rfc3339(),
         thumbnail_url,
         preview_url,
+        source_url: None,
     }
 }
 
@@ -132,7 +137,19 @@ pub async fn get_asset(
     let asset = db::find_asset(state.db(), ctx.tenant_id, id)
         .await?
         .ok_or(ApiError::NotFound)?;
-    Ok(Json(asset_view(&state, ctx.tenant_id, asset)))
+    let ready = asset.status == "ready";
+    let original_key = asset.original_key.clone();
+    let mut view = asset_view(&state, ctx.tenant_id, asset);
+    // Direct-play URL for the original file so a ready video (or a fresh clip)
+    // is watchable immediately, without waiting on a transcode.
+    if ready {
+        view.source_url = state
+            .storage()
+            .presign_get(&original_key, Duration::from_secs(60 * 60))
+            .await
+            .ok();
+    }
+    Ok(Json(view))
 }
 
 #[derive(Deserialize, Validate)]

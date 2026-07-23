@@ -21,6 +21,8 @@ export interface Asset {
 	/** Signed, embeddable derived-media URLs (present once ready). */
 	thumbnail_url: string | null;
 	preview_url: string | null;
+	/** Presigned direct-play URL for the original file (detail view, ready assets). */
+	source_url?: string | null;
 }
 
 export interface Job {

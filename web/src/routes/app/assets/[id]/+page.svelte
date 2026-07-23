@@ -90,7 +90,7 @@
 			</div>
 		</div>
 
-		<!-- Player / transcode CTA -->
+		<!-- Player: adaptive HLS if transcoded, else the original file played directly. -->
 		{#if playable?.playback_url}
 			<Card class="overflow-hidden !p-0">
 				<VideoPlayer
@@ -106,6 +106,20 @@
 			>
 				Renditions, embed &amp; analytics <Icon icon={ArrowRight} size={13} />
 			</a>
+		{:else if asset.source_url}
+			<Card class="overflow-hidden !p-0">
+				<!-- svelte-ignore a11y_media_has_caption -->
+				<video
+					src={asset.source_url}
+					poster={asset.thumbnail_url ?? undefined}
+					controls
+					playsinline
+					class="aspect-video w-full bg-black"
+				></video>
+			</Card>
+			<p class="mt-2 text-xs text-muted">
+				Playing the original file. Transcode for adaptive HLS/DASH, thumbnails, and captions.
+			</p>
 		{:else}
 			<Card class="overflow-hidden !p-0">
 				<div class="relative flex aspect-video w-full items-center justify-center bg-black">
@@ -114,10 +128,8 @@
 					{/if}
 					<div class="relative flex flex-col items-center text-center">
 						<span class="mb-2 text-white/80"><Icon icon={PlayCircle} size={40} /></span>
-						<p class="text-sm font-medium text-white">Not streamable yet</p>
-						<p class="mt-1 max-w-xs text-xs text-white/70">
-							Process this video into adaptive HLS to stream it in the player.
-						</p>
+						<p class="text-sm font-medium text-white">Still processing…</p>
+						<p class="mt-1 max-w-xs text-xs text-white/70">This video isn’t ready to play yet.</p>
 					</div>
 				</div>
 			</Card>
@@ -126,7 +138,8 @@
 		<!-- Actions -->
 		<div class="mt-4 flex flex-wrap gap-2">
 			<Button onclick={transcode} disabled={working}>
-				<Icon icon={Play} size={16} /> {playable ? 'Transcode again' : 'Transcode to stream'}
+				<Icon icon={Play} size={16} />
+				{playable ? 'Transcode again' : 'Transcode for adaptive streaming'}
 			</Button>
 			<Button variant="secondary" onclick={shorts} disabled={working}>
 				<Icon icon={MagicWand} size={15} /> Make shorts
