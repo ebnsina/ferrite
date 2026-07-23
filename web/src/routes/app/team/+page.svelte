@@ -1,34 +1,18 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { Card, Button, Icon, Sheet, toast } from '$lib/ui';
-	import {
-		listMembers,
-		inviteMember,
-		createApiKey,
-		updateMemberRole,
-		removeMember,
-		listApiKeys,
-		revokeApiKey
-	} from '$lib/api/endpoints';
+	import { listMembers, inviteMember, updateMemberRole, removeMember } from '$lib/api/endpoints';
 	import { ApiError } from '$lib/api/client';
 	import { humanizeError } from '$lib/humanize';
 	import { session } from '$lib/api/session.svelte';
-	import { inviteSchema, apiKeySchema, validate } from '$lib/schemas';
-	import type { Member, MemberInvited, ApiKey } from '$lib/api/types';
+	import { inviteSchema, validate } from '$lib/schemas';
+	import type { Member, MemberInvited } from '$lib/api/types';
 	import { timeAgo, nameFromEmail } from '$lib/format';
-	import {
-		UserGroupIcon,
-		Copy01Icon,
-		Tick01Icon,
-		UserAdd01Icon,
-		KeyframeIcon,
-		Delete02Icon
-	} from '@hugeicons/core-free-icons';
+	import { UserGroupIcon, Copy01Icon, Tick01Icon, UserAdd01Icon, Delete02Icon } from '@hugeicons/core-free-icons';
 
 	const isOwner = $derived(session.user?.role === 'owner');
 
 	let members = $state<Member[]>([]);
-	let apiKeys = $state<ApiKey[]>([]);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
 	let copied = $state<string | null>(null);
@@ -43,18 +27,10 @@
 	let inviteErrors = $state<Record<string, string>>({});
 	let invited = $state<MemberInvited | null>(null);
 
-	// API-key sheet
-	let keyOpen = $state(false);
-	let keyName = $state('');
-	let creatingKey = $state(false);
-	let keyError = $state<string | null>(null);
-	let newKey = $state<string | null>(null);
-
 	async function load() {
 		loading = true;
 		try {
 			members = await listMembers();
-			if (isOwner) apiKeys = await listApiKeys();
 			error = null;
 		} catch (e) {
 			error = humanizeError(e instanceof ApiError ? e.message : null, 'We couldn’t load your team.');
@@ -92,19 +68,6 @@
 		}
 	}
 
-	async function revoke(k: ApiKey) {
-		rowBusy = k.id;
-		try {
-			await revokeApiKey(k.id);
-			toast.success('API key revoked.');
-			await load();
-		} catch (e) {
-			toast.error(humanizeError(e instanceof ApiError ? e.message : null, 'Could not revoke key.'));
-		} finally {
-			rowBusy = null;
-		}
-	}
-
 	function openInvite() {
 		inviteEmail = '';
 		inviteRole = 'member';
@@ -131,29 +94,6 @@
 		}
 	}
 
-	function openKey() {
-		keyName = '';
-		keyError = null;
-		newKey = null;
-		keyOpen = true;
-	}
-
-	async function genKey() {
-		keyError = null;
-		const v = validate(apiKeySchema, { name: keyName });
-		if (!v.ok) return (keyError = v.errors.name);
-		creatingKey = true;
-		try {
-			const res = await createApiKey(v.data.name);
-			newKey = res.api_key;
-			await load();
-		} catch (e) {
-			keyError = humanizeError(e instanceof ApiError ? e.message : null, 'Could not create key.');
-		} finally {
-			creatingKey = false;
-		}
-	}
-
 	function copy(value: string, tag: string) {
 		navigator.clipboard.writeText(value);
 		copied = tag;
@@ -172,14 +112,9 @@
 			<p class="mt-1 text-sm text-muted">Members and access for {session.tenant?.name}.</p>
 		</div>
 		{#if isOwner}
-			<div class="flex gap-2">
-				<Button variant="secondary" onclick={openKey}>
-					<Icon icon={KeyframeIcon} size={16} /> API key
-				</Button>
-				<Button onclick={openInvite}>
-					<Icon icon={UserAdd01Icon} size={16} /> Invite member
-				</Button>
-			</div>
+			<Button onclick={openInvite}>
+				<Icon icon={UserAdd01Icon} size={16} /> Invite member
+			</Button>
 		{/if}
 	</div>
 
@@ -258,42 +193,6 @@
 		{/if}
 	</Card>
 
-	{#if isOwner}
-		<Card class="mt-6">
-			<h2 class="mb-4 flex items-center gap-2 text-sm font-medium text-muted">
-				<Icon icon={KeyframeIcon} size={16} /> API keys
-			</h2>
-			{#if apiKeys.length === 0}
-				<p class="py-6 text-center text-sm text-muted">
-					No API keys yet. Create one with the button above.
-				</p>
-			{:else}
-				<div class="divide-y divide-border">
-					{#each apiKeys as k (k.id)}
-						<div class="flex items-center justify-between gap-3 py-3">
-							<div class="min-w-0">
-								<p class="truncate text-sm font-medium">
-									{k.name}
-									{#if k.revoked}<span class="ml-2 text-xs text-danger">revoked</span>{/if}
-								</p>
-								<p class="mono truncate text-xs text-muted">
-									{k.prefix}… · {k.last_used_at ? `used ${timeAgo(k.last_used_at)}` : 'never used'}
-								</p>
-							</div>
-							{#if !k.revoked}
-								<button
-									onclick={() => revoke(k)}
-									disabled={rowBusy === k.id}
-									class="shrink-0 rounded-lg px-2.5 py-1 text-xs font-medium text-danger transition-colors hover:bg-danger/10"
-									>Revoke</button
-								>
-							{/if}
-						</div>
-					{/each}
-				</div>
-			{/if}
-		</Card>
-	{/if}
 </div>
 
 <!-- Invite sheet -->
@@ -342,43 +241,6 @@
 			<div class="flex justify-end gap-2">
 				<Button variant="secondary" onclick={() => (inviteOpen = false)}>Cancel</Button>
 				<Button disabled={inviting} onclick={invite}>{inviting ? 'Inviting…' : 'Send invite'}</Button>
-			</div>
-		{/if}
-	{/snippet}
-</Sheet>
-
-<!-- API key sheet -->
-<Sheet
-	open={keyOpen}
-	onclose={() => (keyOpen = false)}
-	title="Create API key"
-	description="For programmatic access — SDKs, CI, and the REST API."
->
-	{#if newKey}
-		<div class="rounded-lg border border-border bg-surface-2 p-4">
-			<p class="mb-2 text-xs text-muted">Copy it now — it won't be shown again.</p>
-			<div class="flex items-center gap-2">
-				<code class="mono flex-1 truncate text-sm">{newKey}</code>
-				<button onclick={() => copy(newKey!, 'key')} class="text-muted hover:text-fg" aria-label="Copy API key">
-					<Icon icon={copied === 'key' ? Tick01Icon : Copy01Icon} size={16} />
-				</button>
-			</div>
-		</div>
-	{:else}
-		<div>
-			<label for="key-name" class="mb-1.5 block text-xs font-medium text-muted">Key name</label>
-			<input id="key-name" bind:value={keyName} placeholder="e.g. ci-pipeline" class={inputCls} />
-			{#if keyError}<p class="mt-1.5 text-sm text-danger">{keyError}</p>{/if}
-		</div>
-	{/if}
-
-	{#snippet footer()}
-		{#if newKey}
-			<Button class="w-full" onclick={() => (keyOpen = false)}>Done</Button>
-		{:else}
-			<div class="flex justify-end gap-2">
-				<Button variant="secondary" onclick={() => (keyOpen = false)}>Cancel</Button>
-				<Button disabled={creatingKey} onclick={genKey}>{creatingKey ? 'Creating…' : 'Create key'}</Button>
 			</div>
 		{/if}
 	{/snippet}

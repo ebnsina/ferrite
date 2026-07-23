@@ -12,6 +12,7 @@
 		Building01Icon,
 		PulseIcon,
 		CreditCardIcon,
+		KeyframeIcon,
 		Menu01Icon,
 		Cancel01Icon
 	} from '@hugeicons/core-free-icons';
@@ -58,8 +59,9 @@
 		{
 			label: 'Workspace',
 			items: [
-				{ href: '/app/usage', label: 'Usage', icon: CreditCardIcon },
 				{ href: '/app/team', label: 'Team', icon: UserGroupIcon },
+				{ href: '/app/keys', label: 'API keys', icon: KeyframeIcon },
+				{ href: '/app/usage', label: 'Usage', icon: CreditCardIcon },
 				{ href: '/app/settings', label: 'Settings', icon: Settings01Icon },
 				...(session.user?.superadmin
 					? [{ href: '/admin', label: 'Admin', icon: Building01Icon }]
