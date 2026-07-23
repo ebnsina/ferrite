@@ -405,6 +405,9 @@ fn view_with_urls(
     let has_mp4 = job.has_mp4;
     let has_audio = job.has_audio;
     let has_captions = job.has_captions;
+    // Only transcode jobs package an HLS/DASH stream (non-empty output prefix).
+    // Clip/shorts jobs produce a new asset instead, so they have no stream to play.
+    let has_stream = !job.output_prefix.is_empty();
     let mut view = JobView::from(job);
     if completed {
         let s = state.settings();
@@ -424,29 +427,31 @@ fn view_with_urls(
                 "{base}/playback/{job_id}/captions.vtt?token={token}"
             ));
         }
-        view.playback_url = Some(format!(
-            "{base}/playback/{job_id}/master.m3u8?token={token}"
-        ));
-        // Encrypted jobs have no DASH package (would be plaintext). Unencrypted
-        // jobs use CMAF: manifest.mpd sits alongside the HLS master.
-        if !encrypted {
-            view.dash_url = Some(format!(
-                "{base}/playback/{job_id}/manifest.mpd?token={token}"
+        if has_stream {
+            view.playback_url = Some(format!(
+                "{base}/playback/{job_id}/master.m3u8?token={token}"
             ));
+            // Encrypted jobs have no DASH package (would be plaintext). Unencrypted
+            // jobs use CMAF: manifest.mpd sits alongside the HLS master.
+            if !encrypted {
+                view.dash_url = Some(format!(
+                    "{base}/playback/{job_id}/manifest.mpd?token={token}"
+                ));
+            }
+            view.poster_url = Some(format!(
+                "{base}/playback/{job_id}/thumbs/poster.jpg?token={token}"
+            ));
+            view.storyboard_url = Some(format!(
+                "{base}/playback/{job_id}/thumbs/thumbs.vtt?token={token}"
+            ));
+            view.caption_tracks = caption_langs
+                .iter()
+                .map(|lang| CaptionTrack {
+                    lang: lang.clone(),
+                    url: format!("{base}/playback/{job_id}/captions.{lang}.vtt?token={token}"),
+                })
+                .collect();
         }
-        view.poster_url = Some(format!(
-            "{base}/playback/{job_id}/thumbs/poster.jpg?token={token}"
-        ));
-        view.storyboard_url = Some(format!(
-            "{base}/playback/{job_id}/thumbs/thumbs.vtt?token={token}"
-        ));
-        view.caption_tracks = caption_langs
-            .iter()
-            .map(|lang| CaptionTrack {
-                lang: lang.clone(),
-                url: format!("{base}/playback/{job_id}/captions.{lang}.vtt?token={token}"),
-            })
-            .collect();
     }
     view
 }

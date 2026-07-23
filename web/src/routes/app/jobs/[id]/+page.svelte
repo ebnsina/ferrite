@@ -18,7 +18,7 @@
 	import { ApiError } from '$lib/api/client';
 	import { humanizeError, humanizeJobError } from '$lib/humanize';
 	import type { Job, JobState } from '$lib/api/types';
-	import { ArrowLeft, MonitorPlay, CaretDown, DownloadSimple, MusicNote, ClosedCaptioning, Copy, Check, Code, ChartLineUp } from 'phosphor-svelte';
+	import { ArrowLeft, MonitorPlay, CaretDown, DownloadSimple, MusicNote, ClosedCaptioning, Copy, Check, Code, ChartLineUp, FilmStrip, CheckCircle } from 'phosphor-svelte';
 
 	const id = $derived(page.params.id!);
 	let job = $state<Job | null>(null);
@@ -450,6 +450,24 @@
 			</Card>
 		{:else if job.error}
 			<Card><p class="text-sm text-danger">{humanizeJobError(job.error)}</p></Card>
+		{:else if job.state === 'completed'}
+			<!-- Clip / shorts jobs produce a new video asset rather than a stream. -->
+			<Card>
+				<div class="flex flex-col items-center justify-center py-10 text-center">
+					<span class="mb-3 text-success"><Icon icon={CheckCircle} size={30} /></span>
+					<p class="font-medium">Saved as a new video</p>
+					<p class="mt-1 max-w-sm text-sm text-muted">
+						This job created a new video in your library. Open it from Videos to play it or process
+						it into adaptive HLS.
+					</p>
+					<a
+						href="/app/assets"
+						class="mt-4 inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium transition-colors hover:bg-surface-2"
+					>
+						<Icon icon={FilmStrip} size={16} /> Go to Videos
+					</a>
+				</div>
+			</Card>
 		{/if}
 	{/if}
 </div>
