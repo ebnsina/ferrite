@@ -233,7 +233,7 @@
 	></div>
 	<div class="mx-auto max-w-6xl px-6 pt-40 pb-24 text-center sm:pt-48 sm:pb-32">
 		<h1 class="mx-auto max-w-3xl text-4xl font-semibold tracking-tight sm:text-6xl">
-			Encode once. <span class="text-accent">Stream everywhere.</span>
+			Encode once.<br /><span class="text-accent">Stream everywhere.</span>
 		</h1>
 		<p class="mx-auto mt-6 max-w-2xl text-lg text-muted">
 			Ferrite turns raw uploads into adaptive HLS and DASH in minutes — with live streaming, signed
