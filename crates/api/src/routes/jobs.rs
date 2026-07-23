@@ -279,7 +279,7 @@ pub async fn job_transcript(
     db::find_job(state.db(), ctx.tenant_id, id)
         .await?
         .ok_or(ApiError::NotFound)?;
-    let cues = db::transcript_for_job(state.db(), id).await?;
+    let cues = db::transcript_for_job(state.db(), ctx.tenant_id, id).await?;
     Ok(Json(
         cues.into_iter()
             .map(|(s, e, t)| CueView {
@@ -318,7 +318,7 @@ pub async fn translate_captions(
     if job.state != "completed" {
         return Err(ApiError::Conflict("job is not completed".into()));
     }
-    let cues = db::transcript_for_job(state.db(), id).await?;
+    let cues = db::transcript_for_job(state.db(), ctx.tenant_id, id).await?;
     if cues.is_empty() {
         return Err(ApiError::Conflict(
             "no transcript to translate (transcode with captions first)".into(),
@@ -381,7 +381,7 @@ pub async fn get_job(
         .ok_or(ApiError::NotFound)?;
 
     let langs = if job.state == "completed" {
-        db::list_caption_langs(state.db(), id)
+        db::list_caption_langs(state.db(), ctx.tenant_id, id)
             .await
             .unwrap_or_default()
     } else {

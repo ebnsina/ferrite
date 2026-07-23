@@ -49,9 +49,16 @@ pub async fn collect_loop(pool: PgPool) {
 }
 
 async fn refresh(pool: &PgPool) -> Result<(), sqlx::Error> {
+    // Platform-wide aggregates span every tenant, so bypass RLS for this
+    // read-only transaction (the metrics endpoint is operator-only).
+    let mut tx = pool.begin().await?;
+    sqlx::query("SELECT set_config('app.bypass', 'on', true)")
+        .execute(&mut *tx)
+        .await?;
+
     let by_state: Vec<(String, i64)> =
         sqlx::query_as("SELECT state, count(*) FROM jobs GROUP BY state")
-            .fetch_all(pool)
+            .fetch_all(&mut *tx)
             .await?;
     for (state, count) in by_state {
         metrics::gauge!("ferrite_jobs", "state" => state).set(count as f64);
@@ -65,8 +72,9 @@ async fn refresh(pool: &PgPool) -> Result<(), sqlx::Error> {
             "SELECT count(*) FROM live_streams",
         ),
     ] {
-        let (n,): (i64,) = sqlx::query_as(sql).fetch_one(pool).await?;
+        let (n,): (i64,) = sqlx::query_as(sql).fetch_one(&mut *tx).await?;
         metrics::gauge!(metric).set(n as f64);
     }
+    tx.commit().await?;
     Ok(())
 }

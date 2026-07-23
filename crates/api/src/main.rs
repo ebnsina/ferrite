@@ -85,15 +85,28 @@ async fn init_state(
     settings: &Settings,
     metrics_handle: metrics_exporter_prometheus::PrometheusHandle,
 ) -> anyhow::Result<AppState> {
+    // Connect as the non-superuser RLS role when configured; otherwise fall back
+    // to the owner URL (RLS won't bind — a superuser bypasses it — but app-layer
+    // tenant scoping still holds). Warn loudly so this isn't silently missed.
+    let db_url = match &settings.api_database_url {
+        Some(url) => url,
+        None => {
+            tracing::warn!(
+                "FERRITE_API_DATABASE_URL unset — API is connecting as the DB owner, so \
+                 Postgres RLS is NOT enforced (app-layer tenant scoping still applies). \
+                 Set it to the ferrite_app role to enable defense-in-depth."
+            );
+            &settings.database_url
+        }
+    };
     let db = PgPoolOptions::new()
         .max_connections(10)
         .acquire_timeout(Duration::from_secs(5))
-        .connect(&settings.database_url)
+        .connect(db_url)
         .await
         .with_context(|| {
             format!(
-                "could not connect to Postgres at {} — is the database running (docker compose up)?",
-                settings.database_url
+                "could not connect to Postgres at {db_url} — is the database running (docker compose up)?"
             )
         })?;
 

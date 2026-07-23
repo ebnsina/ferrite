@@ -7,6 +7,11 @@ use serde::Deserialize;
 pub struct Settings {
     pub bind_addr: String,
     pub database_url: String,
+    /// The API connects as a dedicated non-superuser role (`ferrite_app`) so
+    /// Postgres RLS policies actually bind. Unset → falls back to
+    /// `database_url` (RLS inert; app-layer scoping still enforces).
+    #[serde(default)]
+    pub api_database_url: Option<String>,
     pub redis_url: String,
     pub queue_group: String,
     /// Max jobs a single tenant may have in-flight at once (fair scheduling).

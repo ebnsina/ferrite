@@ -2,10 +2,42 @@
 //!
 //! Runtime queries (not the `query!` macros) so the crate builds without a live
 //! database at compile time — friendlier for CI and fresh checkouts.
+//!
+//! Tenant isolation is enforced in two layers. Every tenant-owned query keeps
+//! its explicit `WHERE tenant_id = $n` (the belt). On top, Postgres RLS (see
+//! migration `0017_rls`) scopes rows to the `app.current_tenant` GUC that
+//! [`tenant_tx`] sets per transaction (the suspenders). Inherently cross-tenant
+//! access — login/key-auth lookups, superadmin, internal ingest, sweeps — goes
+//! through [`bypass_tx`]; each such caller is authorized in application code.
 
 use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 use uuid::Uuid;
+
+type Tx<'a> = sqlx::Transaction<'a, sqlx::Postgres>;
+
+/// Begin a transaction scoped to `tenant_id`: sets `app.current_tenant`
+/// (transaction-local, auto-reset on commit/rollback) so RLS restricts every
+/// statement to this tenant even if a query forgets its `tenant_id` filter.
+async fn tenant_tx(pool: &PgPool, tenant_id: Uuid) -> Result<Tx<'_>, sqlx::Error> {
+    let mut tx = pool.begin().await?;
+    sqlx::query("SELECT set_config('app.current_tenant', $1, true)")
+        .bind(tenant_id.to_string())
+        .execute(&mut *tx)
+        .await?;
+    Ok(tx)
+}
+
+/// Begin a transaction that bypasses RLS, for inherently cross-tenant access
+/// (login by email, API-key auth by hash, superadmin, internal ingest by stream
+/// key, background sweeps). Every caller must be independently authorized.
+async fn bypass_tx(pool: &PgPool) -> Result<Tx<'_>, sqlx::Error> {
+    let mut tx = pool.begin().await?;
+    sqlx::query("SELECT set_config('app.bypass', 'on', true)")
+        .execute(&mut *tx)
+        .await?;
+    Ok(tx)
+}
 
 #[derive(Debug, sqlx::FromRow)]
 pub struct Tenant {
@@ -22,6 +54,7 @@ pub struct ApiKeyRow {
     pub revoked_at: Option<DateTime<Utc>>,
 }
 
+// `tenants` has no tenant_id and no RLS — plain pool access.
 pub async fn create_tenant(pool: &PgPool, name: &str) -> Result<Tenant, sqlx::Error> {
     sqlx::query_as::<_, Tenant>(
         "INSERT INTO tenants (name) VALUES ($1) RETURNING id, name, plan, created_at",
@@ -77,6 +110,7 @@ pub async fn create_user(
     role: &str,
     name: Option<&str>,
 ) -> Result<(), sqlx::Error> {
+    let mut tx = tenant_tx(pool, tenant_id).await?;
     sqlx::query(
         "INSERT INTO users (id, tenant_id, email, password_hash, role, name)
          VALUES ($1, $2, $3, $4, $5, $6)",
@@ -87,39 +121,51 @@ pub async fn create_user(
     .bind(password_hash)
     .bind(role)
     .bind(name)
-    .execute(pool)
+    .execute(&mut *tx)
     .await?;
+    tx.commit().await?;
     Ok(())
 }
 
+/// Login lookup by email — cross-tenant by nature (the tenant is unknown until
+/// the user is found), so it bypasses RLS.
 pub async fn find_user_by_email(
     pool: &PgPool,
     email: &str,
 ) -> Result<Option<UserAuth>, sqlx::Error> {
-    sqlx::query_as::<_, UserAuth>(
+    let mut tx = bypass_tx(pool).await?;
+    let out = sqlx::query_as::<_, UserAuth>(
         "SELECT id, tenant_id, password_hash, role, name FROM users WHERE email = $1",
     )
     .bind(email)
-    .fetch_optional(pool)
-    .await
+    .fetch_optional(&mut *tx)
+    .await?;
+    tx.commit().await?;
+    Ok(out)
 }
 
-/// A user's own profile by id — includes the password hash for verification.
+/// A user's own profile by id — keyed by the trusted authenticated user id, so
+/// it bypasses RLS (the caller is already the owner of this row).
 pub async fn find_profile(pool: &PgPool, id: Uuid) -> Result<Option<Profile>, sqlx::Error> {
-    sqlx::query_as::<_, Profile>(
+    let mut tx = bypass_tx(pool).await?;
+    let out = sqlx::query_as::<_, Profile>(
         "SELECT id, email, name, role, password_hash FROM users WHERE id = $1",
     )
     .bind(id)
-    .fetch_optional(pool)
-    .await
+    .fetch_optional(&mut *tx)
+    .await?;
+    tx.commit().await?;
+    Ok(out)
 }
 
 pub async fn update_user_name(pool: &PgPool, id: Uuid, name: &str) -> Result<(), sqlx::Error> {
+    let mut tx = bypass_tx(pool).await?;
     sqlx::query("UPDATE users SET name = $2 WHERE id = $1")
         .bind(id)
         .bind(name)
-        .execute(pool)
+        .execute(&mut *tx)
         .await?;
+    tx.commit().await?;
     Ok(())
 }
 
@@ -128,22 +174,27 @@ pub async fn update_user_password(
     id: Uuid,
     password_hash: &str,
 ) -> Result<(), sqlx::Error> {
+    let mut tx = bypass_tx(pool).await?;
     sqlx::query("UPDATE users SET password_hash = $2 WHERE id = $1")
         .bind(id)
         .bind(password_hash)
-        .execute(pool)
+        .execute(&mut *tx)
         .await?;
+    tx.commit().await?;
     Ok(())
 }
 
 pub async fn list_members(pool: &PgPool, tenant_id: Uuid) -> Result<Vec<Member>, sqlx::Error> {
-    sqlx::query_as::<_, Member>(
+    let mut tx = tenant_tx(pool, tenant_id).await?;
+    let out = sqlx::query_as::<_, Member>(
         "SELECT id, email, name, role, created_at FROM users
          WHERE tenant_id = $1 ORDER BY created_at",
     )
     .bind(tenant_id)
-    .fetch_all(pool)
-    .await
+    .fetch_all(&mut *tx)
+    .await?;
+    tx.commit().await?;
+    Ok(out)
 }
 
 pub async fn create_api_key(
@@ -153,6 +204,7 @@ pub async fn create_api_key(
     key_hash: &str,
     prefix: &str,
 ) -> Result<Uuid, sqlx::Error> {
+    let mut tx = tenant_tx(pool, tenant_id).await?;
     let row: (Uuid,) = sqlx::query_as(
         "INSERT INTO api_keys (tenant_id, name, key_hash, prefix)
          VALUES ($1, $2, $3, $4) RETURNING id",
@@ -161,31 +213,40 @@ pub async fn create_api_key(
     .bind(name)
     .bind(key_hash)
     .bind(prefix)
-    .fetch_one(pool)
+    .fetch_one(&mut *tx)
     .await?;
+    tx.commit().await?;
     Ok(row.0)
 }
 
-/// Look up a non-revoked API key by its hash.
+/// Look up a non-revoked API key by its hash — cross-tenant auth path (the
+/// tenant is unknown until the key is found), so it bypasses RLS.
 pub async fn find_active_api_key(
     pool: &PgPool,
     key_hash: &str,
 ) -> Result<Option<ApiKeyRow>, sqlx::Error> {
-    sqlx::query_as::<_, ApiKeyRow>(
+    let mut tx = bypass_tx(pool).await?;
+    let out = sqlx::query_as::<_, ApiKeyRow>(
         "SELECT id, tenant_id, revoked_at FROM api_keys
          WHERE key_hash = $1 AND revoked_at IS NULL",
     )
     .bind(key_hash)
-    .fetch_optional(pool)
-    .await
+    .fetch_optional(&mut *tx)
+    .await?;
+    tx.commit().await?;
+    Ok(out)
 }
 
 /// Best-effort last-used timestamp; failures here must not fail the request.
 pub async fn touch_api_key(pool: &PgPool, id: Uuid) {
+    let Ok(mut tx) = bypass_tx(pool).await else {
+        return;
+    };
     let _ = sqlx::query("UPDATE api_keys SET last_used_at = now() WHERE id = $1")
         .bind(id)
-        .execute(pool)
+        .execute(&mut *tx)
         .await;
+    let _ = tx.commit().await;
 }
 
 #[derive(Debug, sqlx::FromRow)]
@@ -202,25 +263,30 @@ pub async fn list_api_keys(
     pool: &PgPool,
     tenant_id: Uuid,
 ) -> Result<Vec<ApiKeyListItem>, sqlx::Error> {
-    sqlx::query_as::<_, ApiKeyListItem>(
+    let mut tx = tenant_tx(pool, tenant_id).await?;
+    let out = sqlx::query_as::<_, ApiKeyListItem>(
         "SELECT id, name, prefix, last_used_at, revoked_at, created_at FROM api_keys
          WHERE tenant_id = $1 ORDER BY created_at DESC",
     )
     .bind(tenant_id)
-    .fetch_all(pool)
-    .await
+    .fetch_all(&mut *tx)
+    .await?;
+    tx.commit().await?;
+    Ok(out)
 }
 
 /// Revoke a key (tenant-scoped). Returns true if a row was affected.
 pub async fn revoke_api_key(pool: &PgPool, tenant_id: Uuid, id: Uuid) -> Result<bool, sqlx::Error> {
+    let mut tx = tenant_tx(pool, tenant_id).await?;
     let res = sqlx::query(
         "UPDATE api_keys SET revoked_at = now()
          WHERE id = $1 AND tenant_id = $2 AND revoked_at IS NULL",
     )
     .bind(id)
     .bind(tenant_id)
-    .execute(pool)
+    .execute(&mut *tx)
     .await?;
+    tx.commit().await?;
     Ok(res.rows_affected() > 0)
 }
 
@@ -232,13 +298,16 @@ pub async fn find_member(
     tenant_id: Uuid,
     id: Uuid,
 ) -> Result<Option<Member>, sqlx::Error> {
-    sqlx::query_as::<_, Member>(
+    let mut tx = tenant_tx(pool, tenant_id).await?;
+    let out = sqlx::query_as::<_, Member>(
         "SELECT id, email, name, role, created_at FROM users WHERE id = $1 AND tenant_id = $2",
     )
     .bind(id)
     .bind(tenant_id)
-    .fetch_optional(pool)
-    .await
+    .fetch_optional(&mut *tx)
+    .await?;
+    tx.commit().await?;
+    Ok(out)
 }
 
 pub async fn update_member_role(
@@ -247,25 +316,30 @@ pub async fn update_member_role(
     id: Uuid,
     role: &str,
 ) -> Result<(), sqlx::Error> {
+    let mut tx = tenant_tx(pool, tenant_id).await?;
     sqlx::query("UPDATE users SET role = $3 WHERE id = $1 AND tenant_id = $2")
         .bind(id)
         .bind(tenant_id)
         .bind(role)
-        .execute(pool)
+        .execute(&mut *tx)
         .await?;
+    tx.commit().await?;
     Ok(())
 }
 
 pub async fn delete_user(pool: &PgPool, tenant_id: Uuid, id: Uuid) -> Result<(), sqlx::Error> {
+    let mut tx = tenant_tx(pool, tenant_id).await?;
     sqlx::query("DELETE FROM users WHERE id = $1 AND tenant_id = $2")
         .bind(id)
         .bind(tenant_id)
-        .execute(pool)
+        .execute(&mut *tx)
         .await?;
+    tx.commit().await?;
     Ok(())
 }
 
 // --- Password resets ---------------------------------------------------------
+// `password_resets` has no tenant_id and no RLS — plain pool access.
 
 pub async fn create_password_reset(
     pool: &PgPool,
@@ -321,7 +395,8 @@ pub async fn create_asset(
     filename: &str,
     original_key: &str,
 ) -> Result<Asset, sqlx::Error> {
-    sqlx::query_as::<_, Asset>(
+    let mut tx = tenant_tx(pool, tenant_id).await?;
+    let out = sqlx::query_as::<_, Asset>(
         "INSERT INTO assets (id, tenant_id, filename, original_key)
          VALUES ($1, $2, $3, $4)
          RETURNING id, filename, original_key, bytes, status, created_at",
@@ -330,8 +405,10 @@ pub async fn create_asset(
     .bind(tenant_id)
     .bind(filename)
     .bind(original_key)
-    .fetch_one(pool)
-    .await
+    .fetch_one(&mut *tx)
+    .await?;
+    tx.commit().await?;
+    Ok(out)
 }
 
 /// Create an asset that the worker will produce (e.g. a clip). Starts in
@@ -343,7 +420,8 @@ pub async fn create_processing_asset(
     filename: &str,
     original_key: &str,
 ) -> Result<Asset, sqlx::Error> {
-    sqlx::query_as::<_, Asset>(
+    let mut tx = tenant_tx(pool, tenant_id).await?;
+    let out = sqlx::query_as::<_, Asset>(
         "INSERT INTO assets (id, tenant_id, filename, original_key, status)
          VALUES ($1, $2, $3, $4, 'processing')
          RETURNING id, filename, original_key, bytes, status, created_at",
@@ -352,8 +430,10 @@ pub async fn create_processing_asset(
     .bind(tenant_id)
     .bind(filename)
     .bind(original_key)
-    .fetch_one(pool)
-    .await
+    .fetch_one(&mut *tx)
+    .await?;
+    tx.commit().await?;
+    Ok(out)
 }
 
 /// Tenant-scoped fetch — never returns another tenant's asset.
@@ -362,33 +442,41 @@ pub async fn find_asset(
     tenant_id: Uuid,
     id: Uuid,
 ) -> Result<Option<Asset>, sqlx::Error> {
-    sqlx::query_as::<_, Asset>(
+    let mut tx = tenant_tx(pool, tenant_id).await?;
+    let out = sqlx::query_as::<_, Asset>(
         "SELECT id, filename, original_key, bytes, status, created_at
          FROM assets WHERE id = $1 AND tenant_id = $2",
     )
     .bind(id)
     .bind(tenant_id)
-    .fetch_optional(pool)
-    .await
+    .fetch_optional(&mut *tx)
+    .await?;
+    tx.commit().await?;
+    Ok(out)
 }
 
 pub async fn list_assets(pool: &PgPool, tenant_id: Uuid) -> Result<Vec<Asset>, sqlx::Error> {
-    sqlx::query_as::<_, Asset>(
+    let mut tx = tenant_tx(pool, tenant_id).await?;
+    let out = sqlx::query_as::<_, Asset>(
         "SELECT id, filename, original_key, bytes, status, created_at
          FROM assets WHERE tenant_id = $1 ORDER BY created_at DESC LIMIT 200",
     )
     .bind(tenant_id)
-    .fetch_all(pool)
-    .await
+    .fetch_all(&mut *tx)
+    .await?;
+    tx.commit().await?;
+    Ok(out)
 }
 
 /// Mark a produced asset as failed (tenant-scoped).
 pub async fn set_asset_error(pool: &PgPool, tenant_id: Uuid, id: Uuid) -> Result<(), sqlx::Error> {
+    let mut tx = tenant_tx(pool, tenant_id).await?;
     sqlx::query("UPDATE assets SET status = 'error' WHERE id = $1 AND tenant_id = $2")
         .bind(id)
         .bind(tenant_id)
-        .execute(pool)
+        .execute(&mut *tx)
         .await?;
+    tx.commit().await?;
     Ok(())
 }
 
@@ -399,6 +487,7 @@ pub async fn mark_asset_ready(
     id: Uuid,
     bytes: Option<i64>,
 ) -> Result<bool, sqlx::Error> {
+    let mut tx = tenant_tx(pool, tenant_id).await?;
     let result = sqlx::query(
         "UPDATE assets SET status = 'ready', bytes = COALESCE($3, bytes)
          WHERE id = $1 AND tenant_id = $2",
@@ -406,8 +495,9 @@ pub async fn mark_asset_ready(
     .bind(id)
     .bind(tenant_id)
     .bind(bytes)
-    .execute(pool)
+    .execute(&mut *tx)
     .await?;
+    tx.commit().await?;
     Ok(result.rows_affected() > 0)
 }
 
@@ -417,13 +507,16 @@ pub async fn get_provenance(
     tenant_id: Uuid,
     asset_id: Uuid,
 ) -> Result<Option<(String, String)>, sqlx::Error> {
-    sqlx::query_as::<_, (String, String)>(
+    let mut tx = tenant_tx(pool, tenant_id).await?;
+    let out = sqlx::query_as::<_, (String, String)>(
         "SELECT manifest, signature FROM provenance WHERE asset_id = $1 AND tenant_id = $2",
     )
     .bind(asset_id)
     .bind(tenant_id)
-    .fetch_optional(pool)
-    .await
+    .fetch_optional(&mut *tx)
+    .await?;
+    tx.commit().await?;
+    Ok(out)
 }
 
 /// Moderation result (flagged, categories JSON) for an asset, tenant-scoped.
@@ -432,13 +525,16 @@ pub async fn get_moderation(
     tenant_id: Uuid,
     asset_id: Uuid,
 ) -> Result<Option<(bool, serde_json::Value)>, sqlx::Error> {
-    sqlx::query_as::<_, (bool, serde_json::Value)>(
+    let mut tx = tenant_tx(pool, tenant_id).await?;
+    let out = sqlx::query_as::<_, (bool, serde_json::Value)>(
         "SELECT flagged, categories FROM moderation WHERE asset_id = $1 AND tenant_id = $2",
     )
     .bind(asset_id)
     .bind(tenant_id)
-    .fetch_optional(pool)
-    .await
+    .fetch_optional(&mut *tx)
+    .await?;
+    tx.commit().await?;
+    Ok(out)
 }
 
 // --- Jobs --------------------------------------------------------------------
@@ -468,6 +564,7 @@ pub async fn create_clip_job(
     source_asset_id: Uuid,
     dest_asset_id: Uuid,
 ) -> Result<(), sqlx::Error> {
+    let mut tx = tenant_tx(pool, tenant_id).await?;
     sqlx::query(
         "INSERT INTO jobs (id, tenant_id, asset_id, output_prefix, kind, dest_asset_id)
          VALUES ($1, $2, $3, '', 'clip', $4)",
@@ -476,8 +573,9 @@ pub async fn create_clip_job(
     .bind(tenant_id)
     .bind(source_asset_id)
     .bind(dest_asset_id)
-    .execute(pool)
+    .execute(&mut *tx)
     .await?;
+    tx.commit().await?;
     Ok(())
 }
 
@@ -488,6 +586,7 @@ pub async fn create_shorts_job(
     id: Uuid,
     source_asset_id: Uuid,
 ) -> Result<(), sqlx::Error> {
+    let mut tx = tenant_tx(pool, tenant_id).await?;
     sqlx::query(
         "INSERT INTO jobs (id, tenant_id, asset_id, output_prefix, kind)
          VALUES ($1, $2, $3, '', 'shorts')",
@@ -495,13 +594,15 @@ pub async fn create_shorts_job(
     .bind(id)
     .bind(tenant_id)
     .bind(source_asset_id)
-    .execute(pool)
+    .execute(&mut *tx)
     .await?;
+    tx.commit().await?;
     Ok(())
 }
 
 /// Idempotent create: a reused `idempotency_key` returns the existing job with
 /// `created = false`, so the caller skips re-enqueuing.
+#[allow(clippy::too_many_arguments)]
 pub async fn create_job(
     pool: &PgPool,
     tenant_id: Uuid,
@@ -513,6 +614,7 @@ pub async fn create_job(
     has_audio: bool,
     has_captions: bool,
 ) -> Result<(Job, bool), sqlx::Error> {
+    let mut tx = tenant_tx(pool, tenant_id).await?;
     let inserted = sqlx::query_as::<_, Job>(
         "INSERT INTO jobs (id, tenant_id, asset_id, output_prefix, idempotency_key, has_mp4, has_audio, has_captions)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
@@ -528,10 +630,11 @@ pub async fn create_job(
     .bind(has_mp4)
     .bind(has_audio)
     .bind(has_captions)
-    .fetch_optional(pool)
+    .fetch_optional(&mut *tx)
     .await?;
 
     if let Some(job) = inserted {
+        tx.commit().await?;
         return Ok((job, true));
     }
 
@@ -542,8 +645,9 @@ pub async fn create_job(
     )
     .bind(tenant_id)
     .bind(idempotency_key)
-    .fetch_one(pool)
+    .fetch_one(&mut *tx)
     .await?;
+    tx.commit().await?;
     Ok((existing, false))
 }
 
@@ -553,12 +657,14 @@ pub async fn get_encryption_key(
     tenant_id: Uuid,
     id: Uuid,
 ) -> Result<Option<Vec<u8>>, sqlx::Error> {
+    let mut tx = tenant_tx(pool, tenant_id).await?;
     let row: Option<(Option<Vec<u8>>,)> =
         sqlx::query_as("SELECT encryption_key FROM jobs WHERE id = $1 AND tenant_id = $2")
             .bind(id)
             .bind(tenant_id)
-            .fetch_optional(pool)
+            .fetch_optional(&mut *tx)
             .await?;
+    tx.commit().await?;
     Ok(row.and_then(|r| r.0))
 }
 
@@ -567,15 +673,18 @@ pub async fn find_job(
     tenant_id: Uuid,
     id: Uuid,
 ) -> Result<Option<Job>, sqlx::Error> {
-    sqlx::query_as::<_, Job>(
+    let mut tx = tenant_tx(pool, tenant_id).await?;
+    let out = sqlx::query_as::<_, Job>(
         "SELECT id, asset_id, state, progress, error, output_prefix, queued_at, finished_at,
          (encryption_key IS NOT NULL) AS encrypted, has_mp4, has_audio, has_captions
          FROM jobs WHERE id = $1 AND tenant_id = $2",
     )
     .bind(id)
     .bind(tenant_id)
-    .fetch_optional(pool)
-    .await
+    .fetch_optional(&mut *tx)
+    .await?;
+    tx.commit().await?;
+    Ok(out)
 }
 
 // --- Simulcast targets -------------------------------------------------------
@@ -598,7 +707,8 @@ pub async fn create_target(
     url: &str,
     stream_key: &str,
 ) -> Result<SimulcastTarget, sqlx::Error> {
-    sqlx::query_as::<_, SimulcastTarget>(
+    let mut tx = tenant_tx(pool, tenant_id).await?;
+    let out = sqlx::query_as::<_, SimulcastTarget>(
         "INSERT INTO simulcast_targets (tenant_id, live_stream_id, name, url, stream_key)
          VALUES ($1, $2, $3, $4, $5)
          RETURNING id, name, url, stream_key, enabled, created_at",
@@ -608,8 +718,10 @@ pub async fn create_target(
     .bind(name)
     .bind(url)
     .bind(stream_key)
-    .fetch_one(pool)
-    .await
+    .fetch_one(&mut *tx)
+    .await?;
+    tx.commit().await?;
+    Ok(out)
 }
 
 pub async fn list_targets(
@@ -617,41 +729,51 @@ pub async fn list_targets(
     tenant_id: Uuid,
     live_stream_id: Uuid,
 ) -> Result<Vec<SimulcastTarget>, sqlx::Error> {
-    sqlx::query_as::<_, SimulcastTarget>(
+    let mut tx = tenant_tx(pool, tenant_id).await?;
+    let out = sqlx::query_as::<_, SimulcastTarget>(
         "SELECT id, name, url, stream_key, enabled, created_at FROM simulcast_targets
          WHERE live_stream_id = $1 AND tenant_id = $2 ORDER BY created_at",
     )
     .bind(live_stream_id)
     .bind(tenant_id)
-    .fetch_all(pool)
-    .await
+    .fetch_all(&mut *tx)
+    .await?;
+    tx.commit().await?;
+    Ok(out)
 }
 
 pub async fn delete_target(pool: &PgPool, tenant_id: Uuid, id: Uuid) -> Result<bool, sqlx::Error> {
+    let mut tx = tenant_tx(pool, tenant_id).await?;
     let r = sqlx::query("DELETE FROM simulcast_targets WHERE id = $1 AND tenant_id = $2")
         .bind(id)
         .bind(tenant_id)
-        .execute(pool)
+        .execute(&mut *tx)
         .await?;
+    tx.commit().await?;
     Ok(r.rows_affected() > 0)
 }
 
-/// Enabled (url, stream_key) destinations for a publishing stream key.
+/// Enabled (url, stream_key) destinations for a publishing stream key. Called by
+/// the internal ingest hook (no tenant context) — bypasses RLS.
 pub async fn enabled_targets_by_stream_key(
     pool: &PgPool,
     stream_key: &str,
 ) -> Result<Vec<(String, String)>, sqlx::Error> {
-    sqlx::query_as::<_, (String, String)>(
+    let mut tx = bypass_tx(pool).await?;
+    let out = sqlx::query_as::<_, (String, String)>(
         "SELECT t.url, t.stream_key FROM simulcast_targets t
          JOIN live_streams l ON l.id = t.live_stream_id
          WHERE l.stream_key = $1 AND t.enabled = true",
     )
     .bind(stream_key)
-    .fetch_all(pool)
-    .await
+    .fetch_all(&mut *tx)
+    .await?;
+    tx.commit().await?;
+    Ok(out)
 }
 
 // --- Waitlist ----------------------------------------------------------------
+// `waitlist` has no tenant_id and no RLS — plain pool access.
 
 #[allow(clippy::too_many_arguments)]
 pub async fn insert_waitlist(
@@ -706,17 +828,21 @@ pub async fn list_waitlist(pool: &PgPool) -> Result<Vec<WaitlistEntry>, sqlx::Er
     .await
 }
 
-/// Platform-wide counts (tenants, users, assets, jobs, waitlist).
+/// Platform-wide counts (tenants, users, assets, jobs, waitlist). Cross-tenant
+/// superadmin aggregate — bypasses RLS.
 pub async fn platform_overview(pool: &PgPool) -> Result<(i64, i64, i64, i64, i64), sqlx::Error> {
-    sqlx::query_as::<_, (i64, i64, i64, i64, i64)>(
+    let mut tx = bypass_tx(pool).await?;
+    let out = sqlx::query_as::<_, (i64, i64, i64, i64, i64)>(
         "SELECT (SELECT count(*) FROM tenants),
                 (SELECT count(*) FROM users),
                 (SELECT count(*) FROM assets),
                 (SELECT count(*) FROM jobs),
                 (SELECT count(*) FROM waitlist)",
     )
-    .fetch_one(pool)
-    .await
+    .fetch_one(&mut *tx)
+    .await?;
+    tx.commit().await?;
+    Ok(out)
 }
 
 // --- In-video search ---------------------------------------------------------
@@ -733,15 +859,20 @@ pub struct SearchHit {
 /// A job's transcript cues in order (for translation / rebuilding VTT).
 pub async fn transcript_for_job(
     pool: &PgPool,
+    tenant_id: Uuid,
     job_id: Uuid,
 ) -> Result<Vec<(f32, f32, String)>, sqlx::Error> {
-    sqlx::query_as::<_, (f32, f32, String)>(
+    let mut tx = tenant_tx(pool, tenant_id).await?;
+    let out = sqlx::query_as::<_, (f32, f32, String)>(
         "SELECT start_secs, end_secs, text FROM transcript_segments
-         WHERE job_id = $1 ORDER BY start_secs",
+         WHERE job_id = $1 AND tenant_id = $2 ORDER BY start_secs",
     )
     .bind(job_id)
-    .fetch_all(pool)
-    .await
+    .bind(tenant_id)
+    .fetch_all(&mut *tx)
+    .await?;
+    tx.commit().await?;
+    Ok(out)
 }
 
 pub async fn insert_caption_track(
@@ -750,6 +881,7 @@ pub async fn insert_caption_track(
     job_id: Uuid,
     lang: &str,
 ) -> Result<(), sqlx::Error> {
+    let mut tx = tenant_tx(pool, tenant_id).await?;
     sqlx::query(
         "INSERT INTO caption_tracks (tenant_id, job_id, lang) VALUES ($1, $2, $3)
          ON CONFLICT (job_id, lang) DO NOTHING",
@@ -757,17 +889,26 @@ pub async fn insert_caption_track(
     .bind(tenant_id)
     .bind(job_id)
     .bind(lang)
-    .execute(pool)
+    .execute(&mut *tx)
     .await?;
+    tx.commit().await?;
     Ok(())
 }
 
-pub async fn list_caption_langs(pool: &PgPool, job_id: Uuid) -> Result<Vec<String>, sqlx::Error> {
-    let rows: Vec<(String,)> =
-        sqlx::query_as("SELECT lang FROM caption_tracks WHERE job_id = $1 ORDER BY lang")
-            .bind(job_id)
-            .fetch_all(pool)
-            .await?;
+pub async fn list_caption_langs(
+    pool: &PgPool,
+    tenant_id: Uuid,
+    job_id: Uuid,
+) -> Result<Vec<String>, sqlx::Error> {
+    let mut tx = tenant_tx(pool, tenant_id).await?;
+    let rows: Vec<(String,)> = sqlx::query_as(
+        "SELECT lang FROM caption_tracks WHERE job_id = $1 AND tenant_id = $2 ORDER BY lang",
+    )
+    .bind(job_id)
+    .bind(tenant_id)
+    .fetch_all(&mut *tx)
+    .await?;
+    tx.commit().await?;
     Ok(rows.into_iter().map(|r| r.0).collect())
 }
 
@@ -777,7 +918,8 @@ pub async fn search_transcripts(
     tenant_id: Uuid,
     query: &str,
 ) -> Result<Vec<SearchHit>, sqlx::Error> {
-    sqlx::query_as::<_, SearchHit>(
+    let mut tx = tenant_tx(pool, tenant_id).await?;
+    let out = sqlx::query_as::<_, SearchHit>(
         "SELECT s.asset_id, a.filename, s.job_id, s.start_secs, s.text AS snippet
          FROM transcript_segments s
          JOIN assets a ON a.id = s.asset_id
@@ -787,8 +929,10 @@ pub async fn search_transcripts(
     )
     .bind(tenant_id)
     .bind(query)
-    .fetch_all(pool)
-    .await
+    .fetch_all(&mut *tx)
+    .await?;
+    tx.commit().await?;
+    Ok(out)
 }
 
 // --- Playback analytics ------------------------------------------------------
@@ -802,6 +946,7 @@ pub async fn insert_playback_event(
     position: f64,
     watched: f64,
 ) -> Result<(), sqlx::Error> {
+    let mut tx = tenant_tx(pool, tenant_id).await?;
     sqlx::query(
         "INSERT INTO playback_events (tenant_id, job_id, session, kind, position, watched)
          VALUES ($1, $2, $3, $4, $5, $6)",
@@ -812,8 +957,9 @@ pub async fn insert_playback_event(
     .bind(kind)
     .bind(position as f32)
     .bind(watched as f32)
-    .execute(pool)
+    .execute(&mut *tx)
     .await?;
+    tx.commit().await?;
     Ok(())
 }
 
@@ -823,6 +969,7 @@ pub async fn job_analytics(
     tenant_id: Uuid,
     job_id: Uuid,
 ) -> Result<(i64, f64, i64), sqlx::Error> {
+    let mut tx = tenant_tx(pool, tenant_id).await?;
     let row: (i64, f64, i64) = sqlx::query_as(
         "SELECT
            count(DISTINCT session) FILTER (WHERE kind = 'view'),
@@ -832,8 +979,9 @@ pub async fn job_analytics(
     )
     .bind(job_id)
     .bind(tenant_id)
-    .fetch_one(pool)
+    .fetch_one(&mut *tx)
     .await?;
+    tx.commit().await?;
     Ok(row)
 }
 
@@ -854,7 +1002,8 @@ pub async fn create_webhook(
     secret: &str,
     events: &[String],
 ) -> Result<Webhook, sqlx::Error> {
-    sqlx::query_as::<_, Webhook>(
+    let mut tx = tenant_tx(pool, tenant_id).await?;
+    let out = sqlx::query_as::<_, Webhook>(
         "INSERT INTO webhooks (tenant_id, url, secret, events)
          VALUES ($1, $2, $3, $4) RETURNING id, url, events, created_at",
     )
@@ -862,41 +1011,51 @@ pub async fn create_webhook(
     .bind(url)
     .bind(secret)
     .bind(events)
-    .fetch_one(pool)
-    .await
+    .fetch_one(&mut *tx)
+    .await?;
+    tx.commit().await?;
+    Ok(out)
 }
 
 pub async fn list_webhooks(pool: &PgPool, tenant_id: Uuid) -> Result<Vec<Webhook>, sqlx::Error> {
-    sqlx::query_as::<_, Webhook>(
+    let mut tx = tenant_tx(pool, tenant_id).await?;
+    let out = sqlx::query_as::<_, Webhook>(
         "SELECT id, url, events, created_at FROM webhooks
          WHERE tenant_id = $1 ORDER BY created_at DESC",
     )
     .bind(tenant_id)
-    .fetch_all(pool)
-    .await
+    .fetch_all(&mut *tx)
+    .await?;
+    tx.commit().await?;
+    Ok(out)
 }
 
 /// Delete a webhook; false if it does not belong to the tenant.
 pub async fn delete_webhook(pool: &PgPool, tenant_id: Uuid, id: Uuid) -> Result<bool, sqlx::Error> {
+    let mut tx = tenant_tx(pool, tenant_id).await?;
     let r = sqlx::query("DELETE FROM webhooks WHERE id = $1 AND tenant_id = $2")
         .bind(id)
         .bind(tenant_id)
-        .execute(pool)
+        .execute(&mut *tx)
         .await?;
+    tx.commit().await?;
     Ok(r.rows_affected() > 0)
 }
 
 /// Fail jobs stuck in a non-terminal state longer than `stale_secs` (orphaned
-/// enqueues or hung transcodes). Returns how many were swept.
+/// enqueues or hung transcodes). Cross-tenant background sweep — bypasses RLS.
+/// Returns how many were swept.
 pub async fn fail_stale_jobs(pool: &PgPool, stale_secs: i64) -> Result<u64, sqlx::Error> {
+    let mut tx = bypass_tx(pool).await?;
     let r = sqlx::query(
         "UPDATE jobs SET state = 'failed', error = 'job timed out', finished_at = now()
          WHERE state NOT IN ('completed', 'failed')
            AND queued_at < now() - make_interval(secs => $1)",
     )
     .bind(stale_secs as f64)
-    .execute(pool)
+    .execute(&mut *tx)
     .await?;
+    tx.commit().await?;
     Ok(r.rows_affected())
 }
 
@@ -904,23 +1063,27 @@ pub async fn fail_stale_jobs(pool: &PgPool, stale_secs: i64) -> Result<u64, sqlx
 
 /// Transcoded minutes accrued this month for the tenant.
 pub async fn usage_minutes(pool: &PgPool, tenant_id: Uuid) -> Result<f64, sqlx::Error> {
+    let mut tx = tenant_tx(pool, tenant_id).await?;
     let row: Option<(f64,)> = sqlx::query_as(
         "SELECT minutes FROM usage
          WHERE tenant_id = $1 AND period = date_trunc('month', now())::date",
     )
     .bind(tenant_id)
-    .fetch_optional(pool)
+    .fetch_optional(&mut *tx)
     .await?;
+    tx.commit().await?;
     Ok(row.map(|r| r.0).unwrap_or(0.0))
 }
 
 /// Total source bytes stored for the tenant (ready assets).
 pub async fn storage_bytes(pool: &PgPool, tenant_id: Uuid) -> Result<i64, sqlx::Error> {
+    let mut tx = tenant_tx(pool, tenant_id).await?;
     let row: (i64,) =
         sqlx::query_as("SELECT COALESCE(SUM(bytes), 0)::bigint FROM assets WHERE tenant_id = $1")
             .bind(tenant_id)
-            .fetch_one(pool)
+            .fetch_one(&mut *tx)
             .await?;
+    tx.commit().await?;
     Ok(row.0)
 }
 
@@ -941,7 +1104,8 @@ pub async fn create_live_stream(
     name: &str,
     stream_key: &str,
 ) -> Result<LiveStream, sqlx::Error> {
-    sqlx::query_as::<_, LiveStream>(
+    let mut tx = tenant_tx(pool, tenant_id).await?;
+    let out = sqlx::query_as::<_, LiveStream>(
         "INSERT INTO live_streams (id, tenant_id, name, stream_key)
          VALUES ($1, $2, $3, $4) RETURNING id, name, stream_key, created_at",
     )
@@ -949,34 +1113,43 @@ pub async fn create_live_stream(
     .bind(tenant_id)
     .bind(name)
     .bind(stream_key)
-    .fetch_one(pool)
-    .await
+    .fetch_one(&mut *tx)
+    .await?;
+    tx.commit().await?;
+    Ok(out)
 }
 
 pub async fn list_live_streams(
     pool: &PgPool,
     tenant_id: Uuid,
 ) -> Result<Vec<LiveStream>, sqlx::Error> {
-    sqlx::query_as::<_, LiveStream>(
+    let mut tx = tenant_tx(pool, tenant_id).await?;
+    let out = sqlx::query_as::<_, LiveStream>(
         "SELECT id, name, stream_key, created_at FROM live_streams
          WHERE tenant_id = $1 ORDER BY created_at DESC LIMIT 200",
     )
     .bind(tenant_id)
-    .fetch_all(pool)
-    .await
+    .fetch_all(&mut *tx)
+    .await?;
+    tx.commit().await?;
+    Ok(out)
 }
 
-/// Look up a live stream by its (secret) key — used by the ingest DVR callback.
+/// Look up a live stream by its (secret) key — used by the ingest DVR callback
+/// (no tenant context). Bypasses RLS; the stream key is the authorization.
 pub async fn find_live_stream_by_key(
     pool: &PgPool,
     stream_key: &str,
 ) -> Result<Option<(Uuid, Uuid, String)>, sqlx::Error> {
-    sqlx::query_as::<_, (Uuid, Uuid, String)>(
+    let mut tx = bypass_tx(pool).await?;
+    let out = sqlx::query_as::<_, (Uuid, Uuid, String)>(
         "SELECT id, tenant_id, name FROM live_streams WHERE stream_key = $1",
     )
     .bind(stream_key)
-    .fetch_optional(pool)
-    .await
+    .fetch_optional(&mut *tx)
+    .await?;
+    tx.commit().await?;
+    Ok(out)
 }
 
 pub async fn find_live_stream(
@@ -984,23 +1157,29 @@ pub async fn find_live_stream(
     tenant_id: Uuid,
     id: Uuid,
 ) -> Result<Option<LiveStream>, sqlx::Error> {
-    sqlx::query_as::<_, LiveStream>(
+    let mut tx = tenant_tx(pool, tenant_id).await?;
+    let out = sqlx::query_as::<_, LiveStream>(
         "SELECT id, name, stream_key, created_at FROM live_streams
          WHERE id = $1 AND tenant_id = $2",
     )
     .bind(id)
     .bind(tenant_id)
-    .fetch_optional(pool)
-    .await
+    .fetch_optional(&mut *tx)
+    .await?;
+    tx.commit().await?;
+    Ok(out)
 }
 
 pub async fn list_jobs(pool: &PgPool, tenant_id: Uuid) -> Result<Vec<Job>, sqlx::Error> {
-    sqlx::query_as::<_, Job>(
+    let mut tx = tenant_tx(pool, tenant_id).await?;
+    let out = sqlx::query_as::<_, Job>(
         "SELECT id, asset_id, state, progress, error, output_prefix, queued_at, finished_at,
          (encryption_key IS NOT NULL) AS encrypted, has_mp4, has_audio, has_captions
          FROM jobs WHERE tenant_id = $1 ORDER BY queued_at DESC LIMIT 200",
     )
     .bind(tenant_id)
-    .fetch_all(pool)
-    .await
+    .fetch_all(&mut *tx)
+    .await?;
+    tx.commit().await?;
+    Ok(out)
 }
