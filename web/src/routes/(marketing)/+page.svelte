@@ -261,9 +261,9 @@
 <section id="benefits" class="border-t border-border">
 	<div class="mx-auto max-w-6xl px-6 py-20">
 		<div class="mx-auto max-w-2xl text-center">
-			<h2 class="text-3xl font-semibold tracking-tight">What Ferrite does, in plain English</h2>
+			<h2 class="text-3xl font-semibold tracking-tight">The hard parts of video, handled</h2>
 			<p class="mt-3 text-muted">
-				No jargon. Here's what each part means for you and your viewers.
+				Encoding, delivery, and playback that just work — so you can focus on your content.
 			</p>
 		</div>
 		<div class="mt-16 flex flex-col gap-16">
