@@ -1,12 +1,19 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { Card, Button, Icon } from '$lib/ui';
 	import { session } from '$lib/api/session.svelte';
 	import { theme } from '$lib/theme.svelte';
-	import { updateProfile, changePassword } from '$lib/api/endpoints';
+	import {
+		updateProfile,
+		changePassword,
+		getBrand,
+		uploadBrandLogo,
+		uploadToPresigned
+	} from '$lib/api/endpoints';
 	import { ApiError } from '$lib/api/client';
 	import { profileNameSchema, passwordSchema, validate } from '$lib/schemas';
 	import { nameFromEmail } from '$lib/format';
-	import { Sun03Icon, Moon02Icon, Logout01Icon, Tick02Icon } from '@hugeicons/core-free-icons';
+	import { Sun03Icon, Moon02Icon, Logout01Icon, Tick02Icon, Image01Icon } from '@hugeicons/core-free-icons';
 
 	const displayName = $derived(session.user?.name || nameFromEmail(session.user?.email));
 	const initial = $derived((session.user?.name || session.user?.email || '?').charAt(0).toUpperCase());
@@ -58,6 +65,41 @@
 			pwErrors = { current_password: e instanceof ApiError ? e.message : 'Could not change password.' };
 		} finally {
 			savingPw = false;
+		}
+	}
+
+	// --- Brand logo (watermark source) ---
+	let logoUrl = $state<string | null>(null);
+	let logoBusy = $state(false);
+	let logoErr = $state<string | null>(null);
+	let logoInput = $state<HTMLInputElement>();
+
+	onMount(async () => {
+		try {
+			logoUrl = (await getBrand()).logo_url;
+		} catch {
+			// non-fatal
+		}
+	});
+
+	async function onLogo(e: Event) {
+		const f = (e.target as HTMLInputElement).files?.[0];
+		if (!f) return;
+		if (!f.type.startsWith('image/')) {
+			logoErr = 'Please choose an image (PNG or JPG).';
+			return;
+		}
+		logoBusy = true;
+		logoErr = null;
+		try {
+			const { upload_url } = await uploadBrandLogo();
+			await uploadToPresigned(upload_url, f);
+			logoUrl = (await getBrand()).logo_url;
+		} catch (err) {
+			logoErr = err instanceof ApiError ? err.message : 'Upload failed.';
+		} finally {
+			logoBusy = false;
+			if (logoInput) logoInput.value = '';
 		}
 	}
 
@@ -160,6 +202,39 @@
 				{#if pwSaved}<span class="flex items-center gap-1 text-sm text-success"
 						><Icon icon={Tick02Icon} size={15} /> Password updated</span
 					>{/if}
+			</div>
+		</div>
+	</Card>
+
+	<!-- Brand -->
+	<Card class="mb-6">
+		<h2 class="mb-1 flex items-center gap-2 text-sm font-medium text-muted">
+			<Icon icon={Image01Icon} size={16} /> Brand logo
+		</h2>
+		<p class="mb-4 text-xs text-muted">Used as the watermark on transcoded MP4 downloads.</p>
+		<div class="flex items-center gap-4">
+			<div
+				class="flex h-16 w-28 items-center justify-center overflow-hidden rounded-lg border border-border bg-surface-2"
+			>
+				{#if logoUrl}
+					<img src={logoUrl} alt="Brand logo" class="max-h-full max-w-full object-contain" />
+				{:else}
+					<span class="text-xs text-muted">No logo</span>
+				{/if}
+			</div>
+			<div>
+				<input
+					bind:this={logoInput}
+					type="file"
+					accept="image/png,image/jpeg"
+					class="hidden"
+					onchange={onLogo}
+				/>
+				<Button variant="secondary" disabled={logoBusy} onclick={() => logoInput?.click()}>
+					{logoBusy ? 'Uploading…' : logoUrl ? 'Replace logo' : 'Upload logo'}
+				</Button>
+				{#if logoErr}<p class="mt-2 text-sm text-danger">{logoErr}</p>{/if}
+				<p class="mt-2 text-xs text-muted">PNG with transparency works best.</p>
 			</div>
 		</div>
 	</Card>

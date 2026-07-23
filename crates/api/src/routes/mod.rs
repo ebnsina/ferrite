@@ -2,6 +2,7 @@
 //! (tracing, CORS, body limits) and the global 404 fallback are applied once.
 
 mod assets;
+mod brand;
 mod health;
 mod jobs;
 mod live;
@@ -49,6 +50,8 @@ pub fn build(state: AppState) -> Router {
             axum::routing::patch(members::update_member).delete(members::remove_member),
         )
         .route("/me", get(tenants::me))
+        .route("/brand", get(brand::get_brand))
+        .route("/brand/logo", post(brand::upload_logo))
         .route(
             "/profile",
             get(profile::get_profile).patch(profile::update_profile),

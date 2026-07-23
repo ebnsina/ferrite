@@ -6,7 +6,7 @@ use std::time::Duration;
 use axum::extract::{Path, State};
 use axum::response::sse::{Event, KeepAlive, Sse};
 use axum::Json;
-use ferrite_core::{Ladder, TranscodeJob};
+use ferrite_core::{Ladder, TranscodeJob, Watermark};
 use ferrite_queue::JobQueue;
 use futures::Stream;
 use serde::{Deserialize, Serialize};
@@ -38,6 +38,12 @@ pub struct JobView {
     /// Public WebVTT storyboard (scrubbing thumbnails); present once completed.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub storyboard_url: Option<String>,
+    /// Progressive MP4 download; present when produced and completed.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mp4_url: Option<String>,
+    /// Audio-only download; present when produced and completed.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub audio_url: Option<String>,
 }
 
 impl From<Job> for JobView {
@@ -54,8 +60,30 @@ impl From<Job> for JobView {
             dash_url: None,
             poster_url: None,
             storyboard_url: None,
+            mp4_url: None,
+            audio_url: None,
         }
     }
+}
+
+/// Transcode output options from the API request.
+#[derive(Deserialize, Default)]
+pub struct JobOptions {
+    #[serde(default)]
+    pub encrypt: bool,
+    #[serde(default)]
+    pub mp4: bool,
+    #[serde(default)]
+    pub audio: bool,
+    #[serde(default)]
+    pub watermark: Option<WatermarkOpt>,
+}
+
+#[derive(Deserialize)]
+pub struct WatermarkOpt {
+    /// Corner: tl | tr | bl | br.
+    pub position: String,
+    pub opacity: f32,
 }
 
 #[derive(Deserialize)]
@@ -63,9 +91,8 @@ pub struct CreateJobRequest {
     pub asset_id: Uuid,
     /// Optional; a repeated key returns the same job instead of a duplicate.
     pub idempotency_key: Option<String>,
-    /// Encrypt HLS output with AES-128.
-    #[serde(default)]
-    pub encrypt: bool,
+    #[serde(flatten)]
+    pub options: JobOptions,
 }
 
 /// `POST /v1/jobs` — submit a transcode job for a ready asset.
@@ -79,7 +106,7 @@ pub async fn create_job(
         ctx.tenant_id,
         body.asset_id,
         body.idempotency_key.as_deref(),
-        body.encrypt,
+        &body.options,
     )
     .await?;
     Ok(Json(job.into()))
@@ -91,7 +118,7 @@ pub(crate) async fn submit_job(
     tenant_id: Uuid,
     asset_id: Uuid,
     idempotency_key: Option<&str>,
-    encrypt: bool,
+    options: &JobOptions,
 ) -> ApiResult<Job> {
     let asset = db::find_asset(state.db(), tenant_id, asset_id)
         .await?
@@ -103,6 +130,9 @@ pub(crate) async fn submit_job(
         )));
     }
 
+    // A watermark only lands on the MP4 download, so it implies mp4.
+    let want_mp4 = options.mp4 || options.watermark.is_some();
+
     let job_id = Uuid::new_v4();
     let output_prefix = format!("{tenant_id}/outputs/{job_id}");
     let (job, created) = db::create_job(
@@ -112,10 +142,17 @@ pub(crate) async fn submit_job(
         asset_id,
         &output_prefix,
         idempotency_key,
+        want_mp4,
+        options.audio,
     )
     .await?;
 
     if created {
+        let watermark = options.watermark.as_ref().map(|w| Watermark {
+            logo_key: super::brand::logo_key(tenant_id),
+            position: w.position.clone(),
+            opacity: w.opacity,
+        });
         let transcode = TranscodeJob {
             id: job.id,
             tenant_id,
@@ -126,9 +163,12 @@ pub(crate) async fn submit_job(
             hls: true,
             dash: true,
             thumbnails: true,
-            encrypt,
+            encrypt: options.encrypt,
             encryption_key: None,
             clip: None,
+            mp4: want_mp4,
+            audio: options.audio,
+            watermark,
         };
         state.queue().enqueue(&transcode).await?;
         tracing::info!(job = %job.id, tenant = %tenant_id, "job enqueued");
@@ -175,7 +215,15 @@ pub async fn create_jobs_batch(
     let mut submitted = Vec::new();
     let mut skipped = Vec::new();
     for asset_id in body.asset_ids {
-        match submit_job(&state, ctx.tenant_id, asset_id, None, false).await {
+        match submit_job(
+            &state,
+            ctx.tenant_id,
+            asset_id,
+            None,
+            &JobOptions::default(),
+        )
+        .await
+        {
             Ok(job) => submitted.push(job.into()),
             Err(e) => skipped.push(SkippedItem {
                 asset_id,
@@ -215,12 +263,22 @@ fn view_with_urls(state: &AppState, tenant_id: Uuid, job: Job) -> JobView {
     let completed = job.state == "completed";
     let job_id = job.id;
     let encrypted = job.encrypted;
+    let has_mp4 = job.has_mp4;
+    let has_audio = job.has_audio;
     let mut view = JobView::from(job);
     if completed {
         let s = state.settings();
         let exp = super::playback::now_unix() + super::playback::TOKEN_TTL_SECS;
         let token = super::playback::sign_token(&s.playback_secret, tenant_id, job_id, exp);
         let base = &s.public_url;
+        if has_mp4 {
+            view.mp4_url = Some(format!(
+                "{base}/playback/{job_id}/download.mp4?token={token}"
+            ));
+        }
+        if has_audio {
+            view.audio_url = Some(format!("{base}/playback/{job_id}/audio.m4a?token={token}"));
+        }
         view.playback_url = Some(format!(
             "{base}/playback/{job_id}/master.m3u8?token={token}"
         ));

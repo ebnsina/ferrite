@@ -9,6 +9,6 @@ pub mod ladder;
 pub mod media;
 
 pub use encoder::{Artifact, ArtifactKind, Encoder, ProgressSink, TranscodeError};
-pub use job::{Clip, JobState, TranscodeJob};
+pub use job::{Clip, JobState, TranscodeJob, Watermark};
 pub use ladder::{Ladder, Rendition};
 pub use media::MediaInfo;

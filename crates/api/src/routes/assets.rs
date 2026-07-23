@@ -209,6 +209,9 @@ pub async fn clip_asset(
             dest_asset_id: dest_id,
             dest_key,
         }),
+        mp4: false,
+        audio: false,
+        watermark: None,
     };
     state.queue().enqueue(&transcode).await?;
     tracing::info!(job = %job_id, source = %id, dest = %dest_id, "clip enqueued");

@@ -188,6 +188,17 @@ impl Storage {
         Ok(data.into_bytes().to_vec())
     }
 
+    /// True if an object exists at `key` (HEAD; cheap, no body transfer).
+    pub async fn exists(&self, key: &str) -> bool {
+        self.client
+            .head_object()
+            .bucket(&self.bucket)
+            .key(key)
+            .send()
+            .await
+            .is_ok()
+    }
+
     pub fn bucket(&self) -> &str {
         &self.bucket
     }

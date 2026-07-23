@@ -6,6 +6,7 @@ mod config;
 mod cpu_encoder;
 mod db;
 mod encoding;
+mod extras;
 mod pipeline;
 mod thumbnails;
 mod webhooks;

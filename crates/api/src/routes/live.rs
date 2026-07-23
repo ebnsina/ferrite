@@ -230,7 +230,14 @@ async fn archive_recording(
         )
         .await?;
         db::mark_asset_ready(state.db(), tenant_id, asset_id, Some(size)).await?;
-        super::jobs::submit_job(&state, tenant_id, asset_id, None, false).await?;
+        super::jobs::submit_job(
+            &state,
+            tenant_id,
+            asset_id,
+            None,
+            &super::jobs::JobOptions::default(),
+        )
+        .await?;
         Ok::<_, anyhow::Error>(())
     }
     .await;

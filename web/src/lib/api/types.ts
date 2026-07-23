@@ -35,6 +35,8 @@ export interface Job {
 	dash_url?: string;
 	poster_url?: string;
 	storyboard_url?: string;
+	mp4_url?: string;
+	audio_url?: string;
 }
 
 export interface Usage {

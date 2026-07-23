@@ -58,6 +58,26 @@ pub struct TranscodeJob {
     /// transcoding it (the transcode ladder/flags are ignored).
     #[serde(default)]
     pub clip: Option<Clip>,
+    /// Also emit a progressive MP4 download (`download.mp4`).
+    #[serde(default)]
+    pub mp4: bool,
+    /// Also emit an audio-only track (`audio.m4a`).
+    #[serde(default)]
+    pub audio: bool,
+    /// Overlay a logo on the MP4 download.
+    #[serde(default)]
+    pub watermark: Option<Watermark>,
+}
+
+/// A logo overlay burned into the MP4 download.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Watermark {
+    /// Object-storage key of the logo image.
+    pub logo_key: String,
+    /// Corner: `tl` | `tr` | `bl` | `br`.
+    pub position: String,
+    /// 0.0–1.0.
+    pub opacity: f32,
 }
 
 /// A trim operation: cut `[start_secs, end_secs)` of the source into a new asset.

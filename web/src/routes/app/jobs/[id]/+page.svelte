@@ -5,7 +5,13 @@
 	import { getJob, streamJob } from '$lib/api/endpoints';
 	import { ApiError } from '$lib/api/client';
 	import type { Job, JobState } from '$lib/api/types';
-	import { ArrowLeft01Icon, HdIcon, ArrowDown01Icon } from '@hugeicons/core-free-icons';
+	import {
+		ArrowLeft01Icon,
+		HdIcon,
+		ArrowDown01Icon,
+		Download01Icon,
+		MusicNote01Icon
+	} from '@hugeicons/core-free-icons';
 
 	const id = $derived(page.params.id!);
 	let job = $state<Job | null>(null);
@@ -190,6 +196,29 @@
 			</div>
 
 			<p class="mono mt-3 break-all text-xs text-muted">{src}</p>
+
+			{#if job.mp4_url || job.audio_url}
+				<div class="mt-4 flex flex-wrap gap-2">
+					{#if job.mp4_url}
+						<a
+							href={job.mp4_url}
+							download
+							class="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm transition-colors hover:bg-surface-2"
+						>
+							<Icon icon={Download01Icon} size={15} /> Download MP4
+						</a>
+					{/if}
+					{#if job.audio_url}
+						<a
+							href={job.audio_url}
+							download
+							class="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm transition-colors hover:bg-surface-2"
+						>
+							<Icon icon={MusicNote01Icon} size={15} /> Download audio
+						</a>
+					{/if}
+				</div>
+			{/if}
 		{:else if ACTIVE.includes(job.state)}
 			<Card>
 				<p class="mb-3 text-sm text-muted">Transcoding…</p>

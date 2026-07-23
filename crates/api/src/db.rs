@@ -415,6 +415,8 @@ pub struct Job {
     pub finished_at: Option<DateTime<Utc>>,
     /// True once an AES-128 key exists — encrypted jobs skip DASH output.
     pub encrypted: bool,
+    pub has_mp4: bool,
+    pub has_audio: bool,
 }
 
 /// Create a clip job row (kind='clip') linking source → produced asset.
@@ -447,19 +449,23 @@ pub async fn create_job(
     asset_id: Uuid,
     output_prefix: &str,
     idempotency_key: Option<&str>,
+    has_mp4: bool,
+    has_audio: bool,
 ) -> Result<(Job, bool), sqlx::Error> {
     let inserted = sqlx::query_as::<_, Job>(
-        "INSERT INTO jobs (id, tenant_id, asset_id, output_prefix, idempotency_key)
-         VALUES ($1, $2, $3, $4, $5)
+        "INSERT INTO jobs (id, tenant_id, asset_id, output_prefix, idempotency_key, has_mp4, has_audio)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
          ON CONFLICT (tenant_id, idempotency_key) DO NOTHING
          RETURNING id, asset_id, state, progress, error, output_prefix, queued_at, finished_at,
-         (encryption_key IS NOT NULL) AS encrypted",
+         (encryption_key IS NOT NULL) AS encrypted, has_mp4, has_audio",
     )
     .bind(id)
     .bind(tenant_id)
     .bind(asset_id)
     .bind(output_prefix)
     .bind(idempotency_key)
+    .bind(has_mp4)
+    .bind(has_audio)
     .fetch_optional(pool)
     .await?;
 
@@ -469,7 +475,7 @@ pub async fn create_job(
 
     let existing = sqlx::query_as::<_, Job>(
         "SELECT id, asset_id, state, progress, error, output_prefix, queued_at, finished_at,
-         (encryption_key IS NOT NULL) AS encrypted
+         (encryption_key IS NOT NULL) AS encrypted, has_mp4, has_audio
          FROM jobs WHERE tenant_id = $1 AND idempotency_key = $2",
     )
     .bind(tenant_id)
@@ -501,7 +507,7 @@ pub async fn find_job(
 ) -> Result<Option<Job>, sqlx::Error> {
     sqlx::query_as::<_, Job>(
         "SELECT id, asset_id, state, progress, error, output_prefix, queued_at, finished_at,
-         (encryption_key IS NOT NULL) AS encrypted
+         (encryption_key IS NOT NULL) AS encrypted, has_mp4, has_audio
          FROM jobs WHERE id = $1 AND tenant_id = $2",
     )
     .bind(id)
@@ -670,7 +676,7 @@ pub async fn find_live_stream(
 pub async fn list_jobs(pool: &PgPool, tenant_id: Uuid) -> Result<Vec<Job>, sqlx::Error> {
     sqlx::query_as::<_, Job>(
         "SELECT id, asset_id, state, progress, error, output_prefix, queued_at, finished_at,
-         (encryption_key IS NOT NULL) AS encrypted
+         (encryption_key IS NOT NULL) AS encrypted, has_mp4, has_audio
          FROM jobs WHERE tenant_id = $1 ORDER BY queued_at DESC LIMIT 200",
     )
     .bind(tenant_id)

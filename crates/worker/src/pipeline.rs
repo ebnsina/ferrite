@@ -133,6 +133,12 @@ async fn run(
         }
     }
 
+    // Extra deliverables: progressive MP4 (optionally watermarked) + audio-only.
+    if job.mp4 || job.audio {
+        let mut extra = crate::extras::generate(job, &source_str, &output_dir, storage).await;
+        artifacts.append(&mut extra);
+    }
+
     db::set_state(pool, job.id, "uploading").await?;
     tracing::info!(job = %job.id, count = artifacts.len(), "uploading artifacts");
     for artifact in &artifacts {

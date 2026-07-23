@@ -152,10 +152,27 @@ export function listAssets() {
 	return apiRequest<Asset[]>('/v1/assets');
 }
 
-export function createJob(assetId: string) {
+export interface TranscodeOptions {
+	encrypt?: boolean;
+	mp4?: boolean;
+	audio?: boolean;
+	watermark?: { position: 'tl' | 'tr' | 'bl' | 'br'; opacity: number };
+}
+
+export function createJob(assetId: string, options: TranscodeOptions = {}) {
 	return apiRequest<Job>('/v1/jobs', {
 		method: 'POST',
-		body: JSON.stringify({ asset_id: assetId })
+		body: JSON.stringify({ asset_id: assetId, ...options })
+	});
+}
+
+export function getBrand() {
+	return apiRequest<{ logo_url: string | null }>('/v1/brand');
+}
+
+export function uploadBrandLogo() {
+	return apiRequest<{ upload_url: string; expires_in_secs: number }>('/v1/brand/logo', {
+		method: 'POST'
 	});
 }
 

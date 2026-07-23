@@ -163,6 +163,7 @@ fn content_type(path: &str) -> &'static str {
     match path.rsplit('.').next() {
         Some("ts") => "video/mp2t",
         Some("m4s" | "mp4") => "video/mp4",
+        Some("m4a") => "audio/mp4",
         Some("jpg" | "jpeg") => "image/jpeg",
         Some("vtt") => "text/vtt",
         _ => "application/octet-stream",

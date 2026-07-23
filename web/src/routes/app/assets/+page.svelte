@@ -138,12 +138,40 @@
 		}
 	}
 
-	async function transcode(assetId: string) {
+	// Transcode options sheet
+	let txOpen = $state(false);
+	let txAsset = $state<Asset | null>(null);
+	let txMp4 = $state(false);
+	let txAudio = $state(false);
+	let txEncrypt = $state(false);
+	let txWatermark = $state(false);
+	let txPosition = $state<'tl' | 'tr' | 'bl' | 'br'>('br');
+	let txBusy = $state(false);
+
+	function openTranscode(a: Asset) {
+		txAsset = a;
+		txMp4 = false;
+		txAudio = false;
+		txEncrypt = false;
+		txWatermark = false;
+		txPosition = 'br';
+		txOpen = true;
+	}
+
+	async function startTranscode() {
+		if (!txAsset) return;
+		txBusy = true;
 		try {
-			await createJob(assetId);
+			await createJob(txAsset.id, {
+				mp4: txMp4,
+				audio: txAudio,
+				encrypt: txEncrypt,
+				watermark: txWatermark ? { position: txPosition, opacity: 0.85 } : undefined
+			});
 			goto('/app/jobs');
 		} catch (e) {
 			error = e instanceof ApiError ? e.message : 'Could not start transcode.';
+			txBusy = false;
 		}
 	}
 
@@ -202,7 +230,7 @@
 							<Button size="sm" variant="ghost" onclick={() => openClip(a)}>
 								<Icon icon={Scissor01Icon} size={15} /> Clip
 							</Button>
-							<Button size="sm" variant="secondary" onclick={() => transcode(a.id)}>Transcode</Button>
+							<Button size="sm" variant="secondary" onclick={() => openTranscode(a)}>Transcode</Button>
 						{/if}
 					</div>
 				{/each}
@@ -283,6 +311,64 @@
 		<div class="flex justify-end gap-2">
 			<Button variant="secondary" onclick={() => (clipOpen = false)}>Cancel</Button>
 			<Button disabled={clipping} onclick={doClip}>{clipping ? 'Clipping…' : 'Create clip'}</Button>
+		</div>
+	{/snippet}
+</Sheet>
+
+<Sheet
+	open={txOpen}
+	onclose={() => (txOpen = false)}
+	title="Transcode options"
+	description={txAsset ? `Adaptive HLS + DASH is always produced for ${txAsset.filename}.` : ''}
+>
+	<div class="flex flex-col gap-4">
+		<label class="flex items-start gap-3">
+			<input type="checkbox" bind:checked={txMp4} class="mt-0.5 accent-accent" />
+			<span>
+				<span class="block text-sm font-medium">MP4 download</span>
+				<span class="block text-xs text-muted">A progressive, downloadable MP4 (up to 1080p).</span>
+			</span>
+		</label>
+		<label class="flex items-start gap-3">
+			<input type="checkbox" bind:checked={txAudio} class="mt-0.5 accent-accent" />
+			<span>
+				<span class="block text-sm font-medium">Audio-only</span>
+				<span class="block text-xs text-muted">Extract an M4A audio track (podcasts, transcripts).</span>
+			</span>
+		</label>
+		<label class="flex items-start gap-3">
+			<input type="checkbox" bind:checked={txEncrypt} class="mt-0.5 accent-accent" />
+			<span>
+				<span class="block text-sm font-medium">Encrypt (AES-128)</span>
+				<span class="block text-xs text-muted">Encrypt the HLS stream (no DASH output).</span>
+			</span>
+		</label>
+		<label class="flex items-start gap-3">
+			<input type="checkbox" bind:checked={txWatermark} class="mt-0.5 accent-accent" />
+			<span>
+				<span class="block text-sm font-medium">Watermark the MP4</span>
+				<span class="block text-xs text-muted">Overlay your brand logo (set it in Settings).</span>
+			</span>
+		</label>
+		{#if txWatermark}
+			<div class="ml-7">
+				<label for="tx-pos" class="mb-1.5 block text-xs font-medium text-muted">Position</label>
+				<select id="tx-pos" bind:value={txPosition} class={inputCls}>
+					<option value="br">Bottom-right</option>
+					<option value="bl">Bottom-left</option>
+					<option value="tr">Top-right</option>
+					<option value="tl">Top-left</option>
+				</select>
+			</div>
+		{/if}
+	</div>
+
+	{#snippet footer()}
+		<div class="flex justify-end gap-2">
+			<Button variant="secondary" onclick={() => (txOpen = false)}>Cancel</Button>
+			<Button disabled={txBusy} onclick={startTranscode}>
+				{txBusy ? 'Starting…' : 'Start transcode'}
+			</Button>
 		</div>
 	{/snippet}
 </Sheet>
