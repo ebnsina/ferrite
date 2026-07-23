@@ -5,6 +5,7 @@
 	import { ApiError } from '$lib/api/client';
 	import type { Job, JobState, Usage } from '$lib/api/types';
 	import { bytes, timeAgo } from '$lib/format';
+	import { humanizeJobError, humanizeError } from '$lib/humanize';
 	import { Analytics01Icon, RefreshIcon } from '@hugeicons/core-free-icons';
 
 	const ACTIVE: JobState[] = ['queued', 'probing', 'transcoding', 'packaging', 'uploading'];
@@ -29,7 +30,7 @@
 			[jobs, usage] = await Promise.all([listJobs(), getUsage()]);
 			error = null;
 		} catch (e) {
-			error = e instanceof ApiError ? e.message : 'Failed to load metrics.';
+			error = humanizeError(e instanceof ApiError ? e.message : null, 'We couldn’t load your metrics.');
 		} finally {
 			loading = false;
 		}
@@ -173,7 +174,7 @@
 						<span class="flex-1 text-xs text-muted"
 							>{timeAgo(job.finished_at ?? job.queued_at)}</span
 						>
-						{#if job.error}<span class="truncate text-xs text-danger">{job.error}</span>{/if}
+						{#if job.error}<span class="truncate text-xs text-danger">{humanizeJobError(job.error)}</span>{/if}
 						<StatusPill state={job.state} />
 					</a>
 				{/each}

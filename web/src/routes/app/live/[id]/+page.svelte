@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import { page } from '$app/state';
-	import { Card, Icon, Button, Sheet } from '$lib/ui';
+	import { Card, Icon, Button, Sheet, toast } from '$lib/ui';
 	import {
 		getLiveStream,
 		listTargets,
@@ -11,6 +11,7 @@
 		type SimulcastTarget
 	} from '$lib/api/endpoints';
 	import { ApiError } from '$lib/api/client';
+	import { humanizeError } from '$lib/humanize';
 	import type { LiveStream } from '$lib/api/types';
 	import {
 		ArrowLeft01Icon,
@@ -36,7 +37,7 @@
 			stream = await getLiveStream(id);
 			error = null;
 		} catch (e) {
-			error = e instanceof ApiError ? e.message : 'Failed to load stream.';
+			error = humanizeError(e instanceof ApiError ? e.message : null, 'We couldn’t load this stream.');
 		}
 	}
 
@@ -74,9 +75,10 @@
 		try {
 			await createTarget(id, tName.trim(), tUrl.trim(), tKey.trim());
 			tOpen = false;
+			toast.success(`Now restreaming to ${tName.trim()}.`);
 			await loadTargets();
 		} catch (e) {
-			tErr = e instanceof ApiError ? e.message : 'Could not add destination.';
+			tErr = humanizeError(e instanceof ApiError ? e.message : null, 'Could not add destination.');
 		} finally {
 			tBusy = false;
 		}
@@ -85,9 +87,10 @@
 	async function removeTarget(tid: string) {
 		try {
 			await deleteTarget(id, tid);
+			toast.success('Restream destination removed.');
 			await loadTargets();
-		} catch {
-			// non-fatal
+		} catch (e) {
+			toast.error(humanizeError(e instanceof ApiError ? e.message : null, 'Could not remove destination.'));
 		}
 	}
 
@@ -103,8 +106,9 @@
 		try {
 			await clipLive(id, clipDuration);
 			clipMsg = 'Capturing… your clip will appear in Assets shortly.';
+			toast.success('Capturing the last moments — your clip will appear in Videos shortly.');
 		} catch (e) {
-			clipMsg = e instanceof ApiError ? e.message : 'Could not start capture.';
+			clipMsg = humanizeError(e instanceof ApiError ? e.message : null, 'Could not start capture.');
 		} finally {
 			clipBusy = false;
 		}
@@ -113,6 +117,7 @@
 	function copy(label: string, value: string) {
 		navigator.clipboard.writeText(value);
 		copied = label;
+		toast.success('Copied to clipboard.');
 		setTimeout(() => (copied = null), 1500);
 	}
 

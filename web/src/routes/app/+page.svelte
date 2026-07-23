@@ -3,6 +3,7 @@
 	import { Card, Button, StatusPill, ProgressBar, Icon } from '$lib/ui';
 	import { listAssets, listJobs, getUsage } from '$lib/api/endpoints';
 	import { ApiError } from '$lib/api/client';
+	import { humanizeError } from '$lib/humanize';
 	import type { Asset, Job, JobState, Usage } from '$lib/api/types';
 	import { bytes, timeAgo, greeting, nameFromEmail, longDate } from '$lib/format';
 	import { session } from '$lib/api/session.svelte';
@@ -91,7 +92,7 @@
 		try {
 			[assets, jobs, usage] = await Promise.all([listAssets(), listJobs(), getUsage()]);
 		} catch (e) {
-			error = e instanceof ApiError ? e.message : 'Failed to load dashboard.';
+			error = humanizeError(e instanceof ApiError ? e.message : null, 'We couldn’t load your dashboard.');
 		}
 	});
 

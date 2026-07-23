@@ -1,8 +1,9 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
-	import { Card, Button, Icon, Sheet } from '$lib/ui';
+	import { Card, Button, Icon, Sheet, toast } from '$lib/ui';
 	import { listLiveStreams, createLiveStream, getLiveStream } from '$lib/api/endpoints';
 	import { ApiError } from '$lib/api/client';
+	import { humanizeError } from '$lib/humanize';
 	import { liveStreamSchema, validate } from '$lib/schemas';
 	import type { LiveStream } from '$lib/api/types';
 	import { timeAgo } from '$lib/format';
@@ -33,7 +34,7 @@
 				})
 			);
 		} catch (e) {
-			error = e instanceof ApiError ? e.message : 'Failed to load streams.';
+			error = humanizeError(e instanceof ApiError ? e.message : null, 'We couldn’t load your streams.');
 		} finally {
 			loading = false;
 		}
@@ -53,9 +54,10 @@
 		try {
 			await createLiveStream(v.data.name);
 			createOpen = false;
+			toast.success('Live stream created — copy your ingest URL to start.');
 			await load();
 		} catch (e) {
-			createErr = e instanceof ApiError ? e.message : 'Could not create stream.';
+			createErr = humanizeError(e instanceof ApiError ? e.message : null, 'Could not create stream.');
 		} finally {
 			creating = false;
 		}

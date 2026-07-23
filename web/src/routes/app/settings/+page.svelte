@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { Card, Button, Icon } from '$lib/ui';
+	import { Card, Button, Icon, toast } from '$lib/ui';
+	import { humanizeError } from '$lib/humanize';
 	import { session } from '$lib/api/session.svelte';
 	import { theme } from '$lib/theme.svelte';
 	import {
@@ -35,9 +36,10 @@
 			const updated = await updateProfile(v.data.name);
 			session.patchUser({ name: updated.name });
 			nameSaved = true;
+			toast.success('Your name has been updated.');
 			setTimeout(() => (nameSaved = false), 2000);
 		} catch (e) {
-			nameErr = e instanceof ApiError ? e.message : 'Could not save.';
+			nameErr = humanizeError(e instanceof ApiError ? e.message : null, 'Could not save.');
 		} finally {
 			savingName = false;
 		}
@@ -61,9 +63,15 @@
 			await changePassword(v.data.current_password, v.data.new_password);
 			current_password = new_password = confirm = '';
 			pwSaved = true;
+			toast.success('Your password has been changed.');
 			setTimeout(() => (pwSaved = false), 2500);
 		} catch (e) {
-			pwErrors = { current_password: e instanceof ApiError ? e.message : 'Could not change password.' };
+			pwErrors = {
+				current_password: humanizeError(
+					e instanceof ApiError ? e.message : null,
+					'Could not change password.'
+				)
+			};
 		} finally {
 			savingPw = false;
 		}
@@ -96,8 +104,9 @@
 			const { upload_url } = await uploadBrandLogo();
 			await uploadToPresigned(upload_url, f);
 			logoUrl = (await getBrand()).logo_url;
+			toast.success('Logo updated.');
 		} catch (err) {
-			logoErr = err instanceof ApiError ? err.message : 'Upload failed.';
+			logoErr = humanizeError(err instanceof ApiError ? err.message : null, 'Upload failed.');
 		} finally {
 			logoBusy = false;
 			if (logoInput) logoInput.value = '';

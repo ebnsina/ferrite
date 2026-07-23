@@ -5,6 +5,7 @@
 	import { ApiError } from '$lib/api/client';
 	import type { Job, JobState } from '$lib/api/types';
 	import { timeAgo } from '$lib/format';
+	import { humanizeJobError, humanizeError } from '$lib/humanize';
 	import { PlayListIcon, PlayIcon } from '@hugeicons/core-free-icons';
 
 	type JobRow = Job & { playback_url?: string };
@@ -30,7 +31,10 @@
 				})
 			);
 		} catch (e) {
-			error = e instanceof ApiError ? e.message : 'Failed to load jobs.';
+			error =
+				e instanceof ApiError
+					? humanizeError(e.message, 'We couldn’t load your jobs.')
+					: 'We couldn’t load your jobs. Please refresh.';
 		} finally {
 			loading = false;
 		}
@@ -71,7 +75,9 @@
 							{#if ACTIVE.includes(job.state)}
 								<ProgressBar value={job.progress} />
 							{:else if job.error}
-								<p class="truncate text-sm text-danger">{job.error}</p>
+								<p class="truncate text-sm text-danger" title={humanizeJobError(job.error)}>
+									{humanizeJobError(job.error)}
+								</p>
 							{:else}
 								<p class="text-xs text-muted">{timeAgo(job.queued_at)}</p>
 							{/if}

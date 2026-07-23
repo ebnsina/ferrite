@@ -1,8 +1,9 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { Button, Card, Logo, Icon } from '$lib/ui';
+	import { Button, Card, Logo, Icon, toast } from '$lib/ui';
 	import { resetPassword } from '$lib/api/endpoints';
 	import { ApiError } from '$lib/api/client';
+	import { humanizeError } from '$lib/humanize';
 	import { resetSchema, validate } from '$lib/schemas';
 	import { Tick02Icon } from '@hugeicons/core-free-icons';
 
@@ -23,10 +24,13 @@
 		try {
 			await resetPassword(token, v.data.new_password);
 			done = true;
+			toast.success('Your password has been reset. You can sign in now.');
 		} catch (e) {
 			errors = {
-				new_password:
-					e instanceof ApiError ? e.message : 'Could not reset your password. Try again.'
+				new_password: humanizeError(
+					e instanceof ApiError ? e.message : null,
+					'Could not reset your password. Try again.'
+				)
 			};
 		} finally {
 			busy = false;

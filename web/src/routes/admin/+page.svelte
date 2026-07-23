@@ -8,6 +8,7 @@
 		type WaitlistRow
 	} from '$lib/api/endpoints';
 	import { ApiError } from '$lib/api/client';
+	import { humanizeError } from '$lib/humanize';
 	import { timeAgo } from '$lib/format';
 	import {
 		UserGroupIcon,
@@ -25,7 +26,7 @@
 		try {
 			[overview, waitlist] = await Promise.all([getAdminOverview(), getAdminWaitlist()]);
 		} catch (e) {
-			error = e instanceof ApiError ? e.message : 'Failed to load admin data.';
+			error = humanizeError(e instanceof ApiError ? e.message : null, 'We couldn’t load the admin data.');
 		}
 	});
 

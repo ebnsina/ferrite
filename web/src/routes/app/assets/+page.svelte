@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { Card, Button, Icon, Sheet } from '$lib/ui';
+	import { Card, Button, Icon, Sheet, toast } from '$lib/ui';
+	import { humanizeError } from '$lib/humanize';
 	import {
 		listAssets,
 		createAsset,
@@ -50,7 +51,7 @@
 			assets = await listAssets();
 			error = null;
 		} catch (e) {
-			error = e instanceof ApiError ? e.message : 'Failed to load assets.';
+			error = humanizeError(e instanceof ApiError ? e.message : null, 'We couldn’t load your videos.');
 		} finally {
 			loading = false;
 		}
@@ -88,9 +89,10 @@
 			await uploadToPresigned(upload_url, file);
 			await completeAsset(asset.id, file.size);
 			uploadOpen = false;
+			toast.success(`“${file.name}” uploaded.`);
 			await load();
 		} catch (err) {
-			uploadErr = err instanceof Error ? err.message : 'Upload failed.';
+			uploadErr = humanizeError(err instanceof Error ? err.message : null, 'Upload failed.');
 		} finally {
 			uploading = false;
 		}
@@ -139,9 +141,12 @@
 		try {
 			await clipAsset(clipSource.id, v.data.start, v.data.end, v.data.name);
 			clipOpen = false;
+			toast.success('Clip is being created — find it on the Jobs page.');
 			await load();
 		} catch (e) {
-			clipErrors = { end: e instanceof ApiError ? e.message : 'Could not create clip.' };
+			clipErrors = {
+				end: humanizeError(e instanceof ApiError ? e.message : null, 'Could not create clip.')
+			};
 		} finally {
 			clipping = false;
 		}
@@ -190,9 +195,10 @@
 		try {
 			await makeShorts(shortsAsset.id, shortsCount);
 			shortsOpen = false;
+			toast.success('Creating your shorts — this can take a few minutes.');
 			goto('/app/jobs');
 		} catch (e) {
-			shortsErr = e instanceof ApiError ? e.message : 'Could not start.';
+			shortsErr = humanizeError(e instanceof ApiError ? e.message : null, 'Could not start.');
 			shortsBusy = false;
 		}
 	}
@@ -230,9 +236,10 @@
 				encrypt: txEncrypt,
 				watermark: txWatermark ? { position: txPosition, opacity: 0.85 } : undefined
 			});
+			toast.success('Video queued for processing.');
 			goto('/app/jobs');
 		} catch (e) {
-			error = e instanceof ApiError ? e.message : 'Could not start transcode.';
+			toast.error(humanizeError(e instanceof ApiError ? e.message : null, 'Could not start processing.'));
 			txBusy = false;
 		}
 	}
@@ -242,9 +249,10 @@
 	async function transcodeAll() {
 		try {
 			await createJobsBatch(readyAssets.map((a) => a.id));
+			toast.success(`Processing ${readyAssets.length} video${readyAssets.length === 1 ? '' : 's'}.`);
 			goto('/app/jobs');
 		} catch (e) {
-			error = e instanceof ApiError ? e.message : 'Could not start transcodes.';
+			toast.error(humanizeError(e instanceof ApiError ? e.message : null, 'Could not start processing.'));
 		}
 	}
 </script>

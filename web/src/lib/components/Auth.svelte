@@ -4,6 +4,7 @@
 	import { session } from '$lib/api/session.svelte';
 	import { login, signup, forgotPassword } from '$lib/api/endpoints';
 	import { ApiError } from '$lib/api/client';
+	import { humanizeError } from '$lib/humanize';
 	import { loginSchema, signupSchema, forgotSchema, validate } from '$lib/schemas';
 
 	type Mode = 'login' | 'signup' | 'forgot';
@@ -29,7 +30,7 @@
 				await forgotPassword(email.trim());
 				forgotSent = true;
 			} catch (e) {
-				error = e instanceof ApiError ? e.message : 'Something went wrong. Please try again.';
+				error = humanizeError(e instanceof ApiError ? e.message : null);
 			} finally {
 				busy = false;
 			}
@@ -58,11 +59,9 @@
 			if (res.user.superadmin) goto('/admin');
 		} catch (e) {
 			error =
-				e instanceof ApiError
-					? e.status === 401
-						? 'Invalid email or password.'
-						: e.message
-					: 'Something went wrong. Please try again.';
+				e instanceof ApiError && e.status === 401
+					? 'Invalid email or password.'
+					: humanizeError(e instanceof ApiError ? e.message : null);
 		} finally {
 			busy = false;
 		}

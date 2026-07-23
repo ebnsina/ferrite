@@ -4,7 +4,7 @@
 	import { cubicOut } from 'svelte/easing';
 	import { page } from '$app/state';
 	import { dur } from '$lib/motion';
-	import { Card, StatusPill, ProgressBar, Icon } from '$lib/ui';
+	import { Card, StatusPill, ProgressBar, Icon, toast } from '$lib/ui';
 	import {
 		getJob,
 		streamJob,
@@ -16,6 +16,7 @@
 		type Cue
 	} from '$lib/api/endpoints';
 	import { ApiError } from '$lib/api/client';
+	import { humanizeError, humanizeJobError } from '$lib/humanize';
 	import type { Job, JobState } from '$lib/api/types';
 	import {
 		ArrowLeft01Icon,
@@ -60,6 +61,7 @@
 		const url = `${location.origin}/app/jobs/${id}?t=${Math.floor(c.start)}`;
 		navigator.clipboard.writeText(url);
 		copiedCue = i;
+		toast.success('Link to this moment copied.');
 		setTimeout(() => (copiedCue = -1), 1200);
 	}
 
@@ -178,9 +180,10 @@
 		try {
 			await translateCaptions(id, lang);
 			transLang = '';
+			toast.success(`Captions translated to ${lang}.`);
 			job = await getJob(id); // refresh to pick up the new track
 		} catch (e) {
-			transErr = e instanceof ApiError ? e.message : 'Translation failed.';
+			transErr = humanizeError(e instanceof ApiError ? e.message : null, 'Translation failed.');
 		} finally {
 			translating = false;
 		}
@@ -213,6 +216,7 @@
 		if (!iframe) return;
 		navigator.clipboard.writeText(iframe);
 		copied = true;
+		toast.success('Embed code copied.');
 		setTimeout(() => (copied = false), 1500);
 	}
 
@@ -220,7 +224,7 @@
 		try {
 			job = await getJob(id); // initial snapshot (also fills playback URLs if done)
 		} catch (e) {
-			error = e instanceof ApiError ? e.message : 'Failed to load job.';
+			error = humanizeError(e instanceof ApiError ? e.message : null, 'We couldn’t load this job.');
 			return;
 		}
 		// Live updates until terminal; the stream closes itself when done.
@@ -456,7 +460,7 @@
 				<ProgressBar value={job.progress} />
 			</Card>
 		{:else if job.error}
-			<Card><p class="text-sm text-danger">{job.error}</p></Card>
+			<Card><p class="text-sm text-danger">{humanizeJobError(job.error)}</p></Card>
 		{/if}
 	{/if}
 </div>

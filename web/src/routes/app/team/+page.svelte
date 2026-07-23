@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { Card, Button, Icon, Sheet } from '$lib/ui';
+	import { Card, Button, Icon, Sheet, toast } from '$lib/ui';
 	import {
 		listMembers,
 		inviteMember,
@@ -11,6 +11,7 @@
 		revokeApiKey
 	} from '$lib/api/endpoints';
 	import { ApiError } from '$lib/api/client';
+	import { humanizeError } from '$lib/humanize';
 	import { session } from '$lib/api/session.svelte';
 	import { inviteSchema, apiKeySchema, validate } from '$lib/schemas';
 	import type { Member, MemberInvited, ApiKey } from '$lib/api/types';
@@ -56,7 +57,7 @@
 			if (isOwner) apiKeys = await listApiKeys();
 			error = null;
 		} catch (e) {
-			error = e instanceof ApiError ? e.message : 'Failed to load team.';
+			error = humanizeError(e instanceof ApiError ? e.message : null, 'We couldn’t load your team.');
 		} finally {
 			loading = false;
 		}
@@ -68,9 +69,10 @@
 		rowBusy = m.id;
 		try {
 			await updateMemberRole(m.id, role);
+			toast.success(`${nameFromEmail(m.email)} is now ${role === 'admin' ? 'an admin' : 'a member'}.`);
 			await load();
 		} catch (e) {
-			error = e instanceof ApiError ? e.message : 'Could not update role.';
+			toast.error(humanizeError(e instanceof ApiError ? e.message : null, 'Could not update role.'));
 		} finally {
 			rowBusy = null;
 		}
@@ -81,9 +83,10 @@
 		try {
 			await removeMember(m.id);
 			confirmingRemove = null;
+			toast.success(`${nameFromEmail(m.email)} was removed from the team.`);
 			await load();
 		} catch (e) {
-			error = e instanceof ApiError ? e.message : 'Could not remove member.';
+			toast.error(humanizeError(e instanceof ApiError ? e.message : null, 'Could not remove member.'));
 		} finally {
 			rowBusy = null;
 		}
@@ -93,9 +96,10 @@
 		rowBusy = k.id;
 		try {
 			await revokeApiKey(k.id);
+			toast.success('API key revoked.');
 			await load();
 		} catch (e) {
-			error = e instanceof ApiError ? e.message : 'Could not revoke key.';
+			toast.error(humanizeError(e instanceof ApiError ? e.message : null, 'Could not revoke key.'));
 		} finally {
 			rowBusy = null;
 		}
@@ -116,9 +120,12 @@
 		inviting = true;
 		try {
 			invited = await inviteMember(v.data.email, v.data.role);
+			toast.success(`Invite ready for ${v.data.email}.`);
 			await load();
 		} catch (e) {
-			inviteErrors = { email: e instanceof ApiError ? e.message : 'Could not send invite.' };
+			inviteErrors = {
+				email: humanizeError(e instanceof ApiError ? e.message : null, 'Could not send invite.')
+			};
 		} finally {
 			inviting = false;
 		}
@@ -141,7 +148,7 @@
 			newKey = res.api_key;
 			await load();
 		} catch (e) {
-			keyError = e instanceof ApiError ? e.message : 'Could not create key.';
+			keyError = humanizeError(e instanceof ApiError ? e.message : null, 'Could not create key.');
 		} finally {
 			creatingKey = false;
 		}
@@ -150,6 +157,7 @@
 	function copy(value: string, tag: string) {
 		navigator.clipboard.writeText(value);
 		copied = tag;
+		toast.success('Copied to clipboard.');
 		setTimeout(() => (copied = null), 1500);
 	}
 

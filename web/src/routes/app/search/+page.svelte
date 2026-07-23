@@ -2,6 +2,7 @@
 	import { Card, Icon } from '$lib/ui';
 	import { searchVideos, type SearchHit } from '$lib/api/endpoints';
 	import { ApiError } from '$lib/api/client';
+	import { humanizeError } from '$lib/humanize';
 	import { Search01Icon, PlayCircleIcon } from '@hugeicons/core-free-icons';
 
 	let q = $state('');
@@ -29,7 +30,7 @@
 			hits = await searchVideos(term);
 			searched = true;
 		} catch (e) {
-			error = e instanceof ApiError ? e.message : 'Search failed.';
+			error = humanizeError(e instanceof ApiError ? e.message : null, 'Search failed. Please try again.');
 		} finally {
 			loading = false;
 		}
