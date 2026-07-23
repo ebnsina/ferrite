@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { Card, Button, Icon } from '$lib/ui';
+	import { Card, Button, Icon, Sheet } from '$lib/ui';
 	import {
 		listAssets,
 		createAsset,
@@ -13,13 +13,18 @@
 	import { ApiError } from '$lib/api/client';
 	import type { Asset } from '$lib/api/types';
 	import { bytes, timeAgo } from '$lib/format';
-	import { Upload01Icon, Film01Icon, Loading03Icon, PlayIcon } from '@hugeicons/core-free-icons';
+	import { Upload01Icon, Film01Icon, Loading03Icon, PlayIcon, CloudUploadIcon } from '@hugeicons/core-free-icons';
 
 	let assets = $state<Asset[]>([]);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
+
+	// Upload sheet
+	let uploadOpen = $state(false);
 	let uploading = $state(false);
-	let fileInput: HTMLInputElement;
+	let uploadErr = $state<string | null>(null);
+	let file = $state<File | null>(null);
+	let dragging = $state(false);
 
 	async function load() {
 		try {
@@ -33,21 +38,42 @@
 	}
 	onMount(load);
 
-	async function onFile(e: Event) {
-		const file = (e.target as HTMLInputElement).files?.[0];
-		if (!file) return;
+	function openUpload() {
+		file = null;
+		uploadErr = null;
+		uploadOpen = true;
+	}
+
+	function pick(e: Event) {
+		file = (e.target as HTMLInputElement).files?.[0] ?? null;
+		uploadErr = null;
+	}
+
+	function onDrop(e: DragEvent) {
+		e.preventDefault();
+		dragging = false;
+		const f = e.dataTransfer?.files?.[0];
+		if (f) {
+			file = f;
+			uploadErr = null;
+		}
+	}
+
+	async function upload() {
+		if (!file) return (uploadErr = 'Choose a video file first.');
+		if (!file.type.startsWith('video/')) return (uploadErr = 'That doesn’t look like a video file.');
 		uploading = true;
-		error = null;
+		uploadErr = null;
 		try {
 			const { asset, upload_url } = await createAsset(file.name);
 			await uploadToPresigned(upload_url, file);
 			await completeAsset(asset.id, file.size);
+			uploadOpen = false;
 			await load();
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'Upload failed.';
+			uploadErr = err instanceof Error ? err.message : 'Upload failed.';
 		} finally {
 			uploading = false;
-			fileInput.value = '';
 		}
 	}
 
@@ -84,13 +110,7 @@
 					<Icon icon={PlayIcon} size={16} /> Transcode all ({readyAssets.length})
 				</Button>
 			{/if}
-			<input bind:this={fileInput} type="file" accept="video/*" class="hidden" onchange={onFile} />
-			<Button disabled={uploading} onclick={() => fileInput.click()}>
-			{#if uploading}<Icon icon={Loading03Icon} size={16} class="animate-spin" /> Uploading…{:else}<Icon
-					icon={Upload01Icon}
-					size={16}
-				/> Upload video{/if}
-		</Button>
+			<Button onclick={openUpload}><Icon icon={Upload01Icon} size={16} /> Upload video</Button>
 		</div>
 	</div>
 
@@ -126,3 +146,43 @@
 		{/if}
 	</Card>
 </div>
+
+<Sheet
+	open={uploadOpen}
+	onclose={() => (uploadOpen = false)}
+	title="Upload video"
+	description="The file uploads directly to storage — it never passes through the API."
+>
+	<label
+		ondragover={(e) => {
+			e.preventDefault();
+			dragging = true;
+		}}
+		ondragleave={() => (dragging = false)}
+		ondrop={onDrop}
+		class={`flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed px-6 py-12 text-center transition-colors ${
+			dragging ? 'border-accent bg-accent-soft' : 'border-border hover:border-accent/50'
+		}`}
+	>
+		<input type="file" accept="video/*" class="hidden" onchange={pick} />
+		<span class="mb-3 text-accent"><Icon icon={CloudUploadIcon} size={36} /></span>
+		{#if file}
+			<p class="text-sm font-medium">{file.name}</p>
+			<p class="mono mt-1 text-xs text-muted">{bytes(file.size)}</p>
+			<p class="mt-2 text-xs text-muted">Click to choose a different file</p>
+		{:else}
+			<p class="text-sm font-medium">Drop a video here</p>
+			<p class="mt-1 text-xs text-muted">or click to browse</p>
+		{/if}
+	</label>
+	{#if uploadErr}<p class="mt-3 text-sm text-danger">{uploadErr}</p>{/if}
+
+	{#snippet footer()}
+		<div class="flex justify-end gap-2">
+			<Button variant="secondary" onclick={() => (uploadOpen = false)}>Cancel</Button>
+			<Button disabled={uploading || !file} onclick={upload}>
+				{#if uploading}<Icon icon={Loading03Icon} size={16} class="animate-spin" /> Uploading…{:else}Upload{/if}
+			</Button>
+		</div>
+	{/snippet}
+</Sheet>

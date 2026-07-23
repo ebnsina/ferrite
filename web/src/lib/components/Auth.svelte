@@ -3,6 +3,7 @@
 	import { session } from '$lib/api/session.svelte';
 	import { login, signup } from '$lib/api/endpoints';
 	import { ApiError } from '$lib/api/client';
+	import { loginSchema, signupSchema, validate } from '$lib/schemas';
 
 	let mode = $state<'login' | 'signup'>('login');
 	let email = $state('');
@@ -10,17 +11,21 @@
 	let workspace = $state('');
 	let busy = $state(false);
 	let error = $state<string | null>(null);
-
-	const canSubmit = $derived(
-		email.trim().length > 0 &&
-			password.length >= (mode === 'signup' ? 8 : 1) &&
-			(mode === 'login' || workspace.trim().length > 0)
-	);
+	let fieldErrors = $state<Record<string, string>>({});
 
 	async function submit() {
-		if (!canSubmit || busy) return;
-		busy = true;
+		if (busy) return;
 		error = null;
+		const check =
+			mode === 'signup'
+				? validate(signupSchema, { workspace, email, password })
+				: validate(loginSchema, { email, password });
+		if (!check.ok) {
+			fieldErrors = check.errors;
+			return;
+		}
+		fieldErrors = {};
+		busy = true;
 		try {
 			const res =
 				mode === 'signup'
@@ -42,6 +47,7 @@
 	function switchMode(next: 'login' | 'signup') {
 		mode = next;
 		error = null;
+		fieldErrors = {};
 	}
 </script>
 
@@ -76,6 +82,7 @@
 						autocomplete="organization"
 						class="w-full rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm outline-none focus:border-accent"
 					/>
+					{#if fieldErrors.workspace}<span class="text-sm text-danger">{fieldErrors.workspace}</span>{/if}
 				</label>
 			{/if}
 
@@ -88,6 +95,7 @@
 					autocomplete="email"
 					class="w-full rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm outline-none focus:border-accent"
 				/>
+				{#if fieldErrors.email}<span class="text-sm text-danger">{fieldErrors.email}</span>{/if}
 			</label>
 
 			<label class="flex flex-col gap-1.5">
@@ -99,11 +107,12 @@
 					autocomplete={mode === 'signup' ? 'new-password' : 'current-password'}
 					class="w-full rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm outline-none focus:border-accent"
 				/>
+				{#if fieldErrors.password}<span class="text-sm text-danger">{fieldErrors.password}</span>{/if}
 			</label>
 
 			{#if error}<p class="text-sm text-danger">{error}</p>{/if}
 
-			<Button type="submit" class="mt-1 w-full" disabled={!canSubmit || busy}>
+			<Button type="submit" class="mt-1 w-full" disabled={busy}>
 				{busy
 					? 'Please wait…'
 					: mode === 'signup'

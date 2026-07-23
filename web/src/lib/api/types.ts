@@ -53,15 +53,23 @@ export interface LiveStream {
 	live: boolean;
 }
 
+export interface User {
+	id: string;
+	email: string;
+	name: string | null;
+	role: string;
+}
+
 export interface AuthResponse {
 	token: string;
-	user: { id: string; email: string; role: string };
+	user: User;
 	tenant: { id: string; name: string };
 }
 
 export interface Member {
 	id: string;
 	email: string;
+	name: string | null;
 	role: string;
 	created_at: string;
 }

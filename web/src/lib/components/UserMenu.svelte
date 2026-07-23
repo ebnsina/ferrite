@@ -5,8 +5,8 @@
 	import { Settings01Icon, Logout01Icon, ArrowDown01Icon } from '@hugeicons/core-free-icons';
 
 	let open = $state(false);
-	const initial = $derived((session.user?.email ?? '?').charAt(0).toUpperCase());
-	const name = $derived(nameFromEmail(session.user?.email));
+	const name = $derived(session.user?.name || nameFromEmail(session.user?.email));
+	const initial = $derived((session.user?.name || session.user?.email || '?').charAt(0).toUpperCase());
 </script>
 
 {#if open}

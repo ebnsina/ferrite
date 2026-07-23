@@ -1,7 +1,16 @@
 // Typed API calls. Thin wrappers over apiRequest; components never build URLs.
 import { apiRequest, API_BASE } from './client';
 import { session } from './session.svelte';
-import type { Asset, AuthResponse, Job, LiveStream, Member, MemberInvited, Usage } from './types';
+import type {
+	Asset,
+	AuthResponse,
+	Job,
+	LiveStream,
+	Member,
+	MemberInvited,
+	Usage,
+	User
+} from './types';
 
 // --- Auth --------------------------------------------------------------------
 
@@ -29,6 +38,22 @@ export function inviteMember(email: string, role: 'admin' | 'member') {
 	return apiRequest<MemberInvited>('/v1/members', {
 		method: 'POST',
 		body: JSON.stringify({ email, role })
+	});
+}
+
+// --- Profile -----------------------------------------------------------------
+
+export function updateProfile(name: string) {
+	return apiRequest<User>('/v1/profile', {
+		method: 'PATCH',
+		body: JSON.stringify({ name })
+	});
+}
+
+export function changePassword(current_password: string, new_password: string) {
+	return apiRequest<void>('/v1/profile/password', {
+		method: 'POST',
+		body: JSON.stringify({ current_password, new_password })
 	});
 }
 

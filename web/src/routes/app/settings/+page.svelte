@@ -2,16 +2,72 @@
 	import { Card, Button, Icon } from '$lib/ui';
 	import { session } from '$lib/api/session.svelte';
 	import { theme } from '$lib/theme.svelte';
+	import { updateProfile, changePassword } from '$lib/api/endpoints';
+	import { ApiError } from '$lib/api/client';
+	import { profileNameSchema, passwordSchema, validate } from '$lib/schemas';
 	import { nameFromEmail } from '$lib/format';
-	import { Sun03Icon, Moon02Icon, Logout01Icon } from '@hugeicons/core-free-icons';
+	import { Sun03Icon, Moon02Icon, Logout01Icon, Tick02Icon } from '@hugeicons/core-free-icons';
 
-	const initial = $derived((session.user?.email ?? '?').charAt(0).toUpperCase());
-	const name = $derived(nameFromEmail(session.user?.email));
+	const displayName = $derived(session.user?.name || nameFromEmail(session.user?.email));
+	const initial = $derived((session.user?.name || session.user?.email || '?').charAt(0).toUpperCase());
+
+	// --- Name ---
+	let name = $state(session.user?.name ?? '');
+	let savingName = $state(false);
+	let nameErr = $state<string | null>(null);
+	let nameSaved = $state(false);
+
+	async function saveName() {
+		nameErr = null;
+		nameSaved = false;
+		const v = validate(profileNameSchema, { name });
+		if (!v.ok) return (nameErr = v.errors.name);
+		savingName = true;
+		try {
+			const updated = await updateProfile(v.data.name);
+			session.patchUser({ name: updated.name });
+			nameSaved = true;
+			setTimeout(() => (nameSaved = false), 2000);
+		} catch (e) {
+			nameErr = e instanceof ApiError ? e.message : 'Could not save.';
+		} finally {
+			savingName = false;
+		}
+	}
+
+	// --- Password ---
+	let current_password = $state('');
+	let new_password = $state('');
+	let confirm = $state('');
+	let savingPw = $state(false);
+	let pwErrors = $state<Record<string, string>>({});
+	let pwSaved = $state(false);
+
+	async function savePassword() {
+		pwErrors = {};
+		pwSaved = false;
+		const v = validate(passwordSchema, { current_password, new_password, confirm });
+		if (!v.ok) return (pwErrors = v.errors);
+		savingPw = true;
+		try {
+			await changePassword(v.data.current_password, v.data.new_password);
+			current_password = new_password = confirm = '';
+			pwSaved = true;
+			setTimeout(() => (pwSaved = false), 2500);
+		} catch (e) {
+			pwErrors = { current_password: e instanceof ApiError ? e.message : 'Could not change password.' };
+		} finally {
+			savingPw = false;
+		}
+	}
 
 	const modes = [
 		{ value: 'light' as const, label: 'Light', icon: Sun03Icon },
 		{ value: 'dark' as const, label: 'Dark', icon: Moon02Icon }
 	];
+
+	const inputCls =
+		'w-full rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm outline-none focus:border-accent';
 </script>
 
 <div class="mx-auto max-w-2xl">
@@ -29,11 +85,26 @@
 				>{initial}</span
 			>
 			<div class="min-w-0">
-				<p class="truncate text-lg font-semibold">{name}</p>
+				<p class="truncate text-lg font-semibold">{displayName}</p>
 				<p class="truncate text-sm text-muted">{session.user?.email}</p>
 			</div>
 		</div>
-		<dl class="mt-6 grid gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-2">
+
+		<div class="mt-6">
+			<label for="name" class="mb-1.5 block text-xs font-medium text-muted">Display name</label>
+			<div class="flex gap-2">
+				<input id="name" bind:value={name} placeholder="Your name" class={inputCls} />
+				<Button disabled={savingName} onclick={saveName}>
+					{#if nameSaved}<Icon icon={Tick02Icon} size={16} />{/if}
+					{savingName ? 'Saving…' : nameSaved ? 'Saved' : 'Save'}
+				</Button>
+			</div>
+			{#if nameErr}<p class="mt-1.5 text-sm text-danger">{nameErr}</p>{/if}
+		</div>
+
+		<dl
+			class="mt-6 grid gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-2"
+		>
 			<div class="bg-surface p-4">
 				<dt class="text-xs text-muted">Workspace</dt>
 				<dd class="mt-1 text-sm font-medium">{session.tenant?.name}</dd>
@@ -45,6 +116,54 @@
 		</dl>
 	</Card>
 
+	<!-- Password -->
+	<Card class="mb-6">
+		<h2 class="mb-1 text-sm font-medium text-muted">Password</h2>
+		<p class="mb-4 text-xs text-muted">Use at least 8 characters.</p>
+		<div class="flex flex-col gap-3">
+			<div>
+				<input
+					type="password"
+					bind:value={current_password}
+					placeholder="Current password"
+					autocomplete="current-password"
+					class={inputCls}
+				/>
+				{#if pwErrors.current_password}<p class="mt-1.5 text-sm text-danger">
+						{pwErrors.current_password}
+					</p>{/if}
+			</div>
+			<div>
+				<input
+					type="password"
+					bind:value={new_password}
+					placeholder="New password"
+					autocomplete="new-password"
+					class={inputCls}
+				/>
+				{#if pwErrors.new_password}<p class="mt-1.5 text-sm text-danger">{pwErrors.new_password}</p>{/if}
+			</div>
+			<div>
+				<input
+					type="password"
+					bind:value={confirm}
+					placeholder="Confirm new password"
+					autocomplete="new-password"
+					class={inputCls}
+				/>
+				{#if pwErrors.confirm}<p class="mt-1.5 text-sm text-danger">{pwErrors.confirm}</p>{/if}
+			</div>
+			<div class="flex items-center gap-3">
+				<Button variant="secondary" disabled={savingPw} onclick={savePassword}>
+					{savingPw ? 'Saving…' : 'Change password'}
+				</Button>
+				{#if pwSaved}<span class="flex items-center gap-1 text-sm text-success"
+						><Icon icon={Tick02Icon} size={15} /> Password updated</span
+					>{/if}
+			</div>
+		</div>
+	</Card>
+
 	<!-- Appearance -->
 	<Card class="mb-6">
 		<h2 class="mb-1 text-sm font-medium text-muted">Appearance</h2>
@@ -54,9 +173,7 @@
 				<button
 					onclick={() => theme.set(m.value)}
 					class={`flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors ${
-						theme.mode === m.value
-							? 'bg-accent-soft text-accent'
-							: 'text-muted hover:text-fg'
+						theme.mode === m.value ? 'bg-accent-soft text-accent' : 'text-muted hover:text-fg'
 					}`}
 				>
 					<Icon icon={m.icon} size={16} />

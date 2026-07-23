@@ -8,7 +8,7 @@
 	import { session } from '$lib/api/session.svelte';
 	import { Upload01Icon, Film01Icon, PlayListIcon, HardDriveIcon } from '@hugeicons/core-free-icons';
 
-	const name = $derived(nameFromEmail(session.user?.email));
+	const name = $derived(session.user?.name || nameFromEmail(session.user?.email));
 
 	let assets = $state<Asset[]>([]);
 	let jobs = $state<Job[]>([]);
@@ -39,9 +39,7 @@
 	<div class="mb-8 flex flex-wrap items-end justify-between gap-4">
 		<div>
 			<p class="text-sm text-muted">{longDate()}</p>
-			<h1 class="mt-1 text-2xl font-semibold tracking-tight">
-				{greeting()}, {name} <span class="text-accent">👋</span>
-			</h1>
+			<h1 class="mt-1 text-2xl font-semibold tracking-tight">{greeting()}, {name}</h1>
 			<p class="mt-1 text-sm text-muted">
 				{#if activeCount > 0}
 					{activeCount} job{activeCount === 1 ? '' : 's'} transcoding right now.

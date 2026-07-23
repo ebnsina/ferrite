@@ -1,8 +1,9 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
-	import { Card, Button, Icon } from '$lib/ui';
+	import { Card, Button, Icon, Sheet } from '$lib/ui';
 	import { listLiveStreams, createLiveStream, getLiveStream } from '$lib/api/endpoints';
 	import { ApiError } from '$lib/api/client';
+	import { liveStreamSchema, validate } from '$lib/schemas';
 	import type { LiveStream } from '$lib/api/types';
 	import { timeAgo } from '$lib/format';
 	import { LiveStreaming01Icon, DotIcon, PlusSignIcon } from '@hugeicons/core-free-icons';
@@ -10,9 +11,16 @@
 	let streams = $state<LiveStream[]>([]);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
+	let timer: ReturnType<typeof setInterval>;
+
+	// Create sheet
+	let createOpen = $state(false);
 	let name = $state('');
 	let creating = $state(false);
-	let timer: ReturnType<typeof setInterval>;
+	let createErr = $state<string | null>(null);
+
+	const inputCls =
+		'w-full rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm outline-none focus:border-accent';
 
 	async function load() {
 		try {
@@ -31,16 +39,23 @@
 		}
 	}
 
+	function openCreate() {
+		name = '';
+		createErr = null;
+		createOpen = true;
+	}
+
 	async function create() {
-		if (!name.trim()) return;
+		createErr = null;
+		const v = validate(liveStreamSchema, { name });
+		if (!v.ok) return (createErr = v.errors.name);
 		creating = true;
-		error = null;
 		try {
-			await createLiveStream(name.trim());
-			name = '';
+			await createLiveStream(v.data.name);
+			createOpen = false;
 			await load();
 		} catch (e) {
-			error = e instanceof ApiError ? e.message : 'Could not create stream.';
+			createErr = e instanceof ApiError ? e.message : 'Could not create stream.';
 		} finally {
 			creating = false;
 		}
@@ -54,24 +69,13 @@
 </script>
 
 <div class="mx-auto max-w-5xl">
-	<div class="mb-8">
-		<h1 class="text-2xl font-semibold tracking-tight">Live</h1>
-		<p class="mt-1 text-sm text-muted">Create a stream, then push RTMP from OBS or ffmpeg.</p>
-	</div>
-
-	<Card class="mb-6">
-		<div class="flex gap-2">
-			<input
-				bind:value={name}
-				placeholder="Stream name"
-				class="flex-1 rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm outline-none focus:border-accent"
-				onkeydown={(e) => e.key === 'Enter' && create()}
-			/>
-			<Button disabled={creating || !name.trim()} onclick={create}>
-				<Icon icon={PlusSignIcon} size={16} /> New stream
-			</Button>
+	<div class="mb-8 flex flex-wrap items-center justify-between gap-3">
+		<div>
+			<h1 class="text-2xl font-semibold tracking-tight">Live</h1>
+			<p class="mt-1 text-sm text-muted">Create a stream, then push RTMP from OBS or ffmpeg.</p>
 		</div>
-	</Card>
+		<Button onclick={openCreate}><Icon icon={PlusSignIcon} size={16} /> New stream</Button>
+	</div>
 
 	{#if error}
 		<div class="mb-4 rounded-lg border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger">{error}</div>
@@ -108,3 +112,29 @@
 		{/if}
 	</Card>
 </div>
+
+<Sheet
+	open={createOpen}
+	onclose={() => (createOpen = false)}
+	title="New live stream"
+	description="You'll get an RTMP/SRT ingest URL and a stream key."
+>
+	<div>
+		<label for="stream-name" class="mb-1.5 block text-xs font-medium text-muted">Stream name</label>
+		<input
+			id="stream-name"
+			bind:value={name}
+			placeholder="e.g. Launch keynote"
+			class={inputCls}
+			onkeydown={(e) => e.key === 'Enter' && create()}
+		/>
+		{#if createErr}<p class="mt-1.5 text-sm text-danger">{createErr}</p>{/if}
+	</div>
+
+	{#snippet footer()}
+		<div class="flex justify-end gap-2">
+			<Button variant="secondary" onclick={() => (createOpen = false)}>Cancel</Button>
+			<Button disabled={creating} onclick={create}>{creating ? 'Creating…' : 'Create stream'}</Button>
+		</div>
+	{/snippet}
+</Sheet>

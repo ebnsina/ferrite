@@ -3,9 +3,11 @@ import { browser } from '$app/environment';
 
 const STORAGE_KEY = 'ferrite.session';
 
+import type { User } from './types';
+
 export interface SessionData {
 	token: string;
-	user: { id: string; email: string; role: string };
+	user: User;
 	tenant: { id: string; name: string };
 }
 
@@ -37,6 +39,12 @@ export const session = {
 	set(next: SessionData) {
 		data = next;
 		if (browser) localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+	},
+	/** Merge fields into the current user (e.g. after a profile update). */
+	patchUser(patch: Partial<User>) {
+		if (!data) return;
+		data = { ...data, user: { ...data.user, ...patch } };
+		if (browser) localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 	},
 	clear() {
 		data = null;
