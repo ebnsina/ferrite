@@ -334,6 +334,28 @@ pub async fn create_asset(
     .await
 }
 
+/// Create an asset that the worker will produce (e.g. a clip). Starts in
+/// `processing` — no client upload is expected.
+pub async fn create_processing_asset(
+    pool: &PgPool,
+    tenant_id: Uuid,
+    id: Uuid,
+    filename: &str,
+    original_key: &str,
+) -> Result<Asset, sqlx::Error> {
+    sqlx::query_as::<_, Asset>(
+        "INSERT INTO assets (id, tenant_id, filename, original_key, status)
+         VALUES ($1, $2, $3, $4, 'processing')
+         RETURNING id, filename, original_key, bytes, status, created_at",
+    )
+    .bind(id)
+    .bind(tenant_id)
+    .bind(filename)
+    .bind(original_key)
+    .fetch_one(pool)
+    .await
+}
+
 /// Tenant-scoped fetch — never returns another tenant's asset.
 pub async fn find_asset(
     pool: &PgPool,
@@ -393,6 +415,27 @@ pub struct Job {
     pub finished_at: Option<DateTime<Utc>>,
     /// True once an AES-128 key exists — encrypted jobs skip DASH output.
     pub encrypted: bool,
+}
+
+/// Create a clip job row (kind='clip') linking source → produced asset.
+pub async fn create_clip_job(
+    pool: &PgPool,
+    tenant_id: Uuid,
+    id: Uuid,
+    source_asset_id: Uuid,
+    dest_asset_id: Uuid,
+) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        "INSERT INTO jobs (id, tenant_id, asset_id, output_prefix, kind, dest_asset_id)
+         VALUES ($1, $2, $3, '', 'clip', $4)",
+    )
+    .bind(id)
+    .bind(tenant_id)
+    .bind(source_asset_id)
+    .bind(dest_asset_id)
+    .execute(pool)
+    .await?;
+    Ok(())
 }
 
 /// Idempotent create: a reused `idempotency_key` returns the existing job with

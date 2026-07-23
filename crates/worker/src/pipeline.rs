@@ -22,6 +22,8 @@ pub enum PipelineError {
     Io(#[from] std::io::Error),
     #[error("db error: {0}")]
     Db(#[from] sqlx::Error),
+    #[error("clip error: {0}")]
+    Clip(String),
 }
 
 /// Process one job end to end. Returns the number of artifacts uploaded.
@@ -49,6 +51,15 @@ async fn run(
     job_dir: &PathBuf,
     encode: EncodeParams,
 ) -> Result<usize, PipelineError> {
+    // Clip jobs trim the source into a new asset instead of transcoding.
+    if let Some(clip) = job.clip.clone() {
+        let res = crate::clip::run(pool, job, &clip, storage, job_dir).await;
+        if res.is_err() {
+            let _ = db::set_asset_status(pool, clip.dest_asset_id, "error").await;
+        }
+        return res;
+    }
+
     let source_path = job_dir.join("source.input");
     let source_str = source_path.to_string_lossy().to_string();
 

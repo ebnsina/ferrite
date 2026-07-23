@@ -134,6 +134,13 @@ export function createAsset(filename: string) {
 	});
 }
 
+export function clipAsset(id: string, start: number, end: number, name?: string) {
+	return apiRequest<{ asset: Asset; job_id: string }>(`/v1/assets/${id}/clip`, {
+		method: 'POST',
+		body: JSON.stringify({ start, end, name: name || null })
+	});
+}
+
 export function completeAsset(id: string, bytes: number) {
 	return apiRequest<Asset>(`/v1/assets/${id}/complete`, {
 		method: 'POST',

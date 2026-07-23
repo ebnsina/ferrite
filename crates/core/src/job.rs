@@ -54,4 +54,19 @@ pub struct TranscodeJob {
     /// Hex AES-128 key, populated by the worker at runtime (not by the API).
     #[serde(default)]
     pub encryption_key: Option<String>,
+    /// When set, this job trims the source into a new asset instead of
+    /// transcoding it (the transcode ladder/flags are ignored).
+    #[serde(default)]
+    pub clip: Option<Clip>,
+}
+
+/// A trim operation: cut `[start_secs, end_secs)` of the source into a new asset.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Clip {
+    pub start_secs: f64,
+    pub end_secs: f64,
+    /// The new asset this clip produces.
+    pub dest_asset_id: Uuid,
+    /// Object-storage key to upload the trimmed file to.
+    pub dest_key: String,
 }

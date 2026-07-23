@@ -128,6 +128,7 @@ pub(crate) async fn submit_job(
             thumbnails: true,
             encrypt,
             encryption_key: None,
+            clip: None,
         };
         state.queue().enqueue(&transcode).await?;
         tracing::info!(job = %job.id, tenant = %tenant_id, "job enqueued");

@@ -51,6 +51,14 @@ export const apiKeySchema = z.object({
 	name: z.string().trim().min(1, 'Give the key a name').max(100)
 });
 
+export const clipSchema = z
+	.object({
+		start: z.number().min(0, 'Start must be 0 or more'),
+		end: z.number().positive('End time is required'),
+		name: z.string().trim().max(255).optional()
+	})
+	.refine((v) => v.end > v.start, { message: 'End must be after start', path: ['end'] });
+
 export const liveStreamSchema = z.object({
 	name: z.string().trim().min(1, 'Stream name is required').max(100)
 });

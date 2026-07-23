@@ -11,6 +11,9 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use validator::Validate;
 
+use ferrite_core::{Clip, Ladder, TranscodeJob};
+use ferrite_queue::JobQueue;
+
 use crate::auth::TenantContext;
 use crate::db::{self, Asset};
 use crate::error::{ApiError, ApiResult};
@@ -115,6 +118,90 @@ pub async fn get_asset(
         .await?
         .ok_or(ApiError::NotFound)?;
     Ok(Json(asset.into()))
+}
+
+#[derive(Deserialize, Validate)]
+pub struct ClipRequest {
+    /// Start/end offsets in seconds.
+    pub start: f64,
+    pub end: f64,
+    #[validate(length(max = 255))]
+    #[serde(default)]
+    pub name: Option<String>,
+}
+
+#[derive(Serialize)]
+pub struct ClipResponse {
+    pub asset: AssetView,
+    pub job_id: Uuid,
+}
+
+/// `POST /v1/assets/{id}/clip` — trim `[start, end]` of a source into a new asset.
+pub async fn clip_asset(
+    State(state): State<AppState>,
+    ctx: TenantContext,
+    Path(id): Path<Uuid>,
+    Json(body): Json<ClipRequest>,
+) -> ApiResult<Json<ClipResponse>> {
+    body.validate().map_err(ApiError::Validation)?;
+    if !(body.start >= 0.0 && body.end > body.start) {
+        return Err(ApiError::BadRequest("invalid time range".into()));
+    }
+
+    let source = db::find_asset(state.db(), ctx.tenant_id, id)
+        .await?
+        .ok_or(ApiError::NotFound)?;
+    if source.status != "ready" {
+        return Err(ApiError::BadRequest("source asset is not ready".into()));
+    }
+
+    let stem = source
+        .filename
+        .rsplit_once('.')
+        .map(|(s, _)| s)
+        .unwrap_or(&source.filename);
+    let name = body
+        .name
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(|s| s.to_string())
+        .unwrap_or_else(|| format!("{stem} clip.mp4"));
+
+    let dest_id = Uuid::new_v4();
+    let dest_key = source_key(ctx.tenant_id, dest_id, &name);
+    let dest =
+        db::create_processing_asset(state.db(), ctx.tenant_id, dest_id, &name, &dest_key).await?;
+
+    let job_id = Uuid::new_v4();
+    db::create_clip_job(state.db(), ctx.tenant_id, job_id, id, dest_id).await?;
+
+    let transcode = TranscodeJob {
+        id: job_id,
+        tenant_id: ctx.tenant_id,
+        asset_id: id,
+        source_key: source.original_key,
+        output_prefix: String::new(),
+        ladder: Ladder::default_abr(),
+        hls: false,
+        dash: false,
+        thumbnails: false,
+        encrypt: false,
+        encryption_key: None,
+        clip: Some(Clip {
+            start_secs: body.start,
+            end_secs: body.end,
+            dest_asset_id: dest_id,
+            dest_key,
+        }),
+    };
+    state.queue().enqueue(&transcode).await?;
+    tracing::info!(job = %job_id, source = %id, dest = %dest_id, "clip enqueued");
+
+    Ok(Json(ClipResponse {
+        asset: dest.into(),
+        job_id,
+    }))
 }
 
 /// Object-storage key for a source upload. Filename is sanitized to a basename

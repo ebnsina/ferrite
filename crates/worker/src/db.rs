@@ -44,6 +44,33 @@ pub async fn mark_completed(pool: &PgPool, job_id: Uuid) -> Result<(), sqlx::Err
     Ok(())
 }
 
+/// Mark a produced (clip) asset ready with its final size.
+pub async fn mark_asset_ready(
+    pool: &PgPool,
+    asset_id: Uuid,
+    bytes: Option<i64>,
+) -> Result<(), sqlx::Error> {
+    sqlx::query("UPDATE assets SET status = 'ready', bytes = COALESCE($2, bytes) WHERE id = $1")
+        .bind(asset_id)
+        .bind(bytes)
+        .execute(pool)
+        .await?;
+    Ok(())
+}
+
+pub async fn set_asset_status(
+    pool: &PgPool,
+    asset_id: Uuid,
+    status: &str,
+) -> Result<(), sqlx::Error> {
+    sqlx::query("UPDATE assets SET status = $2 WHERE id = $1")
+        .bind(asset_id)
+        .bind(status)
+        .execute(pool)
+        .await?;
+    Ok(())
+}
+
 pub async fn mark_failed(pool: &PgPool, job_id: Uuid, error: &str) -> Result<(), sqlx::Error> {
     sqlx::query(
         "UPDATE jobs SET state = 'failed', error = $2, finished_at = now(), attempts = attempts + 1
