@@ -682,6 +682,43 @@ pub async fn insert_waitlist(
     Ok(())
 }
 
+#[derive(Debug, sqlx::FromRow)]
+pub struct WaitlistEntry {
+    pub id: i64,
+    pub name: String,
+    pub email: String,
+    pub whatsapp: Option<String>,
+    pub country: Option<String>,
+    pub use_case: Option<String>,
+    pub volume: Option<String>,
+    pub plan: Option<String>,
+    pub payment: Option<String>,
+    pub created_at: DateTime<Utc>,
+}
+
+/// All waitlist signups, newest first (superadmin only).
+pub async fn list_waitlist(pool: &PgPool) -> Result<Vec<WaitlistEntry>, sqlx::Error> {
+    sqlx::query_as::<_, WaitlistEntry>(
+        "SELECT id, name, email, whatsapp, country, use_case, volume, plan, payment, created_at
+         FROM waitlist ORDER BY created_at DESC LIMIT 1000",
+    )
+    .fetch_all(pool)
+    .await
+}
+
+/// Platform-wide counts (tenants, users, assets, jobs, waitlist).
+pub async fn platform_overview(pool: &PgPool) -> Result<(i64, i64, i64, i64, i64), sqlx::Error> {
+    sqlx::query_as::<_, (i64, i64, i64, i64, i64)>(
+        "SELECT (SELECT count(*) FROM tenants),
+                (SELECT count(*) FROM users),
+                (SELECT count(*) FROM assets),
+                (SELECT count(*) FROM jobs),
+                (SELECT count(*) FROM waitlist)",
+    )
+    .fetch_one(pool)
+    .await
+}
+
 // --- In-video search ---------------------------------------------------------
 
 #[derive(Debug, sqlx::FromRow)]

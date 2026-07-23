@@ -19,6 +19,7 @@ pub struct UserView {
     pub email: String,
     pub name: Option<String>,
     pub role: String,
+    pub superadmin: bool,
 }
 
 #[derive(Serialize)]
@@ -61,7 +62,9 @@ pub async fn signup(
     let hash = auth::hash_password(&body.password)?;
     db::create_user(state.db(), user_id, tenant.id, &email, &hash, "owner", None).await?;
 
-    let token = auth::issue_session(&state.settings().auth_secret, user_id, tenant.id, "owner");
+    let superadmin = auth::is_superadmin(&state.settings().superadmin_emails, &email);
+    let token =
+        auth::issue_session(&state.settings().auth_secret, user_id, tenant.id, "owner", superadmin);
     Ok(Json(AuthResponse {
         token,
         user: UserView {
@@ -69,6 +72,7 @@ pub async fn signup(
             email,
             name: None,
             role: "owner".into(),
+            superadmin,
         },
         tenant: TenantView {
             id: tenant.id,
@@ -100,11 +104,13 @@ pub async fn login(
         .await?
         .ok_or(ApiError::Unauthorized)?;
 
+    let superadmin = auth::is_superadmin(&state.settings().superadmin_emails, &email);
     let token = auth::issue_session(
         &state.settings().auth_secret,
         user.id,
         user.tenant_id,
         &user.role,
+        superadmin,
     );
     Ok(Json(AuthResponse {
         token,
@@ -113,6 +119,7 @@ pub async fn login(
             email,
             name: user.name,
             role: user.role,
+            superadmin,
         },
         tenant: TenantView {
             id: tenant.id,

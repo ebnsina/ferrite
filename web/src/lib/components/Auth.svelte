@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import { Button, Card, Logo } from '$lib/ui';
 	import { session } from '$lib/api/session.svelte';
 	import { login, signup, forgotPassword } from '$lib/api/endpoints';
@@ -51,6 +52,8 @@
 					? await signup(email.trim(), password, workspace.trim())
 					: await login(email.trim(), password);
 			session.set(res);
+			// Role-based redirect: superadmins land in the admin console.
+			if (res.user.superadmin) goto('/admin');
 		} catch (e) {
 			error =
 				e instanceof ApiError

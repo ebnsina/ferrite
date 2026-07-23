@@ -114,6 +114,37 @@ export function getUsage() {
 	return apiRequest<Usage>('/v1/usage');
 }
 
+// --- Admin (superadmin only) -------------------------------------------------
+
+export interface AdminOverview {
+	tenants: number;
+	users: number;
+	assets: number;
+	jobs: number;
+	waitlist: number;
+}
+
+export function getAdminOverview() {
+	return apiRequest<AdminOverview>('/v1/admin/overview');
+}
+
+export interface WaitlistRow {
+	id: number;
+	name: string;
+	email: string;
+	whatsapp: string | null;
+	country: string | null;
+	use_case: string | null;
+	volume: string | null;
+	plan: string | null;
+	payment: string | null;
+	created_at: string;
+}
+
+export function getAdminWaitlist() {
+	return apiRequest<WaitlistRow[]>('/v1/admin/waitlist');
+}
+
 export function createLiveStream(name: string) {
 	return apiRequest<LiveStream>('/v1/live/streams', {
 		method: 'POST',

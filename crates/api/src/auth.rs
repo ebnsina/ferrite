@@ -48,10 +48,26 @@ struct Claims {
     sub: Uuid, // user id
     tenant_id: Uuid,
     role: String,
+    #[serde(default)]
+    superadmin: bool,
     exp: u64,
 }
 
-pub fn issue_session(secret: &str, user_id: Uuid, tenant_id: Uuid, role: &str) -> String {
+/// Whether an email is a configured platform superadmin.
+pub fn is_superadmin(list: &Option<String>, email: &str) -> bool {
+    let email = email.trim().to_lowercase();
+    list.as_deref()
+        .map(|l| l.split(',').any(|e| e.trim().to_lowercase() == email))
+        .unwrap_or(false)
+}
+
+pub fn issue_session(
+    secret: &str,
+    user_id: Uuid,
+    tenant_id: Uuid,
+    role: &str,
+    superadmin: bool,
+) -> String {
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_secs())
@@ -61,6 +77,7 @@ pub fn issue_session(secret: &str, user_id: Uuid, tenant_id: Uuid, role: &str) -
         sub: user_id,
         tenant_id,
         role: role.to_string(),
+        superadmin,
         exp,
     };
     jsonwebtoken::encode(
@@ -117,6 +134,8 @@ pub struct TenantContext {
     /// Present for dashboard-user sessions; `None` for API keys.
     pub user_id: Option<Uuid>,
     pub role: String,
+    /// Platform superadmin (cross-tenant admin). API keys are never superadmin.
+    pub superadmin: bool,
 }
 
 impl TenantContext {
@@ -152,6 +171,7 @@ impl FromRequestParts<AppState> for TenantContext {
                 tenant_id: key.tenant_id,
                 user_id: None,
                 role: "service".to_string(),
+                superadmin: false,
             })
         } else {
             let claims = decode_session(&state.settings().auth_secret, token)
@@ -160,6 +180,7 @@ impl FromRequestParts<AppState> for TenantContext {
                 tenant_id: claims.tenant_id,
                 user_id: Some(claims.sub),
                 role: claims.role,
+                superadmin: claims.superadmin,
             })
         }
     }

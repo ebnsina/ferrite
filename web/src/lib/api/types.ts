@@ -65,6 +65,7 @@ export interface User {
 	email: string;
 	name: string | null;
 	role: string;
+	superadmin?: boolean;
 }
 
 export interface AuthResponse {

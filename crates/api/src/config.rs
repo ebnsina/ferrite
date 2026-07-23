@@ -44,6 +44,10 @@ pub struct Settings {
     #[serde(default)]
     pub provenance_secret: Option<String>,
 
+    /// Comma-separated emails granted platform superadmin (cross-tenant admin).
+    #[serde(default)]
+    pub superadmin_emails: Option<String>,
+
     // --- AI (OpenAI-compatible) for caption translation. Optional. ---
     #[serde(default)]
     pub ai_base_url: Option<String>,

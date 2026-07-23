@@ -9,6 +9,7 @@
 		Analytics01Icon,
 		Settings01Icon,
 		Search01Icon,
+		Building01Icon,
 		Menu01Icon,
 		Cancel01Icon
 	} from '@hugeicons/core-free-icons';
@@ -26,7 +27,7 @@
 	let mobileOpen = $state(false);
 	afterNavigate(() => (mobileOpen = false));
 
-	const nav = [
+	const nav = $derived([
 		{ href: '/app', label: 'Dashboard', icon: DashboardSquare01Icon },
 		{ href: '/app/assets', label: 'Assets', icon: Film01Icon },
 		{ href: '/app/jobs', label: 'Jobs', icon: PlayListIcon },
@@ -34,8 +35,11 @@
 		{ href: '/app/live', label: 'Live', icon: LiveStreaming01Icon },
 		{ href: '/app/metrics', label: 'Metrics', icon: Analytics01Icon },
 		{ href: '/app/team', label: 'Team', icon: UserGroupIcon },
-		{ href: '/app/settings', label: 'Settings', icon: Settings01Icon }
-	];
+		{ href: '/app/settings', label: 'Settings', icon: Settings01Icon },
+		...(session.user?.superadmin
+			? [{ href: '/admin', label: 'Admin', icon: Building01Icon }]
+			: [])
+	]);
 
 	function isActive(href: string) {
 		return href === '/app' ? page.url.pathname === '/app' : page.url.pathname.startsWith(href);

@@ -1,6 +1,7 @@
 //! Router assembly. Route modules are registered here; cross-cutting middleware
 //! (tracing, CORS, body limits) and the global 404 fallback are applied once.
 
+mod admin;
 mod analytics;
 mod assets;
 mod brand;
@@ -54,6 +55,8 @@ pub fn build(state: AppState) -> Router {
             axum::routing::patch(members::update_member).delete(members::remove_member),
         )
         .route("/me", get(tenants::me))
+        .route("/admin/overview", get(admin::overview))
+        .route("/admin/waitlist", get(admin::waitlist))
         .route("/brand", get(brand::get_brand))
         .route("/brand/logo", post(brand::upload_logo))
         .route(
