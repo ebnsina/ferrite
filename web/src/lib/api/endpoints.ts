@@ -156,6 +156,7 @@ export interface TranscodeOptions {
 	encrypt?: boolean;
 	mp4?: boolean;
 	audio?: boolean;
+	captions?: boolean;
 	watermark?: { position: 'tl' | 'tr' | 'bl' | 'br'; opacity: number };
 }
 

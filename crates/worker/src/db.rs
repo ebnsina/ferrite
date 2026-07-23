@@ -58,6 +58,16 @@ pub async fn mark_asset_ready(
     Ok(())
 }
 
+/// Correct the captions flag to what the pipeline actually produced.
+pub async fn set_has_captions(pool: &PgPool, job_id: Uuid, value: bool) -> Result<(), sqlx::Error> {
+    sqlx::query("UPDATE jobs SET has_captions = $2 WHERE id = $1")
+        .bind(job_id)
+        .bind(value)
+        .execute(pool)
+        .await?;
+    Ok(())
+}
+
 pub async fn set_asset_status(
     pool: &PgPool,
     asset_id: Uuid,

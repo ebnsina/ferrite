@@ -44,6 +44,9 @@ pub struct JobView {
     /// Audio-only download; present when produced and completed.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub audio_url: Option<String>,
+    /// WebVTT captions track; present when produced and completed.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub captions_url: Option<String>,
 }
 
 impl From<Job> for JobView {
@@ -62,6 +65,7 @@ impl From<Job> for JobView {
             storyboard_url: None,
             mp4_url: None,
             audio_url: None,
+            captions_url: None,
         }
     }
 }
@@ -75,6 +79,8 @@ pub struct JobOptions {
     pub mp4: bool,
     #[serde(default)]
     pub audio: bool,
+    #[serde(default)]
+    pub captions: bool,
     #[serde(default)]
     pub watermark: Option<WatermarkOpt>,
 }
@@ -144,6 +150,7 @@ pub(crate) async fn submit_job(
         idempotency_key,
         want_mp4,
         options.audio,
+        options.captions,
     )
     .await?;
 
@@ -168,6 +175,7 @@ pub(crate) async fn submit_job(
             clip: None,
             mp4: want_mp4,
             audio: options.audio,
+            captions: options.captions,
             watermark,
         };
         state.queue().enqueue(&transcode).await?;
@@ -265,6 +273,7 @@ fn view_with_urls(state: &AppState, tenant_id: Uuid, job: Job) -> JobView {
     let encrypted = job.encrypted;
     let has_mp4 = job.has_mp4;
     let has_audio = job.has_audio;
+    let has_captions = job.has_captions;
     let mut view = JobView::from(job);
     if completed {
         let s = state.settings();
@@ -278,6 +287,11 @@ fn view_with_urls(state: &AppState, tenant_id: Uuid, job: Job) -> JobView {
         }
         if has_audio {
             view.audio_url = Some(format!("{base}/playback/{job_id}/audio.m4a?token={token}"));
+        }
+        if has_captions {
+            view.captions_url = Some(format!(
+                "{base}/playback/{job_id}/captions.vtt?token={token}"
+            ));
         }
         view.playback_url = Some(format!(
             "{base}/playback/{job_id}/master.m3u8?token={token}"

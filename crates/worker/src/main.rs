@@ -1,5 +1,6 @@
 //! Ferrite transcode worker: claims jobs from the queue and processes them.
 
+mod captions;
 mod clip;
 mod cmaf;
 mod config;
@@ -114,6 +115,11 @@ async fn run_loop(
     let shutdown = shutdown_signal();
     tokio::pin!(shutdown);
 
+    let caption_backend = captions::Backend::from_settings(&settings);
+    if caption_backend.is_configured() {
+        tracing::info!("caption transcriber configured");
+    }
+
     loop {
         tokio::select! {
             _ = &mut shutdown => {
@@ -136,8 +142,10 @@ async fn run_loop(
                         );
 
                         let encode = encoding::EncodeParams::from_setting(&settings.encoder);
-                        let outcome =
-                            pipeline::process(&pool, &job, &storage, &settings.work_dir, encode).await;
+                        let outcome = pipeline::process(
+                            &pool, &job, &storage, &settings.work_dir, encode, &caption_backend,
+                        )
+                        .await;
                         heartbeat.abort();
 
                         match outcome {

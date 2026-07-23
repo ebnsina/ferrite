@@ -211,6 +211,7 @@ pub async fn clip_asset(
         }),
         mp4: false,
         audio: false,
+        captions: false,
         watermark: None,
     };
     state.queue().enqueue(&transcode).await?;

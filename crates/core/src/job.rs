@@ -64,6 +64,9 @@ pub struct TranscodeJob {
     /// Also emit an audio-only track (`audio.m4a`).
     #[serde(default)]
     pub audio: bool,
+    /// Also transcribe audio → a WebVTT captions track (`captions.vtt`).
+    #[serde(default)]
+    pub captions: bool,
     /// Overlay a logo on the MP4 download.
     #[serde(default)]
     pub watermark: Option<Watermark>,

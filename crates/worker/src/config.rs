@@ -34,6 +34,24 @@ pub struct Settings {
     /// Stable identity within the consumer group; generated per-process if unset.
     #[serde(default = "default_consumer")]
     pub consumer_name: String,
+
+    // --- Captions (all optional; unset = captions are skipped) ---
+    /// Path to a whisper.cpp CLI binary (fully local transcription).
+    #[serde(default)]
+    pub whisper_bin: Option<String>,
+    /// Path to a whisper.cpp ggml model file.
+    #[serde(default)]
+    pub whisper_model: Option<String>,
+    /// OpenAI-compatible base URL for `/audio/transcriptions` (provider-agnostic:
+    /// OpenAI, Groq, a local faster-whisper server, …). Used only if whisper.cpp
+    /// isn't configured.
+    #[serde(default)]
+    pub ai_base_url: Option<String>,
+    #[serde(default)]
+    pub ai_key: Option<String>,
+    /// Transcription model name (default `whisper-1`).
+    #[serde(default)]
+    pub ai_model: Option<String>,
 }
 
 fn default_consumer() -> String {

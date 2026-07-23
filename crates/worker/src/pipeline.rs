@@ -33,11 +33,12 @@ pub async fn process(
     storage: &Storage,
     work_root: &str,
     encode: EncodeParams,
+    captions: &crate::captions::Backend,
 ) -> Result<usize, PipelineError> {
     let job_dir = PathBuf::from(work_root).join(job.id.to_string());
     tokio::fs::create_dir_all(&job_dir).await?;
 
-    let result = run(pool, job, storage, &job_dir, encode).await;
+    let result = run(pool, job, storage, &job_dir, encode, captions).await;
     if let Err(e) = tokio::fs::remove_dir_all(&job_dir).await {
         tracing::warn!(job = %job.id, error = %e, "failed to clean scratch dir");
     }
@@ -50,6 +51,7 @@ async fn run(
     storage: &Storage,
     job_dir: &PathBuf,
     encode: EncodeParams,
+    captions: &crate::captions::Backend,
 ) -> Result<usize, PipelineError> {
     // Clip jobs trim the source into a new asset instead of transcoding.
     if let Some(clip) = job.clip.clone() {
@@ -137,6 +139,22 @@ async fn run(
     if job.mp4 || job.audio {
         let mut extra = crate::extras::generate(job, &source_str, &output_dir, storage).await;
         artifacts.append(&mut extra);
+    }
+
+    // Auto-captions (WebVTT). Best-effort; skipped if no transcriber configured.
+    // Reflect what was actually produced so we never advertise a missing track.
+    if job.captions {
+        let produced =
+            match crate::captions::generate(captions, job, &source_str, &output_dir).await {
+                Some(vtt) => {
+                    artifacts.push(vtt);
+                    true
+                }
+                None => false,
+            };
+        if !produced {
+            db::set_has_captions(pool, job.id, false).await?;
+        }
     }
 
     db::set_state(pool, job.id, "uploading").await?;

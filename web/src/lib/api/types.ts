@@ -37,6 +37,7 @@ export interface Job {
 	storyboard_url?: string;
 	mp4_url?: string;
 	audio_url?: string;
+	captions_url?: string;
 }
 
 export interface Usage {

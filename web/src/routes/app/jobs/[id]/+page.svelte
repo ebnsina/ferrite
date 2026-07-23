@@ -10,7 +10,8 @@
 		HdIcon,
 		ArrowDown01Icon,
 		Download01Icon,
-		MusicNote01Icon
+		MusicNote01Icon,
+		SubtitleIcon
 	} from '@hugeicons/core-free-icons';
 
 	const id = $derived(page.params.id!);
@@ -143,9 +144,14 @@
 						use:player={{ format, src }}
 						controls
 						playsinline
+						crossorigin="anonymous"
 						poster={job.poster_url}
 						class="aspect-video w-full bg-black"
-					></video>
+					>
+						{#if job.captions_url}
+							<track kind="subtitles" srclang="en" label="Captions" src={job.captions_url} default />
+						{/if}
+					</video>
 				{/key}
 			</Card>
 
@@ -215,6 +221,15 @@
 							class="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm transition-colors hover:bg-surface-2"
 						>
 							<Icon icon={MusicNote01Icon} size={15} /> Download audio
+						</a>
+					{/if}
+					{#if job.captions_url}
+						<a
+							href={job.captions_url}
+							download
+							class="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm transition-colors hover:bg-surface-2"
+						>
+							<Icon icon={SubtitleIcon} size={15} /> Download captions
 						</a>
 					{/if}
 				</div>

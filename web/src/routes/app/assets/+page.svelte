@@ -143,6 +143,7 @@
 	let txAsset = $state<Asset | null>(null);
 	let txMp4 = $state(false);
 	let txAudio = $state(false);
+	let txCaptions = $state(false);
 	let txEncrypt = $state(false);
 	let txWatermark = $state(false);
 	let txPosition = $state<'tl' | 'tr' | 'bl' | 'br'>('br');
@@ -152,6 +153,7 @@
 		txAsset = a;
 		txMp4 = false;
 		txAudio = false;
+		txCaptions = false;
 		txEncrypt = false;
 		txWatermark = false;
 		txPosition = 'br';
@@ -165,6 +167,7 @@
 			await createJob(txAsset.id, {
 				mp4: txMp4,
 				audio: txAudio,
+				captions: txCaptions,
 				encrypt: txEncrypt,
 				watermark: txWatermark ? { position: txPosition, opacity: 0.85 } : undefined
 			});
@@ -334,6 +337,13 @@
 			<span>
 				<span class="block text-sm font-medium">Audio-only</span>
 				<span class="block text-xs text-muted">Extract an M4A audio track (podcasts, transcripts).</span>
+			</span>
+		</label>
+		<label class="flex items-start gap-3">
+			<input type="checkbox" bind:checked={txCaptions} class="mt-0.5 accent-accent" />
+			<span>
+				<span class="block text-sm font-medium">Auto-captions</span>
+				<span class="block text-xs text-muted">Transcribe speech to a WebVTT subtitle track.</span>
 			</span>
 		</label>
 		<label class="flex items-start gap-3">
