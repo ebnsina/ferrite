@@ -324,6 +324,32 @@
 
 			<p class="mono mt-3 break-all text-xs text-muted">{src}</p>
 
+			<!-- Renditions (quality profiles) produced for this stream. -->
+			{#if format === 'hls' && levels.length > 0}
+				<div class="mt-4">
+					<p class="mb-2 flex items-center gap-1.5 text-xs font-medium text-muted">
+						<Icon icon={MonitorPlay} size={13} /> Renditions
+					</p>
+					<div class="flex flex-wrap gap-2">
+						{#if levels.length > 1}
+							<button
+								onclick={() => selectQuality(-1)}
+								class={`mono rounded-lg border px-2.5 py-1 text-xs transition-colors ${selected === -1 ? 'border-accent/40 bg-accent-soft text-accent' : 'border-border text-muted hover:text-fg'}`}
+							>Auto</button>
+						{/if}
+						{#each levels as l (l.i)}
+							{@const isActive = selected === l.i || (selected === -1 && activeLevel === l.i)}
+							<button
+								onclick={() => selectQuality(l.i)}
+								class={`mono rounded-lg border px-2.5 py-1 text-xs transition-colors ${isActive ? 'border-accent/40 bg-accent-soft text-accent' : 'border-border text-muted hover:text-fg'}`}
+							>
+								{l.label}<span class="ml-1 opacity-60">· {(l.bitrate / 1e6).toFixed(1)} Mbps</span>
+							</button>
+						{/each}
+					</div>
+				</div>
+			{/if}
+
 			{#if job.mp4_url || job.audio_url}
 				<div class="mt-4 flex flex-wrap gap-2">
 					{#if job.mp4_url}
