@@ -260,48 +260,62 @@
 
 	const tiers = [
 		{
-			name: 'Hobby',
+			name: 'Free',
 			price: '$0',
-			cadence: '/mo',
-			blurb: 'For side projects and evaluation.',
-			cta: 'Start free',
+			cadence: '',
+			blurb: 'Self-host it on your own infrastructure, forever.',
+			cta: 'Get the code',
 			highlight: false,
+			caps: null,
+			capsNote: 'Your infrastructure — your limits.',
 			features: [
-				'1 workspace',
-				'CPU transcoding',
-				'HLS + DASH output',
-				'5 GB storage',
+				'Full source-available core',
+				'Your own S3 storage',
+				'All core features',
 				'Community support'
 			]
 		},
 		{
+			name: 'Starter',
+			price: '$29',
+			cadence: '/mo',
+			blurb: 'Managed cloud for side projects & small apps.',
+			cta: 'Start free trial',
+			highlight: false,
+			caps: { storage: '50 GB', minutes: '500 min', delivery: '100 GB' },
+			capsNote: '',
+			features: ['Adaptive HLS + DASH', 'Clips & thumbnails', 'Signed playback', 'Email support']
+		},
+		{
 			name: 'Pro',
-			price: '$49',
+			price: '$99',
 			cadence: '/mo',
 			blurb: 'For teams shipping video to production.',
-			cta: 'Get started',
+			cta: 'Start free trial',
 			highlight: true,
+			caps: { storage: '500 GB', minutes: '3,000 min', delivery: '1 TB' },
+			capsNote: '',
 			features: [
-				'Unlimited team members',
-				'Priority fair-queue lane',
-				'Live streaming (RTMP + SRT)',
-				'500 GB storage',
-				'Signed playback URLs',
-				'Email support'
+				'Everything in Starter',
+				'AI shorts & captions',
+				'In-video search',
+				'Live + simulcast',
+				'Analytics & embeds'
 			]
 		},
 		{
-			name: 'Scale',
+			name: 'Enterprise',
 			price: 'Custom',
 			cadence: '',
-			blurb: 'For high-volume video platforms.',
+			blurb: 'Self-hosted or dedicated, with the controls you need.',
 			cta: 'Contact us',
 			highlight: false,
+			caps: null,
+			capsNote: 'Custom limits, regions & SLA.',
 			features: [
-				'GPU (NVENC) encoding',
-				'Dedicated workers',
-				'Custom storage & regions',
-				'DRM & advanced security',
+				'SSO / SAML & RBAC',
+				'DRM & audit logs',
+				'Content provenance at scale',
 				'SLA & priority support'
 			]
 		}
@@ -625,18 +639,17 @@
 <section id="pricing" class="border-t border-border bg-surface/40">
 	<div class="mx-auto max-w-6xl px-6 py-20" use:reveal>
 		<div class="mx-auto max-w-2xl text-center">
-			<h2 class="text-3xl font-semibold tracking-tight">Simple, scalable pricing</h2>
+			<h2 class="text-3xl font-semibold tracking-tight">Fixed monthly pricing, clear limits</h2>
 			<p class="mt-3 text-muted">
-				Start free, upgrade when you grow. Billing is mocked in this demo environment.
+				No metered surprises — each plan includes a set amount of storage, transcoding, and
+				delivery. Self-host it free, or let us run it. 14-day free trial on cloud plans.
 			</p>
 		</div>
-		<div class="mt-14 grid gap-6 lg:grid-cols-3 lg:items-center">
+		<div class="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-4 lg:items-stretch">
 			{#each tiers as t (t.name)}
 				<div
 					class={`flex flex-col rounded-xl border p-6 ${
-						t.highlight
-							? 'border-accent bg-surface p-8 shadow-lg ring-1 ring-accent lg:py-12'
-							: 'border-border bg-surface'
+						t.highlight ? 'border-accent bg-surface shadow-lg ring-1 ring-accent' : 'border-border bg-surface'
 					}`}
 				>
 					<div class="flex items-center justify-between">
@@ -647,14 +660,30 @@
 							>
 						{/if}
 					</div>
-					<p class="mt-1 text-sm text-muted">{t.blurb}</p>
-					<div class="mt-5 flex items-end gap-1">
-						<span class="text-4xl font-semibold tracking-tight">{t.price}</span>
+					<p class="mt-1 min-h-10 text-sm text-muted">{t.blurb}</p>
+					<div class="mt-4 flex items-end gap-1">
+						<span class="text-3xl font-semibold tracking-tight">{t.price}</span>
 						{#if t.cadence}<span class="mb-1 text-sm text-muted">{t.cadence}</span>{/if}
 					</div>
+
+					{#if t.caps}
+						<div class="mt-4 grid grid-cols-3 gap-2 rounded-lg border border-border bg-surface-2 p-3 text-center">
+							{#each [['Storage', t.caps.storage], ['Transcode', t.caps.minutes], ['Delivery', t.caps.delivery]] as [label, val] (label)}
+								<div>
+									<p class="mono text-xs font-semibold">{val}</p>
+									<p class="text-[10px] text-muted">{label}</p>
+								</div>
+							{/each}
+						</div>
+					{:else}
+						<p class="mt-4 rounded-lg border border-border bg-surface-2 p-3 text-center text-xs text-muted">
+							{t.capsNote}
+						</p>
+					{/if}
+
 					<a
 						href="/app"
-						class={`mt-6 inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
+						class={`mt-4 inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
 							t.highlight
 								? 'bg-accent text-accent-fg hover:opacity-90'
 								: 'border border-border hover:bg-surface-2'
@@ -662,7 +691,7 @@
 					>
 						{t.cta} <Icon icon={ArrowRight01Icon} size={15} />
 					</a>
-					<ul class="mt-6 flex flex-col gap-3 border-t border-border pt-6">
+					<ul class="mt-6 flex flex-col gap-2.5 border-t border-border pt-6">
 						{#each t.features as f (f)}
 							<li class="flex items-start gap-2.5 text-sm">
 								<span class="mt-0.5 text-accent"
@@ -675,6 +704,10 @@
 				</div>
 			{/each}
 		</div>
+		<p class="mt-8 text-center text-xs text-muted">
+			Exceeded a limit? Upgrade any time — no overage bill lands without warning. Prices
+			illustrative.
+		</p>
 	</div>
 </section>
 
