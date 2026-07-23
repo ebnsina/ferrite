@@ -417,11 +417,13 @@
 				Start free, upgrade when you grow. Billing is mocked in this demo environment.
 			</p>
 		</div>
-		<div class="mt-14 grid gap-6 lg:grid-cols-3">
+		<div class="mt-14 grid gap-6 lg:grid-cols-3 lg:items-center">
 			{#each tiers as t (t.name)}
 				<div
 					class={`flex flex-col rounded-xl border p-6 ${
-						t.highlight ? 'border-accent bg-surface ring-1 ring-accent' : 'border-border bg-surface'
+						t.highlight
+							? 'border-accent bg-surface p-8 shadow-lg ring-1 ring-accent lg:py-12'
+							: 'border-border bg-surface'
 					}`}
 				>
 					<div class="flex items-center justify-between">
