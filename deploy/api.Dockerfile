@@ -5,8 +5,9 @@ COPY . .
 RUN cargo build --release -p ferrite-api
 
 FROM debian:bookworm-slim
+# FFmpeg powers on-demand thumbnails + animated previews.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates \
+    && apt-get install -y --no-install-recommends ca-certificates ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=build /app/target/release/ferrite-api /usr/local/bin/ferrite-api
 # Migrations ship with the image so they can be run on deploy.

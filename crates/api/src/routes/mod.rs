@@ -5,6 +5,7 @@ mod assets;
 mod health;
 mod jobs;
 mod live;
+mod media;
 mod members;
 mod playback;
 mod profile;
@@ -85,6 +86,9 @@ pub fn build(state: AppState) -> Router {
         .route("/health", get(health::health))
         // Token-authorized playback proxy (not API-key auth; scoped by signed token).
         .route("/playback/{job_id}/{*path}", get(playback::serve))
+        // Signed, embeddable derived media (thumbnails + previews).
+        .route("/media/{asset_id}/thumbnail", get(media::thumbnail))
+        .route("/media/{asset_id}/preview", get(media::preview))
         // Ingest-server DVR callback (secret-gated) → archive live recording to VOD.
         .route("/internal/live/dvr", post(live::dvr_hook))
         // Prometheus scrape endpoint.

@@ -16,8 +16,11 @@ export interface Asset {
 	id: string;
 	filename: string;
 	bytes: number | null;
-	status: 'uploading' | 'ready' | 'error';
+	status: 'uploading' | 'processing' | 'ready' | 'error';
 	created_at: string;
+	/** Signed, embeddable derived-media URLs (present once ready). */
+	thumbnail_url: string | null;
+	preview_url: string | null;
 }
 
 export interface Job {

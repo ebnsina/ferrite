@@ -13,6 +13,7 @@
 	} from '$lib/api/endpoints';
 	import { ApiError } from '$lib/api/client';
 	import { clipSchema, validate } from '$lib/schemas';
+	import AssetThumb from '$lib/components/AssetThumb.svelte';
 	import type { Asset } from '$lib/api/types';
 	import { bytes, timeAgo } from '$lib/format';
 	import {
@@ -191,7 +192,7 @@
 			<div class="flex flex-col divide-y divide-border">
 				{#each assets as a (a.id)}
 					<div class="flex items-center gap-4 py-3">
-						<span class="text-muted"><Icon icon={Film01Icon} size={18} /></span>
+						<AssetThumb asset={a} />
 						<div class="min-w-0 flex-1">
 							<p class="truncate text-sm font-medium">{a.filename}</p>
 							<p class="mono text-xs text-muted">{bytes(a.bytes)} · {timeAgo(a.created_at)}</p>

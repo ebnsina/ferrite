@@ -28,17 +28,27 @@ pub struct AssetView {
     pub bytes: Option<i64>,
     pub status: String,
     pub created_at: String,
+    /// Signed, embeddable derived-media URLs (present once the asset is ready).
+    pub thumbnail_url: Option<String>,
+    pub preview_url: Option<String>,
 }
 
-impl From<Asset> for AssetView {
-    fn from(a: Asset) -> Self {
-        AssetView {
-            id: a.id,
-            filename: a.filename,
-            bytes: a.bytes,
-            status: a.status,
-            created_at: a.created_at.to_rfc3339(),
-        }
+/// Build a view, attaching signed thumbnail/preview URLs for ready assets.
+fn asset_view(state: &AppState, tenant: Uuid, a: Asset) -> AssetView {
+    let (thumbnail_url, preview_url) = if a.status == "ready" {
+        let (t, p) = super::media::signed_urls(state, tenant, a.id);
+        (Some(t), Some(p))
+    } else {
+        (None, None)
+    };
+    AssetView {
+        id: a.id,
+        filename: a.filename,
+        bytes: a.bytes,
+        status: a.status,
+        created_at: a.created_at.to_rfc3339(),
+        thumbnail_url,
+        preview_url,
     }
 }
 
@@ -71,7 +81,7 @@ pub async fn create_asset(
     let upload_url = state.storage().presign_put(&key, UPLOAD_URL_TTL).await?;
 
     Ok(Json(CreateAssetResponse {
-        asset: asset.into(),
+        asset: asset_view(&state, ctx.tenant_id, asset),
         upload_url,
         expires_in_secs: UPLOAD_URL_TTL.as_secs(),
     }))
@@ -96,7 +106,7 @@ pub async fn complete_asset(
     let asset = db::find_asset(state.db(), ctx.tenant_id, id)
         .await?
         .ok_or(ApiError::NotFound)?;
-    Ok(Json(asset.into()))
+    Ok(Json(asset_view(&state, ctx.tenant_id, asset)))
 }
 
 /// `GET /v1/assets` — list the tenant's assets.
@@ -105,7 +115,12 @@ pub async fn list_assets(
     ctx: TenantContext,
 ) -> ApiResult<Json<Vec<AssetView>>> {
     let assets = db::list_assets(state.db(), ctx.tenant_id).await?;
-    Ok(Json(assets.into_iter().map(AssetView::from).collect()))
+    Ok(Json(
+        assets
+            .into_iter()
+            .map(|a| asset_view(&state, ctx.tenant_id, a))
+            .collect(),
+    ))
 }
 
 /// `GET /v1/assets/:id` — fetch a single asset.
@@ -117,7 +132,7 @@ pub async fn get_asset(
     let asset = db::find_asset(state.db(), ctx.tenant_id, id)
         .await?
         .ok_or(ApiError::NotFound)?;
-    Ok(Json(asset.into()))
+    Ok(Json(asset_view(&state, ctx.tenant_id, asset)))
 }
 
 #[derive(Deserialize, Validate)]
@@ -199,7 +214,7 @@ pub async fn clip_asset(
     tracing::info!(job = %job_id, source = %id, dest = %dest_id, "clip enqueued");
 
     Ok(Json(ClipResponse {
-        asset: dest.into(),
+        asset: asset_view(&state, ctx.tenant_id, dest),
         job_id,
     }))
 }
