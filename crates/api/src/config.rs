@@ -44,6 +44,14 @@ pub struct Settings {
     #[serde(default)]
     pub provenance_secret: Option<String>,
 
+    // --- AI (OpenAI-compatible) for caption translation. Optional. ---
+    #[serde(default)]
+    pub ai_base_url: Option<String>,
+    #[serde(default)]
+    pub ai_key: Option<String>,
+    #[serde(default)]
+    pub ai_chat_model: Option<String>,
+
     /// Public base URL of the dashboard/frontend (e.g. `http://localhost:5173`),
     /// used to build links in emails (password reset, invites).
     pub app_base_url: String,

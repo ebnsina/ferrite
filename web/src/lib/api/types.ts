@@ -38,6 +38,7 @@ export interface Job {
 	mp4_url?: string;
 	audio_url?: string;
 	captions_url?: string;
+	caption_tracks?: { lang: string; url: string }[];
 }
 
 export interface Usage {

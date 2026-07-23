@@ -10,6 +10,7 @@
 		streamJob,
 		getJobEmbed,
 		getJobAnalytics,
+		translateCaptions,
 		type JobAnalytics
 	} from '$lib/api/endpoints';
 	import { ApiError } from '$lib/api/client';
@@ -133,6 +134,27 @@
 		};
 	}
 
+	// Caption translation
+	let transLang = $state('');
+	let translating = $state(false);
+	let transErr = $state<string | null>(null);
+
+	async function doTranslate() {
+		const lang = transLang.trim();
+		if (!lang || !job) return;
+		translating = true;
+		transErr = null;
+		try {
+			await translateCaptions(id, lang);
+			transLang = '';
+			job = await getJob(id); // refresh to pick up the new track
+		} catch (e) {
+			transErr = e instanceof ApiError ? e.message : 'Translation failed.';
+		} finally {
+			translating = false;
+		}
+	}
+
 	// Embed + analytics (loaded once the job is completed).
 	let iframe = $state<string | null>(null);
 	let analytics = $state<JobAnalytics | null>(null);
@@ -211,8 +233,11 @@
 						class="aspect-video w-full bg-black"
 					>
 						{#if job.captions_url}
-							<track kind="subtitles" srclang="en" label="Captions" src={job.captions_url} default />
+							<track kind="subtitles" srclang="en" label="English" src={job.captions_url} default />
 						{/if}
+						{#each job.caption_tracks ?? [] as t (t.lang)}
+							<track kind="subtitles" srclang={t.lang} label={t.lang.toUpperCase()} src={t.url} />
+						{/each}
 					</video>
 				{/key}
 			</Card>
@@ -295,6 +320,33 @@
 							<Icon icon={SubtitleIcon} size={15} /> Download captions
 						</a>
 					{/if}
+				</div>
+			{/if}
+
+			{#if job.captions_url}
+				<div class="mt-6">
+					<h2 class="mb-2 flex items-center gap-2 text-sm font-medium text-muted">
+						<Icon icon={SubtitleIcon} size={16} /> Caption languages
+					</h2>
+					<div class="flex flex-wrap items-center gap-2">
+						<span class="mono rounded-md bg-surface-2 px-2 py-1 text-xs">EN</span>
+						{#each job.caption_tracks ?? [] as t (t.lang)}
+							<span class="mono rounded-md bg-surface-2 px-2 py-1 text-xs">{t.lang.toUpperCase()}</span>
+						{/each}
+						<input
+							bind:value={transLang}
+							placeholder="Add language (e.g. Spanish)"
+							class="w-48 rounded-lg border border-border bg-surface-2 px-3 py-1.5 text-sm outline-none focus:border-accent"
+							onkeydown={(e) => e.key === 'Enter' && doTranslate()}
+						/>
+						<button
+							onclick={doTranslate}
+							disabled={translating || !transLang.trim()}
+							class="rounded-lg border border-border px-3 py-1.5 text-sm transition-colors hover:bg-surface-2 disabled:opacity-50"
+							>{translating ? 'Translating…' : 'Translate'}</button
+						>
+					</div>
+					{#if transErr}<p class="mt-2 text-sm text-danger">{transErr}</p>{/if}
 				</div>
 			{/if}
 

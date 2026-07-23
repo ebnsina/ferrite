@@ -261,6 +261,13 @@ export function getJob(id: string) {
 	return apiRequest<Job & { playback_url?: string }>(`/v1/jobs/${id}`);
 }
 
+export function translateCaptions(id: string, lang: string) {
+	return apiRequest<{ lang: string; url: string }>(`/v1/jobs/${id}/translate`, {
+		method: 'POST',
+		body: JSON.stringify({ lang })
+	});
+}
+
 export function getJobEmbed(id: string) {
 	return apiRequest<{ embed_url: string; iframe: string }>(`/v1/jobs/${id}/embed`);
 }

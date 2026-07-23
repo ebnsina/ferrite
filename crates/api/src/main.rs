@@ -1,5 +1,6 @@
 //! Ferrite API server entrypoint.
 
+mod ai;
 mod auth;
 mod config;
 mod db;

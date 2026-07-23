@@ -47,6 +47,15 @@ pub struct JobView {
     /// WebVTT captions track; present when produced and completed.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub captions_url: Option<String>,
+    /// Translated caption tracks (lang → signed URL).
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub caption_tracks: Vec<CaptionTrack>,
+}
+
+#[derive(Serialize)]
+pub struct CaptionTrack {
+    pub lang: String,
+    pub url: String,
 }
 
 impl From<Job> for JobView {
@@ -66,6 +75,7 @@ impl From<Job> for JobView {
             mp4_url: None,
             audio_url: None,
             captions_url: None,
+            caption_tracks: Vec::new(),
         }
     }
 }
@@ -252,6 +262,85 @@ pub async fn list_jobs(
     Ok(Json(jobs.into_iter().map(JobView::from).collect()))
 }
 
+#[derive(Deserialize)]
+pub struct TranslateRequest {
+    /// Target language, e.g. "Spanish" or "es".
+    pub lang: String,
+}
+
+/// `POST /v1/jobs/{id}/translate` — translate the job's transcript into another
+/// language and publish it as an additional caption track.
+pub async fn translate_captions(
+    State(state): State<AppState>,
+    ctx: TenantContext,
+    Path(id): Path<Uuid>,
+    Json(body): Json<TranslateRequest>,
+) -> ApiResult<Json<CaptionTrack>> {
+    let lang = body.lang.trim().to_lowercase();
+    if lang.is_empty() || lang.len() > 40 {
+        return Err(ApiError::BadRequest("invalid language".into()));
+    }
+    let translator = crate::ai::Translator::from_settings(state.settings())
+        .ok_or_else(|| ApiError::Unavailable("AI translation is not configured".into()))?;
+
+    let job = db::find_job(state.db(), ctx.tenant_id, id)
+        .await?
+        .ok_or(ApiError::NotFound)?;
+    if job.state != "completed" {
+        return Err(ApiError::Conflict("job is not completed".into()));
+    }
+    let cues = db::transcript_for_job(state.db(), id).await?;
+    if cues.is_empty() {
+        return Err(ApiError::Conflict(
+            "no transcript to translate (transcode with captions first)".into(),
+        ));
+    }
+
+    let texts: Vec<String> = cues.iter().map(|(_, _, t)| t.clone()).collect();
+    let translated = translator
+        .translate(&texts, &lang)
+        .await
+        .ok_or_else(|| ApiError::Unavailable("translation failed".into()))?;
+
+    // Rebuild a WebVTT from the original timings + translated text.
+    let mut vtt = String::from("WEBVTT\n\n");
+    for ((start, end, _), text) in cues.iter().zip(translated.iter()) {
+        vtt.push_str(&format!(
+            "{} --> {}\n{}\n\n",
+            vtt_time(*start as f64),
+            vtt_time(*end as f64),
+            text
+        ));
+    }
+
+    let key = format!("{}/captions.{lang}.vtt", job.output_prefix);
+    state
+        .storage()
+        .put_bytes(&key, vtt.into_bytes())
+        .await
+        .map_err(|e| ApiError::Internal(anyhow::anyhow!(e)))?;
+    db::insert_caption_track(state.db(), ctx.tenant_id, id, &lang).await?;
+
+    let s = state.settings();
+    let exp = super::playback::now_unix() + super::playback::TOKEN_TTL_SECS;
+    let token = super::playback::sign_token(&s.playback_secret, ctx.tenant_id, id, exp);
+    Ok(Json(CaptionTrack {
+        lang: lang.clone(),
+        url: format!(
+            "{}/playback/{id}/captions.{lang}.vtt?token={token}",
+            s.public_url
+        ),
+    }))
+}
+
+fn vtt_time(secs: f64) -> String {
+    let ms = (secs * 1000.0).round() as u64;
+    let (h, rem) = (ms / 3_600_000, ms % 3_600_000);
+    let (m, rem) = (rem / 60_000, rem % 60_000);
+    let (s, ms) = (rem / 1000, rem % 1000);
+    format!("{h:02}:{m:02}:{s:02}.{ms:03}")
+}
+
 /// `GET /v1/jobs/:id` — fetch a single job's status.
 pub async fn get_job(
     State(state): State<AppState>,
@@ -262,13 +351,25 @@ pub async fn get_job(
         .await?
         .ok_or(ApiError::NotFound)?;
 
-    Ok(Json(view_with_urls(&state, ctx.tenant_id, job)))
+    let langs = if job.state == "completed" {
+        db::list_caption_langs(state.db(), id)
+            .await
+            .unwrap_or_default()
+    } else {
+        Vec::new()
+    };
+    Ok(Json(view_with_urls(&state, ctx.tenant_id, job, &langs)))
 }
 
 /// Build a JobView, adding tokenized playback proxy URLs once completed.
 /// Outputs are private in storage; the proxy authorizes delivery via a
 /// short-lived token (see [`super::playback`]).
-fn view_with_urls(state: &AppState, tenant_id: Uuid, job: Job) -> JobView {
+fn view_with_urls(
+    state: &AppState,
+    tenant_id: Uuid,
+    job: Job,
+    caption_langs: &[String],
+) -> JobView {
     let completed = job.state == "completed";
     let job_id = job.id;
     let encrypted = job.encrypted;
@@ -310,6 +411,13 @@ fn view_with_urls(state: &AppState, tenant_id: Uuid, job: Job) -> JobView {
         view.storyboard_url = Some(format!(
             "{base}/playback/{job_id}/thumbs/thumbs.vtt?token={token}"
         ));
+        view.caption_tracks = caption_langs
+            .iter()
+            .map(|lang| CaptionTrack {
+                lang: lang.clone(),
+                url: format!("{base}/playback/{job_id}/captions.{lang}.vtt?token={token}"),
+            })
+            .collect();
     }
     view
 }
@@ -337,7 +445,7 @@ pub async fn job_events(
             match db::find_job(state.db(), tenant_id, id).await {
                 Ok(Some(job)) => {
                     let terminal = job.state == "completed" || job.state == "failed";
-                    let view = view_with_urls(&state, tenant_id, job);
+                    let view = view_with_urls(&state, tenant_id, job, &[]);
                     if let Ok(event) = Event::default().json_data(view) {
                         yield Ok(event);
                     }

@@ -89,6 +89,7 @@ pub fn build(state: AppState) -> Router {
         .route("/jobs/{id}/events", get(jobs::job_events))
         .route("/jobs/{id}/analytics", get(analytics::job_analytics))
         .route("/jobs/{id}/embed", get(analytics::job_embed))
+        .route("/jobs/{id}/translate", post(jobs::translate_captions))
         .route(
             "/live/streams",
             get(live::list_streams).post(live::create_stream),

@@ -647,6 +647,47 @@ pub struct SearchHit {
     pub snippet: String,
 }
 
+/// A job's transcript cues in order (for translation / rebuilding VTT).
+pub async fn transcript_for_job(
+    pool: &PgPool,
+    job_id: Uuid,
+) -> Result<Vec<(f32, f32, String)>, sqlx::Error> {
+    sqlx::query_as::<_, (f32, f32, String)>(
+        "SELECT start_secs, end_secs, text FROM transcript_segments
+         WHERE job_id = $1 ORDER BY start_secs",
+    )
+    .bind(job_id)
+    .fetch_all(pool)
+    .await
+}
+
+pub async fn insert_caption_track(
+    pool: &PgPool,
+    tenant_id: Uuid,
+    job_id: Uuid,
+    lang: &str,
+) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        "INSERT INTO caption_tracks (tenant_id, job_id, lang) VALUES ($1, $2, $3)
+         ON CONFLICT (job_id, lang) DO NOTHING",
+    )
+    .bind(tenant_id)
+    .bind(job_id)
+    .bind(lang)
+    .execute(pool)
+    .await?;
+    Ok(())
+}
+
+pub async fn list_caption_langs(pool: &PgPool, job_id: Uuid) -> Result<Vec<String>, sqlx::Error> {
+    let rows: Vec<(String,)> =
+        sqlx::query_as("SELECT lang FROM caption_tracks WHERE job_id = $1 ORDER BY lang")
+            .bind(job_id)
+            .fetch_all(pool)
+            .await?;
+    Ok(rows.into_iter().map(|r| r.0).collect())
+}
+
 /// Full-text search over transcript segments (tenant-scoped), ranked by relevance.
 pub async fn search_transcripts(
     pool: &PgPool,
