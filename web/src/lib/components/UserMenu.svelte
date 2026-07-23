@@ -6,7 +6,7 @@
 	import { logout } from '$lib/api/endpoints';
 	import { nameFromEmail } from '$lib/format';
 	import { dur } from '$lib/motion';
-	import { Settings01Icon, Logout01Icon, ArrowDown01Icon } from '@hugeicons/core-free-icons';
+	import { GearSix, SignOut, CaretDown } from 'phosphor-svelte';
 
 	let open = $state(false);
 
@@ -42,7 +42,7 @@
 		>
 		<span class="hidden text-sm font-medium sm:block">{name}</span>
 		<span class="text-muted transition-transform" class:rotate-180={open}>
-			<Icon icon={ArrowDown01Icon} size={14} />
+			<Icon icon={CaretDown} size={14} />
 		</span>
 	</button>
 
@@ -66,13 +66,13 @@
 					onclick={() => (open = false)}
 					class="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm text-muted transition-colors hover:bg-surface-2 hover:text-fg"
 				>
-					<Icon icon={Settings01Icon} size={16} /> Profile & settings
+					<Icon icon={GearSix} size={16} /> Profile & settings
 				</a>
 				<button
 					onclick={signOut}
 					class="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm text-danger transition-colors hover:bg-danger/10"
 				>
-					<Icon icon={Logout01Icon} size={16} /> Sign out
+					<Icon icon={SignOut} size={16} /> Sign out
 				</button>
 			</div>
 		</div>

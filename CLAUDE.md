@@ -26,7 +26,7 @@ Module headers: one line. A tricky invariant gets one line at the site, not a le
 - **Modular**: small focused files; one responsibility each.
 - **Errors**: handle 404/500/validation from the start; never `unwrap()` on a request path. API errors go through `ApiError` → JSON envelope.
 - **Docs before coding**: verify library APIs via context7; check versions against the crates.io sparse index. Don't assume.
-- **Icons**: use `@hugeicons/svelte` with `@hugeicons/core-free-icons` (via the `Icon` component), not inline SVG.
+- **Icons**: use `phosphor-svelte` icons via the `Icon` component, not inline SVG.
 - **Tenancy**: every tenant-owned query is scoped by `tenant_id`.
 - **Queue fairness**: enqueue is per-tenant; the scheduler round-robins with an in-flight cap. Don't bypass it with direct stream writes.
 - **Config**: `FERRITE_*`, fail-fast (no serde defaults) except genuinely optional integrations (SMTP, whisper/AI, watermark). Unset optionals must degrade gracefully — log/skip/fallback, never crash.

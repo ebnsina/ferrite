@@ -8,7 +8,7 @@
 	import { inviteSchema, validate } from '$lib/schemas';
 	import type { Member, MemberInvited } from '$lib/api/types';
 	import { timeAgo, nameFromEmail } from '$lib/format';
-	import { UserGroupIcon, Copy01Icon, Tick01Icon, UserAdd01Icon, Delete02Icon } from '@hugeicons/core-free-icons';
+	import { UsersThree, Copy, Check, UserPlus, Trash } from 'phosphor-svelte';
 
 	const isOwner = $derived(session.user?.role === 'owner');
 
@@ -113,7 +113,7 @@
 		</div>
 		{#if isOwner}
 			<Button onclick={openInvite}>
-				<Icon icon={UserAdd01Icon} size={16} /> Invite member
+				<Icon icon={UserPlus} size={16} /> Invite member
 			</Button>
 		{/if}
 	</div>
@@ -131,7 +131,7 @@
 			<p class="py-6 text-center text-sm text-muted">Loading…</p>
 		{:else if members.length === 0}
 			<div class="flex flex-col items-center py-10 text-center">
-				<span class="mb-3 text-muted"><Icon icon={UserGroupIcon} size={28} /></span>
+				<span class="mb-3 text-muted"><Icon icon={UsersThree} size={28} /></span>
 				<p class="text-sm text-muted">No members yet.</p>
 			</div>
 		{:else}
@@ -177,7 +177,7 @@
 										aria-label="Remove member"
 										class="rounded-lg p-1.5 text-muted transition-colors hover:bg-danger/10 hover:text-danger"
 									>
-										<Icon icon={Delete02Icon} size={16} />
+										<Icon icon={Trash} size={16} />
 									</button>
 								{/if}
 							</div>
@@ -213,7 +213,7 @@
 					class="text-muted hover:text-fg"
 					aria-label="Copy temporary password"
 				>
-					<Icon icon={copied === 'invite' ? Tick01Icon : Copy01Icon} size={16} />
+					<Icon icon={copied === 'invite' ? Check : Copy} size={16} />
 				</button>
 			</div>
 		</div>

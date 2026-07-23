@@ -22,18 +22,7 @@
 	import AssetThumb from '$lib/components/AssetThumb.svelte';
 	import type { Asset } from '$lib/api/types';
 	import { bytes, timeAgo } from '$lib/format';
-	import {
-		Upload01Icon,
-		Film01Icon,
-		Loading03Icon,
-		PlayIcon,
-		CloudUploadIcon,
-		Scissor01Icon,
-		AiVideoIcon,
-		ShieldIcon,
-		CheckmarkCircle02Icon,
-		Cancel01Icon
-	} from '@hugeicons/core-free-icons';
+	import { UploadSimple, FilmStrip, Spinner, Play, CloudArrowUp, Scissors, MagicWand, ShieldCheck, CheckCircle, X } from 'phosphor-svelte';
 
 	let assets = $state<Asset[]>([]);
 	let loading = $state(true);
@@ -266,10 +255,10 @@
 		<div class="flex gap-2">
 			{#if readyAssets.length > 1}
 				<Button variant="secondary" onclick={transcodeAll}>
-					<Icon icon={PlayIcon} size={16} /> Transcode all ({readyAssets.length})
+					<Icon icon={Play} size={16} /> Transcode all ({readyAssets.length})
 				</Button>
 			{/if}
-			<Button onclick={openUpload}><Icon icon={Upload01Icon} size={16} /> Upload video</Button>
+			<Button onclick={openUpload}><Icon icon={UploadSimple} size={16} /> Upload video</Button>
 		</div>
 	</div>
 
@@ -282,7 +271,7 @@
 			<p class="py-8 text-center text-sm text-muted">Loading…</p>
 		{:else if assets.length === 0}
 			<div class="flex flex-col items-center justify-center py-12 text-center">
-				<span class="mb-3 text-muted"><Icon icon={Film01Icon} size={32} /></span>
+				<span class="mb-3 text-muted"><Icon icon={FilmStrip} size={32} /></span>
 				<p class="font-medium">No assets yet</p>
 				<p class="mt-1 text-sm text-muted">Upload your first video to get started.</p>
 			</div>
@@ -303,13 +292,13 @@
 								title="Content credentials"
 								class="rounded-lg p-1.5 text-muted transition-colors hover:bg-surface-2 hover:text-accent"
 							>
-								<Icon icon={ShieldIcon} size={16} />
+								<Icon icon={ShieldCheck} size={16} />
 							</button>
 							<Button size="sm" variant="ghost" onclick={() => openShorts(a)}>
-								<Icon icon={AiVideoIcon} size={15} /> Shorts
+								<Icon icon={MagicWand} size={15} /> Shorts
 							</Button>
 							<Button size="sm" variant="ghost" onclick={() => openClip(a)}>
-								<Icon icon={Scissor01Icon} size={15} /> Clip
+								<Icon icon={Scissors} size={15} /> Clip
 							</Button>
 							<Button size="sm" variant="secondary" onclick={() => openTranscode(a)}>Transcode</Button>
 						{/if}
@@ -338,7 +327,7 @@
 		}`}
 	>
 		<input type="file" accept="video/*" class="hidden" onchange={pick} />
-		<span class="mb-3 text-accent"><Icon icon={CloudUploadIcon} size={36} /></span>
+		<span class="mb-3 text-accent"><Icon icon={CloudArrowUp} size={36} /></span>
 		{#if file}
 			<p class="text-sm font-medium">{file.name}</p>
 			<p class="mono mt-1 text-xs text-muted">{bytes(file.size)}</p>
@@ -354,7 +343,7 @@
 		<div class="flex justify-end gap-2">
 			<Button variant="secondary" onclick={() => (uploadOpen = false)}>Cancel</Button>
 			<Button disabled={uploading || !file} onclick={upload}>
-				{#if uploading}<Icon icon={Loading03Icon} size={16} class="animate-spin" /> Uploading…{:else}Upload{/if}
+				{#if uploading}<Icon icon={Spinner} size={16} class="animate-spin" /> Uploading…{:else}Upload{/if}
 			</Button>
 		</div>
 	{/snippet}
@@ -512,7 +501,7 @@
 		<p class="py-8 text-center text-sm text-muted">Verifying…</p>
 	{:else if provNone || !prov}
 		<div class="rounded-lg border border-border bg-surface-2 p-4 text-center">
-			<span class="mb-2 inline-flex text-muted"><Icon icon={ShieldIcon} size={24} /></span>
+			<span class="mb-2 inline-flex text-muted"><Icon icon={ShieldCheck} size={24} /></span>
 			<p class="text-sm font-medium">No content credentials</p>
 			<p class="mt-1 text-xs text-muted">
 				Only Ferrite-produced assets (clips, shorts, live clips) are signed.
@@ -523,7 +512,7 @@
 			class={`mb-4 flex items-center gap-3 rounded-lg border p-4 ${prov.verified ? 'border-success/30 bg-success/10' : 'border-danger/30 bg-danger/10'}`}
 		>
 			<span class={prov.verified ? 'text-success' : 'text-danger'}>
-				<Icon icon={prov.verified ? CheckmarkCircle02Icon : Cancel01Icon} size={26} />
+				<Icon icon={prov.verified ? CheckCircle : X} size={26} />
 			</span>
 			<div>
 				<p class="text-sm font-semibold">
@@ -560,7 +549,7 @@
 				class={`flex items-center gap-3 rounded-lg border p-3 ${mod.flagged ? 'border-warning/40 bg-warning/10' : 'border-success/30 bg-success/10'}`}
 			>
 				<span class={mod.flagged ? 'text-warning' : 'text-success'}>
-					<Icon icon={mod.flagged ? ShieldIcon : CheckmarkCircle02Icon} size={20} />
+					<Icon icon={mod.flagged ? ShieldCheck : CheckCircle} size={20} />
 				</span>
 				<div>
 					<p class="text-sm font-medium">

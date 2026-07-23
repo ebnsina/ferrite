@@ -5,7 +5,7 @@
 	import { ApiError } from '$lib/api/client';
 	import { humanizeError } from '$lib/humanize';
 	import { resetSchema, validate } from '$lib/schemas';
-	import { Tick02Icon } from '@hugeicons/core-free-icons';
+	import { Check } from 'phosphor-svelte';
 
 	const token = $derived(page.url.searchParams.get('token') ?? '');
 
@@ -52,7 +52,7 @@
 				<span
 					class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-success/10 text-success"
 				>
-					<Icon icon={Tick02Icon} size={24} />
+					<Icon icon={Check} size={24} />
 				</span>
 				<h1 class="text-lg font-semibold">Password updated</h1>
 				<p class="mt-1 mb-6 text-sm text-muted">You can now sign in with your new password.</p>

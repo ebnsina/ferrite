@@ -7,7 +7,7 @@
 	import { liveStreamSchema, validate } from '$lib/schemas';
 	import type { LiveStream } from '$lib/api/types';
 	import { timeAgo } from '$lib/format';
-	import { LiveStreaming01Icon, DotIcon, PlusSignIcon } from '@hugeicons/core-free-icons';
+	import { Broadcast, Circle, Plus } from 'phosphor-svelte';
 
 	let streams = $state<LiveStream[]>([]);
 	let loading = $state(true);
@@ -76,7 +76,7 @@
 			<h1 class="text-2xl font-semibold tracking-tight">Live</h1>
 			<p class="mt-1 text-sm text-muted">Create a stream, then push RTMP from OBS or ffmpeg.</p>
 		</div>
-		<Button onclick={openCreate}><Icon icon={PlusSignIcon} size={16} /> New stream</Button>
+		<Button onclick={openCreate}><Icon icon={Plus} size={16} /> New stream</Button>
 	</div>
 
 	{#if error}
@@ -88,7 +88,7 @@
 			<p class="py-8 text-center text-sm text-muted">Loading…</p>
 		{:else if streams.length === 0}
 			<div class="flex flex-col items-center justify-center py-12 text-center">
-				<span class="mb-3 text-muted"><Icon icon={LiveStreaming01Icon} size={32} /></span>
+				<span class="mb-3 text-muted"><Icon icon={Broadcast} size={32} /></span>
 				<p class="font-medium">No live streams</p>
 				<p class="mt-1 text-sm text-muted">Create one to get an RTMP ingest URL.</p>
 			</div>
@@ -96,8 +96,8 @@
 			<div class="flex flex-col divide-y divide-border">
 				{#each streams as s (s.id)}
 					<a href={`/app/live/${s.id}`} class="flex items-center gap-4 py-3 transition-colors hover:bg-surface-2">
-						<span class={s.live ? 'text-danger' : 'text-muted'}>
-							<Icon icon={DotIcon} size={22} />
+						<span class={s.live ? 'text-danger' : 'text-muted/50'}>
+							<Icon icon={Circle} size={12} weight="fill" />
 						</span>
 						<div class="min-w-0 flex-1">
 							<p class="truncate text-sm font-medium">{s.name}</p>

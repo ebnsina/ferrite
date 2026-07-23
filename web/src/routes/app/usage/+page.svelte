@@ -7,7 +7,7 @@
 	import { humanizeError } from '$lib/humanize';
 	import type { Usage } from '$lib/api/types';
 	import { bytes } from '$lib/format';
-	import { CreditCardIcon, Timer01Icon, HardDriveIcon } from '@hugeicons/core-free-icons';
+	import { CreditCard, Timer, HardDrives } from 'phosphor-svelte';
 
 	let usage = $state<Usage | null>(null);
 	let error = $state<string | null>(null);
@@ -40,7 +40,7 @@
 <div class="mx-auto max-w-4xl">
 	<div class="mb-8">
 		<h1 class="flex items-center gap-2 text-2xl font-semibold tracking-tight">
-			<span class="text-accent"><Icon icon={CreditCardIcon} size={22} /></span> Usage
+			<span class="text-accent"><Icon icon={CreditCard} size={22} /></span> Usage
 		</h1>
 		<p class="mt-1 text-sm text-muted">Your consumption this month · estimated (billing is mocked).</p>
 	</div>
@@ -83,7 +83,7 @@
 		<div class="grid gap-6 sm:grid-cols-2">
 			<Card>
 				<div class="mb-4 flex items-center gap-2">
-					<span class="text-muted"><Icon icon={Timer01Icon} size={16} /></span>
+					<span class="text-muted"><Icon icon={Timer} size={16} /></span>
 					<h2 class="text-sm font-medium">Transcoding</h2>
 				</div>
 				<p class="mono mb-4 text-3xl font-semibold">{u.minutes.toFixed(1)}<span class="ml-1 text-base font-normal text-muted">min</span></p>
@@ -92,7 +92,7 @@
 
 			<Card>
 				<div class="mb-4 flex items-center gap-2">
-					<span class="text-muted"><Icon icon={HardDriveIcon} size={16} /></span>
+					<span class="text-muted"><Icon icon={HardDrives} size={16} /></span>
 					<h2 class="text-sm font-medium">Storage</h2>
 				</div>
 				<p class="mono mb-4 text-3xl font-semibold">{bytes(u.storage_bytes)}</p>

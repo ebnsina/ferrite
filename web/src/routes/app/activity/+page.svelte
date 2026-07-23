@@ -6,7 +6,7 @@
 	import { humanizeError, humanizeJobError } from '$lib/humanize';
 	import type { Job, JobState } from '$lib/api/types';
 	import { timeAgo } from '$lib/format';
-	import { PulseIcon, RefreshIcon } from '@hugeicons/core-free-icons';
+	import { Pulse, ArrowsClockwise } from 'phosphor-svelte';
 
 	type Filter = 'all' | 'completed' | 'failed' | 'active';
 	const ACTIVE: JobState[] = ['queued', 'probing', 'transcoding', 'packaging', 'uploading'];
@@ -60,12 +60,12 @@
 	<div class="mb-8 flex flex-wrap items-center justify-between gap-4">
 		<div>
 			<h1 class="flex items-center gap-2 text-2xl font-semibold tracking-tight">
-				<span class="text-accent"><Icon icon={PulseIcon} size={22} /></span> Activity
+				<span class="text-accent"><Icon icon={Pulse} size={22} /></span> Activity
 			</h1>
 			<p class="mt-1 text-sm text-muted">Every job across your workspace, newest first.</p>
 		</div>
 		<span class="flex items-center gap-1.5 text-xs text-muted">
-			<Icon icon={RefreshIcon} size={13} /> auto-refresh
+			<Icon icon={ArrowsClockwise} size={13} /> auto-refresh
 		</span>
 	</div>
 

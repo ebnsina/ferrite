@@ -2,7 +2,7 @@
 	import { page } from '$app/state';
 	import { Icon } from '$lib/ui';
 	import { PUBLIC_API_URL } from '$env/static/public';
-	import { CheckmarkCircle02Icon, ArrowRight01Icon } from '@hugeicons/core-free-icons';
+	import { CheckCircle, ArrowRight } from 'phosphor-svelte';
 
 	const planParam = $derived(page.url.searchParams.get('plan') ?? '');
 
@@ -76,7 +76,7 @@
 			<span
 				class="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-success/10 text-success"
 			>
-				<Icon icon={CheckmarkCircle02Icon} size={30} />
+				<Icon icon={CheckCircle} size={30} />
 			</span>
 			<h1 class="text-2xl font-semibold tracking-tight">You're on the list 🎉</h1>
 			<p class="mt-3 text-muted">
@@ -174,7 +174,7 @@
 				class="mt-2 inline-flex items-center justify-center gap-2 rounded-lg bg-accent px-5 py-3 text-sm font-medium text-accent-fg transition-opacity hover:opacity-90 disabled:opacity-50"
 			>
 				{busy ? 'Joining…' : 'Join the waitlist'}
-				<Icon icon={ArrowRight01Icon} size={16} />
+				<Icon icon={ArrowRight} size={16} />
 			</button>
 			<p class="text-center text-xs text-muted">
 				No spam. We'll only email you about early access.

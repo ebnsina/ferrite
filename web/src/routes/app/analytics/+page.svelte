@@ -7,7 +7,7 @@
 	import { humanizeError } from '$lib/humanize';
 	import type { Asset, Job, JobState, Usage } from '$lib/api/types';
 	import { bytes } from '$lib/format';
-	import { Analytics01Icon, RefreshIcon, Timer01Icon } from '@hugeicons/core-free-icons';
+	import { ChartLineUp, ArrowsClockwise, Timer } from 'phosphor-svelte';
 
 	let assets = $state<Asset[]>([]);
 	let jobs = $state<Job[]>([]);
@@ -96,13 +96,13 @@
 	<div class="mb-8 flex flex-wrap items-center justify-between gap-4">
 		<div>
 			<h1 class="flex items-center gap-2 text-2xl font-semibold tracking-tight">
-				<span class="text-accent"><Icon icon={Analytics01Icon} size={22} /></span> Analytics
+				<span class="text-accent"><Icon icon={ChartLineUp} size={22} /></span> Analytics
 			</h1>
 			<p class="mt-1 text-sm text-muted">How your workspace is performing.</p>
 		</div>
 		<div class="flex items-center gap-3">
 			<span class="flex items-center gap-1.5 text-xs text-muted">
-				<Icon icon={RefreshIcon} size={13} /> auto-refresh
+				<Icon icon={ArrowsClockwise} size={13} /> auto-refresh
 			</span>
 			<div class="flex items-center gap-1 rounded-lg border border-border bg-surface-2 p-0.5 text-xs">
 				{#each [14, 30] as r (r)}
@@ -210,7 +210,7 @@
 		<div class="mb-4 flex items-center justify-between">
 			<h2 class="text-sm font-medium">Your library</h2>
 			<span class="flex items-center gap-1.5 text-xs text-muted">
-				<Icon icon={Timer01Icon} size={13} /> Avg processing
+				<Icon icon={Timer} size={13} /> Avg processing
 				<span class="mono font-semibold text-fg">{avgProcSecs === null ? '—' : fmtDuration(avgProcSecs)}</span>
 			</span>
 		</div>

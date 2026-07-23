@@ -1,21 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import {
-		DashboardSquare01Icon,
-		Film01Icon,
-		PlayListIcon,
-		LiveStreaming01Icon,
-		UserGroupIcon,
-		Analytics01Icon,
-		Settings01Icon,
-		Search01Icon,
-		Building01Icon,
-		PulseIcon,
-		CreditCardIcon,
-		KeyframeIcon,
-		Menu01Icon,
-		Cancel01Icon
-	} from '@hugeicons/core-free-icons';
+	import { SquaresFour, FilmStrip, Queue, Broadcast, UsersThree, ChartLineUp, GearSix, MagnifyingGlass, Buildings, Pulse, CreditCard, Key, List, X } from 'phosphor-svelte';
 	import { afterNavigate } from '$app/navigation';
 	import { fly, fade } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
@@ -35,36 +20,36 @@
 	const groups = $derived([
 		{
 			label: null,
-			items: [{ href: '/app', label: 'Overview', icon: DashboardSquare01Icon }]
+			items: [{ href: '/app', label: 'Overview', icon: SquaresFour }]
 		},
 		{
 			label: 'Content',
 			items: [
-				{ href: '/app/assets', label: 'Videos', icon: Film01Icon },
-				{ href: '/app/jobs', label: 'Jobs', icon: PlayListIcon },
-				{ href: '/app/search', label: 'Search', icon: Search01Icon }
+				{ href: '/app/assets', label: 'Videos', icon: FilmStrip },
+				{ href: '/app/jobs', label: 'Jobs', icon: Queue },
+				{ href: '/app/search', label: 'Search', icon: MagnifyingGlass }
 			]
 		},
 		{
 			label: 'Streaming',
-			items: [{ href: '/app/live', label: 'Live', icon: LiveStreaming01Icon }]
+			items: [{ href: '/app/live', label: 'Live', icon: Broadcast }]
 		},
 		{
 			label: 'Insights',
 			items: [
-				{ href: '/app/analytics', label: 'Analytics', icon: Analytics01Icon },
-				{ href: '/app/activity', label: 'Activity', icon: PulseIcon }
+				{ href: '/app/analytics', label: 'Analytics', icon: ChartLineUp },
+				{ href: '/app/activity', label: 'Activity', icon: Pulse }
 			]
 		},
 		{
 			label: 'Workspace',
 			items: [
-				{ href: '/app/team', label: 'Team', icon: UserGroupIcon },
-				{ href: '/app/keys', label: 'API keys', icon: KeyframeIcon },
-				{ href: '/app/usage', label: 'Usage', icon: CreditCardIcon },
-				{ href: '/app/settings', label: 'Settings', icon: Settings01Icon },
+				{ href: '/app/team', label: 'Team', icon: UsersThree },
+				{ href: '/app/keys', label: 'API keys', icon: Key },
+				{ href: '/app/usage', label: 'Usage', icon: CreditCard },
+				{ href: '/app/settings', label: 'Settings', icon: GearSix },
 				...(session.user?.superadmin
-					? [{ href: '/admin', label: 'Admin', icon: Building01Icon }]
+					? [{ href: '/admin', label: 'Admin', icon: Buildings }]
 					: [])
 			]
 		}
@@ -136,7 +121,7 @@
 						aria-label="Close menu"
 						class="rounded-lg p-1.5 text-muted hover:bg-surface-2 hover:text-fg"
 					>
-						<Icon icon={Cancel01Icon} size={18} />
+						<Icon icon={X} size={18} />
 					</button>
 				</div>
 				{@render navList()}
@@ -152,7 +137,7 @@
 						aria-label="Open menu"
 						class="rounded-lg p-1.5 text-muted hover:bg-surface-2 hover:text-fg"
 					>
-						<Icon icon={Menu01Icon} size={20} />
+						<Icon icon={List} size={20} />
 					</button>
 					<Logo size={24} />
 				</div>

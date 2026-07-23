@@ -4,17 +4,12 @@
 	import Icon from './Icon.svelte';
 	import { toast } from './toast.svelte';
 	import { dur } from '$lib/motion';
-	import {
-		CheckmarkCircle02Icon,
-		AlertCircleIcon,
-		InformationCircleIcon,
-		Cancel01Icon
-	} from '@hugeicons/core-free-icons';
+	import { CheckCircle, WarningCircle, Info, X } from 'phosphor-svelte';
 
 	const meta = {
-		success: { icon: CheckmarkCircle02Icon, tone: 'text-success', ring: 'border-success/30' },
-		error: { icon: AlertCircleIcon, tone: 'text-danger', ring: 'border-danger/30' },
-		info: { icon: InformationCircleIcon, tone: 'text-accent', ring: 'border-accent/30' }
+		success: { icon: CheckCircle, tone: 'text-success', ring: 'border-success/30' },
+		error: { icon: WarningCircle, tone: 'text-danger', ring: 'border-danger/30' },
+		info: { icon: Info, tone: 'text-accent', ring: 'border-accent/30' }
 	};
 </script>
 
@@ -39,7 +34,7 @@
 				aria-label="Dismiss"
 				class="-mt-0.5 -mr-1 shrink-0 rounded-md p-1 text-muted transition-colors hover:bg-surface-2 hover:text-fg"
 			>
-				<Icon icon={Cancel01Icon} size={14} />
+				<Icon icon={X} size={14} />
 			</button>
 		</div>
 	{/each}

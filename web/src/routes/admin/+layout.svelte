@@ -3,7 +3,7 @@
 	import { Icon, Logo } from '$lib/ui';
 	import { session } from '$lib/api/session.svelte';
 	import UserMenu from '$lib/components/UserMenu.svelte';
-	import { ArrowLeft01Icon } from '@hugeicons/core-free-icons';
+	import { ArrowLeft } from 'phosphor-svelte';
 
 	let { children } = $props();
 
@@ -27,7 +27,7 @@
 					href="/app"
 					class="inline-flex items-center gap-1.5 text-sm text-muted transition-colors hover:text-fg"
 				>
-					<Icon icon={ArrowLeft01Icon} size={15} /> Back to app
+					<Icon icon={ArrowLeft} size={15} /> Back to app
 				</a>
 				<UserMenu />
 			</div>

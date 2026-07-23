@@ -1,33 +1,7 @@
 <script lang="ts">
 	import { Icon } from '$lib/ui';
 	import { reveal } from '$lib/actions/reveal';
-	import {
-		Layers01Icon,
-		DistributionIcon,
-		ChipIcon,
-		LiveStreaming01Icon,
-		SecurityLockIcon,
-		Image01Icon,
-		CloudUploadIcon,
-		QueueIcon,
-		Rocket01Icon,
-		ArrowRight01Icon,
-		ArrowDown01Icon,
-		CheckmarkCircle02Icon,
-		AiVideoIcon,
-		SubtitleIcon,
-		Scissor01Icon,
-		CodeIcon,
-		Share08Icon,
-		ServerStack01Icon,
-		DatabaseIcon,
-		Coins01Icon,
-		PackageIcon,
-		CpuIcon,
-		Cancel01Icon,
-		Search01Icon,
-		ShieldIcon
-	} from '@hugeicons/core-free-icons';
+	import { Stack, ShareNetwork, Cpu, Broadcast, LockKey, Image, CloudArrowUp, Queue, Rocket, ArrowRight, CaretDown, CheckCircle, MagicWand, ClosedCaptioning, Scissors, Code, Database, Coins, Package, X, MagnifyingGlass, ShieldCheck } from 'phosphor-svelte';
 
 	function scrollTo(id: string) {
 		document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -38,7 +12,7 @@
 	// Plain-language explainers for non-technical readers: what it is + why it matters.
 	const benefits = [
 		{
-			icon: Layers01Icon,
+			icon: Stack,
 			eyebrow: 'Smooth playback',
 			title: 'Plays perfectly on any connection',
 			plain:
@@ -46,7 +20,7 @@
 			benefit: 'No buffering, no spinning wheels — on a laptop, a phone, or a smart TV.'
 		},
 		{
-			icon: DistributionIcon,
+			icon: ShareNetwork,
 			eyebrow: 'Fair for everyone',
 			title: 'Every customer gets their turn',
 			plain:
@@ -54,7 +28,7 @@
 			benefit: 'One customer uploading 10,000 videos never makes everyone else wait in line.'
 		},
 		{
-			icon: LiveStreaming01Icon,
+			icon: Broadcast,
 			eyebrow: 'Live, then on-demand',
 			title: 'Go live and keep the replay',
 			plain:
@@ -62,7 +36,7 @@
 			benefit: 'The moment your event ends, an on-demand version is ready to watch.'
 		},
 		{
-			icon: SecurityLockIcon,
+			icon: LockKey,
 			eyebrow: 'Private by default',
 			title: 'Your videos stay yours',
 			plain:
@@ -73,47 +47,47 @@
 
 	const features = [
 		{
-			icon: Layers01Icon,
+			icon: Stack,
 			title: 'Adaptive HLS + DASH',
 			body: 'One CMAF encode packages both HLS and DASH with shared fMP4 segments — ready for any player.'
 		},
 		{
-			icon: AiVideoIcon,
+			icon: MagicWand,
 			title: 'AI vertical shorts',
 			body: 'Auto-find highlights from the transcript, reframe to 9:16, and burn in captions. Provider-agnostic — cloud or fully local.'
 		},
 		{
-			icon: SubtitleIcon,
+			icon: ClosedCaptioning,
 			title: 'Auto-captions',
 			body: 'Transcribe speech to WebVTT with whisper.cpp locally or any OpenAI-compatible endpoint. Nothing leaves your box unless you want it to.'
 		},
 		{
-			icon: ChipIcon,
+			icon: Cpu,
 			title: 'Per-title encoding',
 			body: 'Content-aware bitrate ladders tailored to each source — cut egress on simple videos without touching quality on complex ones.'
 		},
 		{
-			icon: Scissor01Icon,
+			icon: Scissors,
 			title: 'Clip, trim & thumbnails',
 			body: 'Cut clips into new assets, extract a frame at any timestamp, and hover-to-play animated previews — all on demand.'
 		},
 		{
-			icon: SecurityLockIcon,
+			icon: LockKey,
 			title: 'Watermark & signed playback',
 			body: 'Burn your logo onto the stream + MP4, and serve private outputs through expiring signed tokens — no public buckets.'
 		},
 		{
-			icon: LiveStreaming01Icon,
+			icon: Broadcast,
 			title: 'Live + simulcast',
 			body: 'RTMP/SRT ingest, low-latency playback, auto-archival to VOD, instant live clipping, and restream to YouTube/Twitch at once.'
 		},
 		{
-			icon: CodeIcon,
+			icon: Code,
 			title: 'Embeddable player + analytics',
 			body: 'A branded, signed <iframe> player with rendition selection, plus views, watch-time, and completion analytics.'
 		},
 		{
-			icon: DistributionIcon,
+			icon: ShareNetwork,
 			title: 'Fair multi-tenant queue',
 			body: "Round-robin scheduling with per-customer caps — one tenant's 10,000 jobs can't starve everyone else's."
 		}
@@ -122,32 +96,32 @@
 	// Ferrite's honest differentiators vs hosted video SaaS.
 	const reasons = [
 		{
-			icon: ServerStack01Icon,
+			icon: Stack,
 			title: 'Self-hosted, your rules',
 			body: 'Run it on your own servers — cloud, on-prem, or fully air-gapped. No third party sits between you and your video.'
 		},
 		{
-			icon: DatabaseIcon,
+			icon: Database,
 			title: 'Your storage, your data',
 			body: 'Everything lives in your own S3-compatible bucket. Your originals and outputs never become someone else’s asset.'
 		},
 		{
-			icon: Coins01Icon,
+			icon: Coins,
 			title: 'No per-minute lock-in',
 			body: 'Pay for your own infrastructure, not per delivered minute. Costs stay predictable as you scale.'
 		},
 		{
-			icon: CpuIcon,
+			icon: Cpu,
 			title: 'Provider-agnostic AI',
 			body: 'Captions and AI shorts run against local models or any OpenAI-compatible API — swap providers with one env var.'
 		},
 		{
-			icon: PackageIcon,
+			icon: Package,
 			title: 'All-in-one pipeline',
 			body: 'VOD, live, clipping, captions, AI shorts, embeds, and analytics in one system — no bolt-on services to wire together.'
 		},
 		{
-			icon: SecurityLockIcon,
+			icon: LockKey,
 			title: 'Private by design',
 			body: 'Signed playback, per-tenant isolation, and AES-128 encryption built in. Your content stays yours.'
 		}
@@ -156,32 +130,32 @@
 	// Differentiators the hosted platforms don't offer.
 	const differentiators = [
 		{
-			icon: Search01Icon,
+			icon: MagnifyingGlass,
 			title: 'Search inside your videos',
 			body: 'Search the spoken words across your entire library and jump straight to the exact moment.'
 		},
 		{
-			icon: ShieldIcon,
+			icon: ShieldCheck,
 			title: 'Content credentials',
 			body: 'Ed25519-signed, tamper-evident provenance with full edit lineage on every produced asset.'
 		},
 		{
-			icon: SubtitleIcon,
+			icon: ClosedCaptioning,
 			title: 'Multi-language captions',
 			body: 'Translate transcripts into any language, delivered as selectable caption tracks.'
 		},
 		{
-			icon: SecurityLockIcon,
+			icon: LockKey,
 			title: 'On-ingest moderation',
 			body: 'Automatically classify spoken content for policy safety as videos come in — locally.'
 		},
 		{
-			icon: CodeIcon,
+			icon: Code,
 			title: 'Interactive transcript',
 			body: 'A clickable transcript synced to playback — click a line to seek, share any moment.'
 		},
 		{
-			icon: CpuIcon,
+			icon: Cpu,
 			title: 'Provider-agnostic AI',
 			body: 'Every AI feature runs against local models or your own key — swap providers with one env var.'
 		}
@@ -221,17 +195,17 @@
 
 	const steps = [
 		{
-			icon: CloudUploadIcon,
+			icon: CloudArrowUp,
 			title: 'Upload',
 			body: 'Push source video straight to S3-compatible storage with a presigned URL — no bytes through the API.'
 		},
 		{
-			icon: QueueIcon,
+			icon: Queue,
 			title: 'Transcode',
 			body: 'Jobs enter the fair queue and fan out to workers. Track progress live over server-sent events.'
 		},
 		{
-			icon: Rocket01Icon,
+			icon: Rocket,
 			title: 'Stream',
 			body: 'Deliver adaptive HLS/DASH with signed URLs and rendition selection, on web, mobile, and TV.'
 		}
@@ -372,7 +346,7 @@
 				href="/app"
 				class="inline-flex items-center gap-2 rounded-lg bg-accent px-5 py-3 text-sm font-medium text-accent-fg transition-opacity hover:opacity-90"
 			>
-				Start transcoding <Icon icon={ArrowRight01Icon} size={16} />
+				Start transcoding <Icon icon={ArrowRight} size={16} />
 			</a>
 			<button
 				onclick={() => scrollTo('benefits')}
@@ -415,7 +389,7 @@
 						<h3 class="mt-2 text-2xl font-semibold tracking-tight">{b.title}</h3>
 						<p class="mt-3 text-muted">{b.plain}</p>
 						<p class="mt-4 flex items-start gap-2 text-sm font-medium">
-							<span class="mt-0.5 text-accent"><Icon icon={CheckmarkCircle02Icon} size={16} /></span>
+							<span class="mt-0.5 text-accent"><Icon icon={CheckCircle} size={16} /></span>
 							{b.benefit}
 						</p>
 					</div>
@@ -554,10 +528,10 @@
 								<td class={`px-4 py-3 text-center ${i === 0 ? 'bg-accent-soft/40' : ''}`}>
 									{#if ok}
 										<span class="inline-flex text-accent"
-											><Icon icon={CheckmarkCircle02Icon} size={18} /></span
+											><Icon icon={CheckCircle} size={18} /></span
 										>
 									{:else}
-										<span class="inline-flex text-muted/40"><Icon icon={Cancel01Icon} size={16} /></span
+										<span class="inline-flex text-muted/40"><Icon icon={X} size={16} /></span
 										>
 									{/if}
 								</td>
@@ -693,13 +667,13 @@
 								: 'border border-border hover:bg-surface-2'
 						}`}
 					>
-						{t.cta} <Icon icon={ArrowRight01Icon} size={15} />
+						{t.cta} <Icon icon={ArrowRight} size={15} />
 					</a>
 					<ul class="mt-6 flex flex-col gap-2.5 border-t border-border pt-6">
 						{#each t.features as f (f)}
 							<li class="flex items-start gap-2.5 text-sm">
 								<span class="mt-0.5 text-accent"
-									><Icon icon={CheckmarkCircle02Icon} size={16} /></span
+									><Icon icon={CheckCircle} size={16} /></span
 								>
 								<span>{f}</span>
 							</li>
@@ -727,7 +701,7 @@
 					>
 						{f.q}
 						<span class="text-muted transition-transform group-open:rotate-180">
-							<Icon icon={ArrowDown01Icon} size={18} />
+							<Icon icon={CaretDown} size={18} />
 						</span>
 					</summary>
 					<p class="mt-3 text-sm text-muted">{f.a}</p>
@@ -748,7 +722,7 @@
 			href="/app"
 			class="mt-8 inline-flex items-center gap-2 rounded-lg bg-accent px-5 py-3 text-sm font-medium text-accent-fg transition-opacity hover:opacity-90"
 		>
-			Get started free <Icon icon={ArrowRight01Icon} size={16} />
+			Get started free <Icon icon={ArrowRight} size={16} />
 		</a>
 	</div>
 </section>

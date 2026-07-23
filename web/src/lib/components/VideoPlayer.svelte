@@ -3,7 +3,7 @@
 	import { cubicOut } from 'svelte/easing';
 	import { Icon } from '$lib/ui';
 	import { dur } from '$lib/motion';
-	import { HdIcon, ArrowDown01Icon } from '@hugeicons/core-free-icons';
+	import { MonitorPlay, CaretDown } from 'phosphor-svelte';
 
 	interface Props {
 		src: string; // HLS master playlist
@@ -132,9 +132,9 @@
 				onclick={() => (menuOpen = !menuOpen)}
 				class="mono inline-flex items-center gap-1 rounded-md bg-black/70 px-2 py-1 text-xs text-white hover:bg-black/85"
 			>
-				<Icon icon={HdIcon} size={13} />
+				<Icon icon={MonitorPlay} size={13} />
 				{currentLabel}
-				<Icon icon={ArrowDown01Icon} size={11} />
+				<Icon icon={CaretDown} size={11} />
 			</button>
 			{#if menuOpen}
 				<div

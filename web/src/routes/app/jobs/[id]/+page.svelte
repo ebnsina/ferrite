@@ -18,18 +18,7 @@
 	import { ApiError } from '$lib/api/client';
 	import { humanizeError, humanizeJobError } from '$lib/humanize';
 	import type { Job, JobState } from '$lib/api/types';
-	import {
-		ArrowLeft01Icon,
-		HdIcon,
-		ArrowDown01Icon,
-		Download01Icon,
-		MusicNote01Icon,
-		SubtitleIcon,
-		Copy01Icon,
-		Tick01Icon,
-		CodeIcon,
-		Analytics01Icon
-	} from '@hugeicons/core-free-icons';
+	import { ArrowLeft, MonitorPlay, CaretDown, DownloadSimple, MusicNote, ClosedCaptioning, Copy, Check, Code, ChartLineUp } from 'phosphor-svelte';
 
 	const id = $derived(page.params.id!);
 	let job = $state<Job | null>(null);
@@ -246,7 +235,7 @@
 
 <div class="mx-auto max-w-3xl">
 	<a href="/app/jobs" class="mb-6 inline-flex items-center gap-1 text-sm text-muted hover:text-fg">
-		<Icon icon={ArrowLeft01Icon} size={16} /> Jobs
+		<Icon icon={ArrowLeft} size={16} /> Jobs
 	</a>
 
 	{#if error}
@@ -306,9 +295,9 @@
 							onclick={() => (menuOpen = !menuOpen)}
 							class="mono inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1 text-xs text-muted hover:text-fg"
 						>
-							<Icon icon={HdIcon} size={14} />
+							<Icon icon={MonitorPlay} size={14} />
 							{currentLabel}
-							<Icon icon={ArrowDown01Icon} size={12} />
+							<Icon icon={CaretDown} size={12} />
 						</button>
 						{#if menuOpen}
 							<div
@@ -343,7 +332,7 @@
 							download
 							class="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm transition-colors hover:bg-surface-2"
 						>
-							<Icon icon={Download01Icon} size={15} /> Download MP4
+							<Icon icon={DownloadSimple} size={15} /> Download MP4
 						</a>
 					{/if}
 					{#if job.audio_url}
@@ -352,7 +341,7 @@
 							download
 							class="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm transition-colors hover:bg-surface-2"
 						>
-							<Icon icon={MusicNote01Icon} size={15} /> Download audio
+							<Icon icon={MusicNote} size={15} /> Download audio
 						</a>
 					{/if}
 					{#if job.captions_url}
@@ -361,7 +350,7 @@
 							download
 							class="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm transition-colors hover:bg-surface-2"
 						>
-							<Icon icon={SubtitleIcon} size={15} /> Download captions
+							<Icon icon={ClosedCaptioning} size={15} /> Download captions
 						</a>
 					{/if}
 				</div>
@@ -370,7 +359,7 @@
 			{#if job.captions_url}
 				<div class="mt-6">
 					<h2 class="mb-2 flex items-center gap-2 text-sm font-medium text-muted">
-						<Icon icon={SubtitleIcon} size={16} /> Caption languages
+						<Icon icon={ClosedCaptioning} size={16} /> Caption languages
 					</h2>
 					<div class="flex flex-wrap items-center gap-2">
 						<span class="mono rounded-md bg-surface-2 px-2 py-1 text-xs">EN</span>
@@ -397,7 +386,7 @@
 			{#if transcript.length > 0}
 				<div class="mt-6">
 					<h2 class="mb-2 flex items-center gap-2 text-sm font-medium text-muted">
-						<Icon icon={SubtitleIcon} size={16} /> Transcript
+						<Icon icon={ClosedCaptioning} size={16} /> Transcript
 						<span class="text-xs font-normal">— click a line to jump there</span>
 					</h2>
 					<div class="max-h-80 overflow-y-auto rounded-xl border border-border bg-surface">
@@ -416,7 +405,7 @@
 									aria-label="Copy link to this moment"
 									class="shrink-0 text-muted opacity-0 transition-opacity group-hover:opacity-100 hover:text-fg"
 								>
-									<Icon icon={copiedCue === i ? Tick01Icon : Copy01Icon} size={14} />
+									<Icon icon={copiedCue === i ? Check : Copy} size={14} />
 								</button>
 							</div>
 						{/each}
@@ -427,7 +416,7 @@
 			{#if analytics}
 				<div class="mt-6">
 					<h2 class="mb-3 flex items-center gap-2 text-sm font-medium text-muted">
-						<Icon icon={Analytics01Icon} size={16} /> Analytics
+						<Icon icon={ChartLineUp} size={16} /> Analytics
 					</h2>
 					<div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
 						{#each [{ label: 'Views', value: String(analytics.views) }, { label: 'Watch time', value: fmtDuration(analytics.watch_seconds) }, { label: 'Avg. view', value: fmtDuration(analytics.avg_view_seconds) }, { label: 'Completion', value: `${Math.round(analytics.completion_rate * 100)}%` }] as s (s.label)}
@@ -443,12 +432,12 @@
 			{#if iframe}
 				<div class="mt-6">
 					<h2 class="mb-3 flex items-center gap-2 text-sm font-medium text-muted">
-						<Icon icon={CodeIcon} size={16} /> Embed
+						<Icon icon={Code} size={16} /> Embed
 					</h2>
 					<div class="flex items-start gap-2 rounded-lg border border-border bg-surface-2 p-3">
 						<code class="mono flex-1 break-all text-xs text-muted">{iframe}</code>
 						<button onclick={copyEmbed} class="shrink-0 text-muted hover:text-fg" aria-label="Copy embed code">
-							<Icon icon={copied ? Tick01Icon : Copy01Icon} size={16} />
+							<Icon icon={copied ? Check : Copy} size={16} />
 						</button>
 					</div>
 					<p class="mt-2 text-xs text-muted">Paste this iframe into any page to embed the player.</p>

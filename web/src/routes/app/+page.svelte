@@ -7,23 +7,7 @@
 	import type { Asset, Job, JobState, Usage } from '$lib/api/types';
 	import { bytes, timeAgo, greeting, nameFromEmail, longDate } from '$lib/format';
 	import { session } from '$lib/api/session.svelte';
-	import {
-		Upload01Icon,
-		Film01Icon,
-		PlayListIcon,
-		HardDriveIcon,
-		CheckmarkCircle02Icon,
-		ArrowRight01Icon,
-		AiVideoIcon,
-		Scissor01Icon,
-		Search01Icon,
-		LiveStreaming01Icon,
-		CodeIcon,
-		SubtitleIcon,
-		ShieldIcon,
-		FlashIcon,
-		CreditCardIcon
-	} from '@hugeicons/core-free-icons';
+	import { UploadSimple, FilmStrip, Queue, HardDrives, CheckCircle, ArrowRight, MagicWand, Scissors, MagnifyingGlass, Broadcast, Code, ClosedCaptioning, ShieldCheck, Lightning, CreditCard } from 'phosphor-svelte';
 
 	const name = $derived(session.user?.name || nameFromEmail(session.user?.email));
 
@@ -58,23 +42,23 @@
 	const storageBytes = $derived(usage?.storage_bytes ?? assets.reduce((s, a) => s + (a.bytes ?? 0), 0));
 
 	const kpis = $derived([
-		{ label: 'Videos', value: String(assets.length), icon: Film01Icon },
-		{ label: 'Storage used', value: bytes(storageBytes), icon: HardDriveIcon },
-		{ label: 'Active jobs', value: String(inflight.length), icon: PlayListIcon },
-		{ label: 'Success rate', value: successRate === null ? '—' : `${successRate.toFixed(0)}%`, icon: CheckmarkCircle02Icon }
+		{ label: 'Videos', value: String(assets.length), icon: FilmStrip },
+		{ label: 'Storage used', value: bytes(storageBytes), icon: HardDrives },
+		{ label: 'Active jobs', value: String(inflight.length), icon: Queue },
+		{ label: 'Success rate', value: successRate === null ? '—' : `${successRate.toFixed(0)}%`, icon: CheckCircle }
 	]);
 
 	const recent = $derived(jobs.slice(0, 6));
 
 	const explore = [
-		{ icon: AiVideoIcon, title: 'AI shorts', href: '/app/assets' },
-		{ icon: Scissor01Icon, title: 'Clip & trim', href: '/app/assets' },
-		{ icon: SubtitleIcon, title: 'Auto-captions', href: '/app/assets' },
-		{ icon: Search01Icon, title: 'Search in videos', href: '/app/search' },
-		{ icon: LiveStreaming01Icon, title: 'Go live', href: '/app/live' },
-		{ icon: CodeIcon, title: 'Embed & analytics', href: '/app/jobs' },
-		{ icon: ShieldIcon, title: 'Content credentials', href: '/app/assets' },
-		{ icon: FlashIcon, title: 'Watermark & DRM', href: '/app/assets' }
+		{ icon: MagicWand, title: 'AI shorts', href: '/app/assets' },
+		{ icon: Scissors, title: 'Clip & trim', href: '/app/assets' },
+		{ icon: ClosedCaptioning, title: 'Auto-captions', href: '/app/assets' },
+		{ icon: MagnifyingGlass, title: 'Search in videos', href: '/app/search' },
+		{ icon: Broadcast, title: 'Go live', href: '/app/live' },
+		{ icon: Code, title: 'Embed & analytics', href: '/app/jobs' },
+		{ icon: ShieldCheck, title: 'Content credentials', href: '/app/assets' },
+		{ icon: Lightning, title: 'Watermark & DRM', href: '/app/assets' }
 	];
 </script>
 
@@ -94,7 +78,7 @@
 				{/if}
 			</p>
 		</div>
-		<a href="/app/assets"><Button><Icon icon={Upload01Icon} size={16} /> Upload video</Button></a>
+		<a href="/app/assets"><Button><Icon icon={UploadSimple} size={16} /> Upload video</Button></a>
 	</div>
 
 	{#if error}
@@ -124,12 +108,12 @@
 			<div class="mb-4 flex items-center justify-between">
 				<h2 class="text-sm font-medium">Recent jobs</h2>
 				<a href="/app/jobs" class="flex items-center gap-1 text-xs text-muted transition-colors hover:text-fg">
-					View all <Icon icon={ArrowRight01Icon} size={13} />
+					View all <Icon icon={ArrowRight} size={13} />
 				</a>
 			</div>
 			{#if recent.length === 0}
 				<div class="flex flex-col items-center justify-center py-12 text-center">
-					<span class="mb-3 text-muted"><Icon icon={PlayListIcon} size={30} /></span>
+					<span class="mb-3 text-muted"><Icon icon={Queue} size={30} /></span>
 					<p class="font-medium">No jobs yet</p>
 					<p class="mt-1 text-sm text-muted">Upload a video to kick off your first transcode.</p>
 				</div>
@@ -167,7 +151,7 @@
 			</div>
 			{#if inflight.length === 0}
 				<div class="flex flex-col items-center justify-center py-10 text-center">
-					<span class="mb-2 text-success"><Icon icon={CheckmarkCircle02Icon} size={26} /></span>
+					<span class="mb-2 text-success"><Icon icon={CheckCircle} size={26} /></span>
 					<p class="text-sm text-muted">You’re all caught up.</p>
 				</div>
 			{:else}
@@ -207,8 +191,8 @@
 						</div>
 					</div>
 					<span class="flex items-center gap-1.5 text-sm text-muted">
-						<Icon icon={CreditCardIcon} size={15} /> View usage
-						<Icon icon={ArrowRight01Icon} size={14} />
+						<Icon icon={CreditCard} size={15} /> View usage
+						<Icon icon={ArrowRight} size={14} />
 					</span>
 				</div>
 			</Card>

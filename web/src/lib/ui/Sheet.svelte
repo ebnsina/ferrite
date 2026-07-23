@@ -4,7 +4,7 @@
 	import { cubicOut } from 'svelte/easing';
 	import { Icon } from '$lib/ui';
 	import { dur } from '$lib/motion';
-	import { Cancel01Icon } from '@hugeicons/core-free-icons';
+	import { X } from 'phosphor-svelte';
 
 	interface Props {
 		open: boolean;
@@ -65,7 +65,7 @@
 				aria-label="Close"
 				class="rounded-lg p-1.5 text-muted transition-colors hover:bg-surface-2 hover:text-fg"
 			>
-				<Icon icon={Cancel01Icon} size={18} />
+				<Icon icon={X} size={18} />
 			</button>
 		</div>
 

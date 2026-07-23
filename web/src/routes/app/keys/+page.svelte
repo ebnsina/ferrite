@@ -8,7 +8,7 @@
 	import { apiKeySchema, validate } from '$lib/schemas';
 	import type { ApiKey } from '$lib/api/types';
 	import { timeAgo } from '$lib/format';
-	import { KeyframeIcon, Copy01Icon, Tick01Icon, PlusSignIcon } from '@hugeicons/core-free-icons';
+	import { Key, Copy, Check, Plus } from 'phosphor-svelte';
 
 	const isOwner = $derived(session.user?.role === 'owner');
 
@@ -92,12 +92,12 @@
 	<div class="mb-8 flex flex-wrap items-center justify-between gap-3">
 		<div>
 			<h1 class="flex items-center gap-2 text-2xl font-semibold tracking-tight">
-				<span class="text-accent"><Icon icon={KeyframeIcon} size={20} /></span> API keys
+				<span class="text-accent"><Icon icon={Key} size={20} /></span> API keys
 			</h1>
 			<p class="mt-1 text-sm text-muted">Programmatic access for SDKs, CI, and the REST API.</p>
 		</div>
 		{#if isOwner}
-			<Button onclick={openKey}><Icon icon={PlusSignIcon} size={16} /> New key</Button>
+			<Button onclick={openKey}><Icon icon={Plus} size={16} /> New key</Button>
 		{/if}
 	</div>
 
@@ -115,7 +115,7 @@
 				<p class="py-8 text-center text-sm text-muted">Loading…</p>
 			{:else if apiKeys.length === 0}
 				<div class="flex flex-col items-center justify-center py-12 text-center">
-					<span class="mb-3 text-muted"><Icon icon={KeyframeIcon} size={28} /></span>
+					<span class="mb-3 text-muted"><Icon icon={Key} size={28} /></span>
 					<p class="font-medium">No API keys yet</p>
 					<p class="mt-1 text-sm text-muted">Create one to call the Ferrite API programmatically.</p>
 				</div>
@@ -160,7 +160,7 @@
 			<div class="flex items-center gap-2">
 				<code class="mono flex-1 truncate text-sm">{newKey}</code>
 				<button onclick={() => copy(newKey!)} class="text-muted hover:text-fg" aria-label="Copy API key">
-					<Icon icon={copied ? Tick01Icon : Copy01Icon} size={16} />
+					<Icon icon={copied ? Check : Copy} size={16} />
 				</button>
 			</div>
 		</div>

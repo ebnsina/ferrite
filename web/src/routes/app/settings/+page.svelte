@@ -15,7 +15,7 @@
 	import { ApiError } from '$lib/api/client';
 	import { profileNameSchema, passwordSchema, validate } from '$lib/schemas';
 	import { nameFromEmail } from '$lib/format';
-	import { Sun03Icon, Moon02Icon, Logout01Icon, Tick02Icon, Image01Icon } from '@hugeicons/core-free-icons';
+	import { Sun, Moon, SignOut, Check, Image } from 'phosphor-svelte';
 
 	const displayName = $derived(session.user?.name || nameFromEmail(session.user?.email));
 	const initial = $derived((session.user?.name || session.user?.email || '?').charAt(0).toUpperCase());
@@ -114,8 +114,8 @@
 	}
 
 	const modes = [
-		{ value: 'light' as const, label: 'Light', icon: Sun03Icon },
-		{ value: 'dark' as const, label: 'Dark', icon: Moon02Icon }
+		{ value: 'light' as const, label: 'Light', icon: Sun },
+		{ value: 'dark' as const, label: 'Dark', icon: Moon }
 	];
 
 	const inputCls =
@@ -147,7 +147,7 @@
 			<div class="flex gap-2">
 				<input id="name" bind:value={name} placeholder="Your name" class={inputCls} />
 				<Button disabled={savingName} onclick={saveName}>
-					{#if nameSaved}<Icon icon={Tick02Icon} size={16} />{/if}
+					{#if nameSaved}<Icon icon={Check} size={16} />{/if}
 					{savingName ? 'Saving…' : nameSaved ? 'Saved' : 'Save'}
 				</Button>
 			</div>
@@ -210,7 +210,7 @@
 					{savingPw ? 'Saving…' : 'Change password'}
 				</Button>
 				{#if pwSaved}<span class="flex items-center gap-1 text-sm text-success"
-						><Icon icon={Tick02Icon} size={15} /> Password updated</span
+						><Icon icon={Check} size={15} /> Password updated</span
 					>{/if}
 			</div>
 		</div>
@@ -219,7 +219,7 @@
 	<!-- Brand -->
 	<Card class="mb-6">
 		<h2 class="mb-1 flex items-center gap-2 text-sm font-medium text-muted">
-			<Icon icon={Image01Icon} size={16} /> Brand logo
+			<Icon icon={Image} size={16} /> Brand logo
 		</h2>
 		<p class="mb-4 text-xs text-muted">Used as the watermark on transcoded MP4 downloads.</p>
 		<div class="flex items-center gap-4">
@@ -273,7 +273,7 @@
 		<h2 class="mb-1 text-sm font-medium text-muted">Session</h2>
 		<p class="mb-4 text-xs text-muted">Sign out of Ferrite on this device.</p>
 		<Button variant="secondary" onclick={async () => { await logout().catch(() => {}); session.clear(); }}>
-			<Icon icon={Logout01Icon} size={16} /> Sign out
+			<Icon icon={SignOut} size={16} /> Sign out
 		</Button>
 	</Card>
 </div>

@@ -10,13 +10,7 @@
 	import { ApiError } from '$lib/api/client';
 	import { humanizeError } from '$lib/humanize';
 	import { timeAgo } from '$lib/format';
-	import {
-		UserGroupIcon,
-		Film01Icon,
-		PlayListIcon,
-		Mail01Icon,
-		BuildingIcon
-	} from '@hugeicons/core-free-icons';
+	import { UsersThree, FilmStrip, Queue, Envelope, Buildings } from 'phosphor-svelte';
 
 	let overview = $state<AdminOverview | null>(null);
 	let waitlist = $state<WaitlistRow[]>([]);
@@ -33,11 +27,11 @@
 	const stats = $derived(
 		overview
 			? [
-					{ label: 'Tenants', value: overview.tenants, icon: BuildingIcon },
-					{ label: 'Users', value: overview.users, icon: UserGroupIcon },
-					{ label: 'Assets', value: overview.assets, icon: Film01Icon },
-					{ label: 'Jobs', value: overview.jobs, icon: PlayListIcon },
-					{ label: 'Waitlist', value: overview.waitlist, icon: Mail01Icon }
+					{ label: 'Tenants', value: overview.tenants, icon: Buildings },
+					{ label: 'Users', value: overview.users, icon: UsersThree },
+					{ label: 'Assets', value: overview.assets, icon: FilmStrip },
+					{ label: 'Jobs', value: overview.jobs, icon: Queue },
+					{ label: 'Waitlist', value: overview.waitlist, icon: Envelope }
 				]
 			: []
 	);

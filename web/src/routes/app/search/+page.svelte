@@ -3,7 +3,7 @@
 	import { searchVideos, type SearchHit } from '$lib/api/endpoints';
 	import { ApiError } from '$lib/api/client';
 	import { humanizeError } from '$lib/humanize';
-	import { Search01Icon, PlayCircleIcon } from '@hugeicons/core-free-icons';
+	import { MagnifyingGlass, PlayCircle } from 'phosphor-svelte';
 
 	let q = $state('');
 	let hits = $state<SearchHit[]>([]);
@@ -52,7 +52,7 @@
 
 	<div class="relative mb-6">
 		<span class="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted">
-			<Icon icon={Search01Icon} size={18} />
+			<Icon icon={MagnifyingGlass} size={18} />
 		</span>
 		<input
 			bind:value={q}
@@ -86,7 +86,7 @@
 					href={`/app/jobs/${h.job_id}?t=${Math.floor(h.start_secs)}`}
 					class="group flex items-center gap-4 rounded-xl border border-border bg-surface p-4 transition-colors hover:border-accent/40 hover:bg-surface-2"
 				>
-					<span class="text-muted group-hover:text-accent"><Icon icon={PlayCircleIcon} size={22} /></span>
+					<span class="text-muted group-hover:text-accent"><Icon icon={PlayCircle} size={22} /></span>
 					<div class="min-w-0 flex-1">
 						<p class="truncate text-sm">“{h.snippet}”</p>
 						<p class="mt-1 truncate text-xs text-muted">{h.filename}</p>

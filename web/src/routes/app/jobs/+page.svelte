@@ -6,7 +6,7 @@
 	import type { Job, JobState } from '$lib/api/types';
 	import { timeAgo } from '$lib/format';
 	import { humanizeJobError, humanizeError } from '$lib/humanize';
-	import { PlayListIcon, PlayIcon } from '@hugeicons/core-free-icons';
+	import { Queue, Play } from 'phosphor-svelte';
 
 	type JobRow = Job & { playback_url?: string };
 
@@ -62,7 +62,7 @@
 			<p class="py-8 text-center text-sm text-muted">Loading…</p>
 		{:else if jobs.length === 0}
 			<div class="flex flex-col items-center justify-center py-12 text-center">
-				<span class="mb-3 text-muted"><Icon icon={PlayListIcon} size={32} /></span>
+				<span class="mb-3 text-muted"><Icon icon={Queue} size={32} /></span>
 				<p class="font-medium">No jobs yet</p>
 				<p class="mt-1 text-sm text-muted">Start a transcode from the Assets page.</p>
 			</div>
@@ -84,7 +84,7 @@
 						</div>
 						{#if job.playback_url}
 							<span class="flex items-center gap-1 text-xs text-accent">
-								<Icon icon={PlayIcon} size={14} /> Play
+								<Icon icon={Play} size={14} /> Play
 							</span>
 						{/if}
 						<StatusPill state={job.state} />

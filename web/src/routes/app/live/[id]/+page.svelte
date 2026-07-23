@@ -13,14 +13,7 @@
 	import { ApiError } from '$lib/api/client';
 	import { humanizeError } from '$lib/humanize';
 	import type { LiveStream } from '$lib/api/types';
-	import {
-		ArrowLeft01Icon,
-		Copy01Icon,
-		Tick01Icon,
-		Scissor01Icon,
-		Share08Icon,
-		Delete02Icon
-	} from '@hugeicons/core-free-icons';
+	import { ArrowLeft, Copy, Check, Scissors, ShareNetwork, Trash } from 'phosphor-svelte';
 
 	const id = $derived(page.params.id!);
 	let stream = $state<LiveStream | null>(null);
@@ -158,7 +151,7 @@
 
 <div class="mx-auto max-w-3xl">
 	<a href="/app/live" class="mb-6 inline-flex items-center gap-1 text-sm text-muted hover:text-fg">
-		<Icon icon={ArrowLeft01Icon} size={16} /> Live
+		<Icon icon={ArrowLeft} size={16} /> Live
 	</a>
 
 	{#if error}
@@ -171,7 +164,7 @@
 			<div class="flex items-center gap-2">
 				{#if stream.live}
 					<Button size="sm" variant="secondary" onclick={() => ((clipMsg = null), (clipOpen = true))}>
-						<Icon icon={Scissor01Icon} size={15} /> Clip live
+						<Icon icon={Scissors} size={15} /> Clip live
 					</Button>
 					<span
 						class="mono rounded-full border border-danger/30 bg-danger/10 px-2 py-0.5 text-xs font-medium text-danger"
@@ -206,7 +199,7 @@
 					<span class="w-24 shrink-0 text-xs text-muted">{row.label}</span>
 					<code class="mono flex-1 truncate rounded-lg border border-border bg-surface-2 px-3 py-1.5 text-xs">{row.value}</code>
 					<button onclick={() => copy(row.label, row.value)} class="text-muted hover:text-fg" aria-label="Copy">
-						{#if copied === row.label}<Icon icon={Tick01Icon} size={16} />{:else}<Icon icon={Copy01Icon} size={16} />{/if}
+						{#if copied === row.label}<Icon icon={Check} size={16} />{:else}<Icon icon={Copy} size={16} />{/if}
 					</button>
 				</div>
 			{/each}
@@ -215,7 +208,7 @@
 		<Card class="mt-6">
 			<div class="mb-3 flex items-center justify-between">
 				<h2 class="flex items-center gap-2 text-sm font-medium text-muted">
-					<Icon icon={Share08Icon} size={16} /> Simulcast
+					<Icon icon={ShareNetwork} size={16} /> Simulcast
 				</h2>
 				<Button size="sm" variant="secondary" onclick={openTarget}>Add destination</Button>
 			</div>
@@ -237,7 +230,7 @@
 								aria-label="Remove destination"
 								class="shrink-0 rounded-lg p-1.5 text-muted transition-colors hover:bg-danger/10 hover:text-danger"
 							>
-								<Icon icon={Delete02Icon} size={16} />
+								<Icon icon={Trash} size={16} />
 							</button>
 						</div>
 					{/each}

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { Asset } from '$lib/api/types';
 	import { Icon } from '$lib/ui';
-	import { Film01Icon, Loading03Icon } from '@hugeicons/core-free-icons';
+	import { FilmStrip, Spinner } from 'phosphor-svelte';
 
 	interface Props {
 		asset: Asset;
@@ -23,7 +23,7 @@
 >
 	{#if asset.status === 'processing'}
 		<div class="flex h-full w-full items-center justify-center text-muted">
-			<Icon icon={Loading03Icon} size={16} class="animate-spin" />
+			<Icon icon={Spinner} size={16} class="animate-spin" />
 		</div>
 	{:else if poster}
 		<img src={poster} alt="" class="h-full w-full object-cover" loading="lazy" />
@@ -40,7 +40,7 @@
 		{/if}
 	{:else}
 		<div class="flex h-full w-full items-center justify-center text-muted">
-			<Icon icon={Film01Icon} size={16} />
+			<Icon icon={FilmStrip} size={16} />
 		</div>
 	{/if}
 </div>

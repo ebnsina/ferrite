@@ -1,16 +1,20 @@
 <script lang="ts">
-	import type { ComponentProps } from 'svelte';
-	import { HugeiconsIcon } from '@hugeicons/svelte';
+	import type { Component } from 'svelte';
+
+	type IconWeight = 'thin' | 'light' | 'regular' | 'bold' | 'fill' | 'duotone';
 
 	interface Props {
-		icon: ComponentProps<typeof HugeiconsIcon>['icon'];
+		/** A phosphor-svelte icon component. */
+		icon: Component<any>;
 		size?: number;
+		weight?: IconWeight;
 		class?: string;
 	}
 
-	let { icon, size = 18, class: klass = '' }: Props = $props();
+	// Rename to a capitalized binding so it can be rendered as a component.
+	let { icon: IconCmp, size = 18, weight = 'regular', class: klass = '' }: Props = $props();
 </script>
 
 <span class={`inline-flex ${klass}`}>
-	<HugeiconsIcon {icon} {size} strokeWidth={1.8} color="currentColor" />
+	<IconCmp {size} {weight} color="currentColor" />
 </span>
