@@ -1,4 +1,4 @@
-# Ferrite — contributor & agent guide
+# Ferrite Stream — contributor & agent guide
 
 Self-hosted, multi-tenant video platform (VOD + live). Rust API + FFmpeg workers, SvelteKit dashboard, Redis-backed fair queue, S3-compatible storage. Covers adaptive HLS/DASH, clip/thumbnails, MP4/audio/watermark, auto-captions, AI shorts, embed + analytics, and live with simulcast + instant clipping. See `README.md` for the full feature list and API surface.
 
@@ -40,7 +40,7 @@ Worker pipeline branches on job kind: transcode (`cmaf` + `extras` + `thumbnails
 
 ## Dev
 
-`docker compose up -d` · `sqlx migrate run` · `cargo run -p ferrite-api` · `cargo run -p ferrite-worker` · `cd web && pnpm dev`. Frontend on `:5173` (`/` marketing, `/app` dashboard). See `Makefile`.
+`docker compose up -d` · `sqlx migrate run` · `cargo run -p ferrite-stream-api` · `cargo run -p ferrite-stream-worker` · `cd web && pnpm dev`. Frontend on `:5173` (`/` marketing, `/app` dashboard). See `Makefile`.
 
 ## Git
 

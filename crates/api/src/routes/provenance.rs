@@ -3,7 +3,7 @@
 
 use axum::extract::{Path, State};
 use axum::Json;
-use ferrite_core::provenance;
+use ferrite_stream_core::provenance;
 use serde::Serialize;
 use serde_json::Value;
 use uuid::Uuid;

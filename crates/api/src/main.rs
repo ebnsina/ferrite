@@ -1,4 +1,4 @@
-//! Ferrite API server entrypoint.
+//! Ferrite Stream API server entrypoint.
 
 mod ai;
 mod auth;
@@ -15,8 +15,8 @@ mod state;
 use std::time::Duration;
 
 use anyhow::Context;
-use ferrite_queue::RedisQueue;
-use ferrite_storage::{Storage, StorageConfig};
+use ferrite_stream_queue::RedisQueue;
+use ferrite_stream_storage::{Storage, StorageConfig};
 use sqlx::postgres::PgPoolOptions;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
@@ -30,7 +30,7 @@ async fn main() -> anyhow::Result<()> {
     init_tracing();
 
     let settings = Settings::load().context("failed to load configuration")?;
-    tracing::info!(bind = %settings.bind_addr, "starting ferrite-api");
+    tracing::info!(bind = %settings.bind_addr, "starting ferrite-stream-api");
 
     // Install the metrics recorder before anything records to it.
     let metrics_handle = metrics::install();
@@ -73,7 +73,7 @@ async fn sweep_stale_jobs(pool: sqlx::PgPool, stale_secs: i64) {
 
 fn init_tracing() {
     let filter = EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| EnvFilter::new("info,ferrite_api=debug"));
+        .unwrap_or_else(|_| EnvFilter::new("info,ferrite_stream_api=debug"));
     tracing_subscriber::registry()
         .with(filter)
         .with(tracing_subscriber::fmt::layer())

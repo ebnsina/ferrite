@@ -3,7 +3,7 @@
 
 use std::path::Path;
 
-use ferrite_core::provenance::{self, Manifest};
+use ferrite_stream_core::provenance::{self, Manifest};
 use sqlx::PgPool;
 use uuid::Uuid;
 
@@ -25,7 +25,7 @@ pub async fn record(
     };
     let manifest = Manifest {
         version: 1,
-        tool: "Ferrite".to_string(),
+        tool: "Ferrite Stream".to_string(),
         tenant_id,
         asset_id,
         filename: filename.to_string(),

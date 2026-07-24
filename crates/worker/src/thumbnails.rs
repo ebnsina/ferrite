@@ -2,7 +2,7 @@
 
 use std::path::Path;
 
-use ferrite_core::{Artifact, ArtifactKind, MediaInfo, TranscodeError, TranscodeJob};
+use ferrite_stream_core::{Artifact, ArtifactKind, MediaInfo, TranscodeError, TranscodeJob};
 use tokio::process::Command;
 
 const THUMB_W: u32 = 160;

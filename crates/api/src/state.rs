@@ -2,8 +2,8 @@
 
 use std::sync::Arc;
 
-use ferrite_queue::RedisQueue;
-use ferrite_storage::Storage;
+use ferrite_stream_queue::RedisQueue;
+use ferrite_stream_storage::Storage;
 use metrics_exporter_prometheus::PrometheusHandle;
 use sqlx::PgPool;
 

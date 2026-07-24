@@ -20,7 +20,7 @@
 <div class="flex min-h-screen flex-col">
 	<header class="border-b border-border">
 		<div class="mx-auto flex h-16 max-w-6xl items-center px-6">
-			<a href="/" aria-label="Ferrite home"><Logo /></a>
+			<a href="/" aria-label="Ferrite Stream home"><Logo /></a>
 		</div>
 	</header>
 

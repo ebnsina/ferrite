@@ -2,8 +2,8 @@
 
 use std::path::PathBuf;
 
-use ferrite_core::{Encoder, TranscodeJob};
-use ferrite_storage::Storage;
+use ferrite_stream_core::{Encoder, TranscodeJob};
+use ferrite_stream_storage::Storage;
 use sqlx::PgPool;
 
 use crate::cmaf;
@@ -15,9 +15,9 @@ use crate::thumbnails;
 #[derive(Debug, thiserror::Error)]
 pub enum PipelineError {
     #[error("storage error: {0}")]
-    Storage(#[from] ferrite_storage::StorageError),
+    Storage(#[from] ferrite_stream_storage::StorageError),
     #[error("transcode error: {0}")]
-    Transcode(#[from] ferrite_core::TranscodeError),
+    Transcode(#[from] ferrite_stream_core::TranscodeError),
     #[error("io error: {0}")]
     Io(#[from] std::io::Error),
     #[error("db error: {0}")]
@@ -208,8 +208,8 @@ async fn run(
                     .await
                     .map(|m| m.len())
                     .unwrap_or(0);
-                artifacts.push(ferrite_core::Artifact {
-                    kind: ferrite_core::ArtifactKind::HlsPlaylist,
+                artifacts.push(ferrite_stream_core::Artifact {
+                    kind: ferrite_stream_core::ArtifactKind::HlsPlaylist,
                     local_path: path.to_string_lossy().to_string(),
                     key: format!("{}/captions.vtt", job.output_prefix),
                     rendition: None,
@@ -283,7 +283,7 @@ async fn run(
 /// adaptive ladder, at `{output_prefix}/master.m3u8`.
 async fn upload_master_playlist(
     job: &TranscodeJob,
-    media: &ferrite_core::MediaInfo,
+    media: &ferrite_stream_core::MediaInfo,
     job_dir: &PathBuf,
     storage: &Storage,
 ) -> Result<(), PipelineError> {

@@ -1,4 +1,4 @@
-name: ferrite
+name: ferrite-stream
 
 services:
   postgres:

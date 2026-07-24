@@ -1,4 +1,4 @@
-//! Ferrite transcode worker: claims jobs from the queue and processes them.
+//! Ferrite Stream transcode worker: claims jobs from the queue and processes them.
 
 mod ai;
 mod captions;
@@ -18,8 +18,8 @@ mod webhooks;
 use std::time::Duration;
 
 use anyhow::Context;
-use ferrite_queue::{JobQueue, RedisQueue};
-use ferrite_storage::{Storage, StorageConfig};
+use ferrite_stream_queue::{JobQueue, RedisQueue};
+use ferrite_stream_storage::{Storage, StorageConfig};
 use sqlx::postgres::PgPoolOptions;
 use sqlx::PgPool;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
@@ -193,7 +193,7 @@ async fn run_loop(
 
 async fn handle_failure(
     queue: &RedisQueue,
-    claimed: &ferrite_queue::ClaimedJob,
+    claimed: &ferrite_stream_queue::ClaimedJob,
     max_attempts: usize,
     error: pipeline::PipelineError,
 ) {
@@ -221,7 +221,7 @@ async fn handle_failure(
 
 fn init_tracing() {
     let filter = EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| EnvFilter::new("info,ferrite_worker=debug"));
+        .unwrap_or_else(|_| EnvFilter::new("info,ferrite_stream_worker=debug"));
     tracing_subscriber::registry()
         .with(filter)
         .with(tracing_subscriber::fmt::layer())

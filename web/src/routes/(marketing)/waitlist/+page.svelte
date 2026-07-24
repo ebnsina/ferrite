@@ -69,12 +69,12 @@
 </script>
 
 <svelte:head>
-	<title>Join the waitlist — Ferrite</title>
+	<title>Join the waitlist — Ferrite Stream</title>
 	<meta
 		name="description"
-		content="Get early access to Ferrite Cloud — managed adaptive video with a 14-day free trial. Tell us what you're building."
+		content="Get early access to Ferrite Stream Cloud — managed adaptive video with a 14-day free trial. Tell us what you're building."
 	/>
-	<meta property="og:title" content="Join the Ferrite early-access waitlist" />
+	<meta property="og:title" content="Join the Ferrite Stream early-access waitlist" />
 	<meta
 		property="og:description"
 		content="Managed adaptive video, AI shorts, live streaming, and signed playback — get early access."
@@ -100,7 +100,7 @@
 		<div class="mb-8">
 			<h1 class="text-3xl font-semibold tracking-tight">Get early access</h1>
 			<p class="mt-2 text-muted">
-				Ferrite Cloud is launching soon — join the waitlist and we'll invite you in. A few quick
+				Ferrite Stream Cloud is launching soon — join the waitlist and we'll invite you in. A few quick
 				questions help us build the right thing.
 			</p>
 		</div>

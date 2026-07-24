@@ -115,14 +115,14 @@ impl From<sqlx::Error> for ApiError {
     }
 }
 
-impl From<ferrite_storage::StorageError> for ApiError {
-    fn from(e: ferrite_storage::StorageError) -> Self {
+impl From<ferrite_stream_storage::StorageError> for ApiError {
+    fn from(e: ferrite_stream_storage::StorageError) -> Self {
         ApiError::Internal(anyhow::anyhow!(e))
     }
 }
 
-impl From<ferrite_queue::QueueError> for ApiError {
-    fn from(e: ferrite_queue::QueueError) -> Self {
+impl From<ferrite_stream_queue::QueueError> for ApiError {
+    fn from(e: ferrite_stream_queue::QueueError) -> Self {
         ApiError::Internal(anyhow::anyhow!(e))
     }
 }

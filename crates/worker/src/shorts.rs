@@ -3,8 +3,8 @@
 
 use std::path::Path;
 
-use ferrite_core::{ShortsSpec, TranscodeJob};
-use ferrite_storage::Storage;
+use ferrite_stream_core::{ShortsSpec, TranscodeJob};
+use ferrite_stream_storage::Storage;
 use sqlx::PgPool;
 use tokio::process::Command;
 use uuid::Uuid;

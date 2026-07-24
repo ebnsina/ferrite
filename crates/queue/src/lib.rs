@@ -4,7 +4,7 @@
 
 use std::time::Duration;
 
-use ferrite_core::TranscodeJob;
+use ferrite_stream_core::TranscodeJob;
 use redis::aio::{ConnectionManager, ConnectionManagerConfig};
 use redis::streams::{
     StreamAutoClaimOptions, StreamAutoClaimReply, StreamClaimOptions, StreamClaimReply,

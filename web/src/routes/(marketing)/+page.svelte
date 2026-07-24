@@ -37,7 +37,7 @@
 		currencyOpen = false;
 	}
 
-	// Categories of teams Ferrite is built for — not customer names.
+	// Categories of teams Ferrite Stream is built for — not customer names.
 	const clients = [
 		'Creator platforms',
 		'Media teams',
@@ -55,7 +55,7 @@
 			eyebrow: 'Smooth playback',
 			title: 'Plays perfectly on any connection',
 			plain:
-				'Ferrite automatically makes several versions of your video at different qualities. The viewer’s player picks the best one for their internet speed, moment to moment.',
+				'Ferrite Stream automatically makes several versions of your video at different qualities. The viewer’s player picks the best one for their internet speed, moment to moment.',
 			benefit: 'No buffering, no spinning wheels — on a laptop, a phone, or a smart TV.'
 		},
 		{
@@ -64,7 +64,7 @@
 			eyebrow: 'Fair for everyone',
 			title: 'Every customer gets their turn',
 			plain:
-				'When lots of videos are uploaded at once, Ferrite shares the processing evenly instead of working through one big pile first.',
+				'When lots of videos are uploaded at once, Ferrite Stream shares the processing evenly instead of working through one big pile first.',
 			benefit: 'One customer uploading 10,000 videos never makes everyone else wait in line.'
 		},
 		{
@@ -73,7 +73,7 @@
 			eyebrow: 'Live, then on-demand',
 			title: 'Go live and keep the replay',
 			plain:
-				'Broadcast a live stream through the same platform, and Ferrite quietly records it while it happens.',
+				'Broadcast a live stream through the same platform, and Ferrite Stream quietly records it while it happens.',
 			benefit: 'The moment your event ends, an on-demand version is ready to watch.'
 		},
 		{
@@ -135,7 +135,7 @@
 		}
 	];
 
-	// Ferrite's honest differentiators vs hosted video SaaS.
+	// Ferrite Stream's honest differentiators vs hosted video SaaS.
 	const reasons = [
 		{
 			icon: Stack,
@@ -204,7 +204,7 @@
 	];
 
 	// Comparison — model-level differences, framed honestly against hosted platforms.
-	const compareCols = ['Ferrite', 'Mux', 'api.video', 'Cloudflare Stream'];
+	const compareCols = ['Ferrite Stream', 'Mux', 'api.video', 'Cloudflare Stream'];
 	const compareRows = [
 		{ label: 'Self-hosted / on-prem', cells: [true, false, false, false] },
 		{ label: 'Store in your own S3 bucket', cells: [true, false, false, false] },
@@ -257,7 +257,7 @@
 	const testimonials = [
 		{
 			quote:
-				'Ferrite cut our transcode pipeline from a weekend project to an afternoon. It just does the right thing.',
+				'Ferrite Stream cut our transcode pipeline from a weekend project to an afternoon. It just does the right thing.',
 			who: 'Platform engineer, media SaaS'
 		},
 		{
@@ -345,8 +345,8 @@
 
 	const faqs = [
 		{
-			q: 'Can I run Ferrite on my own infrastructure?',
-			a: 'Yes. Ferrite is self-hosted and stores everything in your own S3-compatible bucket — MinIO, AWS S3, or any compatible provider.'
+			q: 'Can I run Ferrite Stream on my own infrastructure?',
+			a: 'Yes. Ferrite Stream is self-hosted and stores everything in your own S3-compatible bucket — MinIO, AWS S3, or any compatible provider.'
 		},
 		{
 			q: 'Which output formats are supported?',
@@ -385,7 +385,7 @@
 			Encode once.<br /><span class="text-accent">Stream everywhere.</span>
 		</h1>
 		<p class="mx-auto mt-6 max-w-2xl text-lg text-muted">
-			Ferrite turns raw uploads into adaptive HLS and DASH in minutes — with live streaming, signed
+			Ferrite Stream turns raw uploads into adaptive HLS and DASH in minutes — with live streaming, signed
 			playback, and a queue that keeps every workload moving.
 		</p>
 		<div class="mt-10 flex flex-wrap items-center justify-center gap-3">
@@ -499,7 +499,7 @@
 	{/if}
 {/snippet}
 
-<!-- Why Ferrite — plain-language benefits for non-technical readers -->
+<!-- Why Ferrite Stream — plain-language benefits for non-technical readers -->
 <section id="benefits" class="border-t border-border">
 	<div class="mx-auto max-w-6xl px-6 py-20" use:reveal>
 		<div class="mx-auto max-w-2xl text-center">
@@ -603,11 +603,11 @@
 	</div>
 </section>
 
-<!-- Why Ferrite -->
+<!-- Why Ferrite Stream -->
 <section id="why" class="border-t border-border">
 	<div class="mx-auto max-w-6xl px-6 py-20" use:reveal>
 		<div class="mx-auto max-w-2xl text-center">
-			<h2 class="text-3xl font-semibold tracking-tight">Why teams choose Ferrite</h2>
+			<h2 class="text-3xl font-semibold tracking-tight">Why teams choose Ferrite Stream</h2>
 			<p class="mt-3 text-muted">
 				Same modern feature set as the hosted platforms — without handing over your video or your bill.
 			</p>
@@ -632,7 +632,7 @@
 <section class="border-t border-border">
 	<div class="mx-auto max-w-6xl px-6 py-20" use:reveal>
 		<div class="mx-auto max-w-2xl text-center">
-			<span class="text-xs font-semibold tracking-wide text-accent uppercase">Only on Ferrite</span>
+			<span class="text-xs font-semibold tracking-wide text-accent uppercase">Only on Ferrite Stream</span>
 			<h2 class="mt-2 text-3xl font-semibold tracking-tight">Features no one else ships</h2>
 			<p class="mt-3 text-muted">
 				The parts the hosted platforms don't have — searchable, verifiable, and private by design.
@@ -658,7 +658,7 @@
 <section class="border-t border-border bg-surface/40">
 	<div class="mx-auto max-w-4xl px-6 py-20" use:reveal>
 		<div class="mx-auto max-w-2xl text-center">
-			<h2 class="text-3xl font-semibold tracking-tight">Ferrite vs hosted platforms</h2>
+			<h2 class="text-3xl font-semibold tracking-tight">Ferrite Stream vs hosted platforms</h2>
 			<p class="mt-3 text-muted">
 				Where a self-hosted pipeline changes the equation. Feature parity where it counts.
 			</p>
@@ -698,7 +698,7 @@
 			</table>
 		</div>
 		<p class="mt-6 text-center text-xs text-muted">
-			Comparison reflects deployment model; hosted platforms are excellent managed services — Ferrite
+			Comparison reflects deployment model; hosted platforms are excellent managed services — Ferrite Stream
 			trades managed convenience for ownership and control.
 		</p>
 	</div>
@@ -721,7 +721,7 @@
 	<div class="mx-auto max-w-6xl px-6 py-20" use:reveal>
 		<div class="mx-auto max-w-2xl text-center">
 			<h2 class="text-3xl font-semibold tracking-tight">Three steps to adaptive video</h2>
-			<p class="mt-3 text-muted">Upload a source file and Ferrite handles the rest.</p>
+			<p class="mt-3 text-muted">Upload a source file and Ferrite Stream handles the rest.</p>
 		</div>
 		<div class="mt-14 grid gap-8 md:grid-cols-3">
 			{#each steps as s, i (s.title)}
@@ -747,7 +747,7 @@
 	<div class="mx-auto max-w-6xl px-6 py-20" use:reveal>
 		<div class="mx-auto max-w-2xl text-center">
 			<h2 class="text-3xl font-semibold tracking-tight">Built for teams shipping video</h2>
-			<p class="mt-3 text-muted">The kind of feedback we build Ferrite to earn.</p>
+			<p class="mt-3 text-muted">The kind of feedback we build Ferrite Stream to earn.</p>
 		</div>
 		<div class="mt-14 grid gap-6 md:grid-cols-3">
 			{#each testimonials as t (t.who)}

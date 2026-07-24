@@ -480,7 +480,7 @@
 			/>
 		</div>
 		<p class="rounded-lg border border-border bg-surface-2 p-3 text-xs text-muted">
-			Ferrite transcribes the audio, picks the best moments, and reframes each to 9:16 with
+			Ferrite Stream transcribes the audio, picks the best moments, and reframes each to 9:16 with
 			captions. Finished shorts appear here as new assets.
 		</p>
 		{#if shortsErr}<p class="text-sm text-danger">{shortsErr}</p>{/if}
@@ -509,7 +509,7 @@
 			<span class="mb-2 inline-flex text-muted"><Icon icon={ShieldCheck} size={24} /></span>
 			<p class="text-sm font-medium">No content credentials</p>
 			<p class="mt-1 text-xs text-muted">
-				Only Ferrite-produced assets (clips, shorts, live clips) are signed.
+				Only Ferrite Stream-produced assets (clips, shorts, live clips) are signed.
 			</p>
 		</div>
 	{:else}
@@ -521,7 +521,7 @@
 			</span>
 			<div>
 				<p class="text-sm font-semibold">
-					{prov.verified ? 'Verified by Ferrite' : 'Verification failed'}
+					{prov.verified ? 'Verified by Ferrite Stream' : 'Verification failed'}
 				</p>
 				<p class="text-xs text-muted">
 					Signature {prov.signature_valid ? 'valid' : 'invalid'} · Content

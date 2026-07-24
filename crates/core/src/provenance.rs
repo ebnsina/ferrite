@@ -15,7 +15,7 @@ use uuid::Uuid;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Manifest {
     pub version: u8,
-    /// Producing tool, e.g. "Ferrite".
+    /// Producing tool, e.g. "Ferrite Stream".
     pub tool: String,
     pub tenant_id: Uuid,
     pub asset_id: Uuid,
@@ -83,7 +83,7 @@ mod tests {
     fn sample() -> Manifest {
         Manifest {
             version: 1,
-            tool: "Ferrite".into(),
+            tool: "Ferrite Stream".into(),
             tenant_id: Uuid::nil(),
             asset_id: Uuid::nil(),
             filename: "clip.mp4".into(),

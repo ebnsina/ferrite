@@ -41,7 +41,7 @@
 		'w-full rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm outline-none focus:border-accent';
 </script>
 
-<svelte:head><title>Reset password — Ferrite</title></svelte:head>
+<svelte:head><title>Reset password — Ferrite Stream</title></svelte:head>
 
 <div class="flex min-h-screen items-center justify-center px-6">
 	<Card class="w-full max-w-md">

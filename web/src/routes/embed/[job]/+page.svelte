@@ -16,7 +16,7 @@
 </script>
 
 <svelte:head>
-	<title>Ferrite player</title>
+	<title>Ferrite Stream player</title>
 	<meta name="robots" content="noindex" />
 </svelte:head>
 

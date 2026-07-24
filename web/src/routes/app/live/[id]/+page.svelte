@@ -241,7 +241,7 @@
 </div>
 
 <Sheet open={tOpen} onclose={() => (tOpen = false)} title="Add simulcast destination"
-	description="Ferrite will relay your live stream here while you broadcast.">
+	description="Ferrite Stream will relay your live stream here while you broadcast.">
 	<div class="flex flex-col gap-4">
 		<div>
 			<label for="t-name" class="mb-1.5 block text-xs font-medium text-muted">Name</label>

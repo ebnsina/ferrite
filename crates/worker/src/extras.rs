@@ -4,8 +4,8 @@
 
 use std::path::Path;
 
-use ferrite_core::{Artifact, ArtifactKind, TranscodeJob, Watermark};
-use ferrite_storage::Storage;
+use ferrite_stream_core::{Artifact, ArtifactKind, TranscodeJob, Watermark};
+use ferrite_stream_storage::Storage;
 use tokio::process::Command;
 
 /// Generate the requested extra outputs and return their artifacts.

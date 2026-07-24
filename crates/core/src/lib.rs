@@ -1,4 +1,4 @@
-//! Ferrite core domain: shared types, job model, and the encoder abstraction.
+//! Ferrite Stream core domain: shared types, job model, and the encoder abstraction.
 //!
 //! This crate has no I/O dependencies. It defines *what* a transcode is so that
 //! the CPU encoder today and a GPU (NVENC) encoder later implement one contract.

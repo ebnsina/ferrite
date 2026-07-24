@@ -1,5 +1,5 @@
 <script lang="ts">
-	// Ferrite brand mark: a bold "F" monogram in an accent tile + wordmark.
+	// Ferrite Stream brand mark: a bold "F" monogram in an accent tile + wordmark.
 	// Custom SVG (not an icon-lib glyph) so the brand is ownable.
 	interface Props {
 		size?: number;
@@ -28,6 +28,6 @@
 		/>
 	</svg>
 	{#if withWord}
-		<span class="text-lg font-semibold tracking-tight">Ferrite</span>
+		<span class="text-lg font-semibold tracking-tight">Ferrite Stream</span>
 	{/if}
 </span>

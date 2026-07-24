@@ -1356,7 +1356,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "da7c62ceae207dd37ea5b845da6a0696c799f85e97da1ab5b7910be3c1c80223"
 
 [[package]]
-name = "ferrite-api"
+name = "ferrite-stream-api"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -1366,9 +1366,9 @@ dependencies = [
  "chrono",
  "config",
  "dotenvy",
- "ferrite-core",
- "ferrite-queue",
- "ferrite-storage",
+ "ferrite-stream-core",
+ "ferrite-stream-queue",
+ "ferrite-stream-storage",
  "futures",
  "hex",
  "hmac 0.13.0",
@@ -1393,7 +1393,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "ferrite-core"
+name = "ferrite-stream-core"
 version = "0.1.0"
 dependencies = [
  "chrono",
@@ -1407,10 +1407,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "ferrite-queue"
+name = "ferrite-stream-queue"
 version = "0.1.0"
 dependencies = [
- "ferrite-core",
+ "ferrite-stream-core",
  "redis",
  "serde",
  "serde_json",
@@ -1421,7 +1421,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "ferrite-storage"
+name = "ferrite-stream-storage"
 version = "0.1.0"
 dependencies = [
  "aws-config",
@@ -1432,16 +1432,16 @@ dependencies = [
 ]
 
 [[package]]
-name = "ferrite-worker"
+name = "ferrite-stream-worker"
 version = "0.1.0"
 dependencies = [
  "anyhow",
  "chrono",
  "config",
  "dotenvy",
- "ferrite-core",
- "ferrite-queue",
- "ferrite-storage",
+ "ferrite-stream-core",
+ "ferrite-stream-queue",
+ "ferrite-stream-storage",
  "hex",
  "hmac 0.13.0",
  "rand 0.9.5",

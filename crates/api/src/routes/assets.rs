@@ -11,8 +11,8 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use validator::Validate;
 
-use ferrite_core::{Clip, Ladder, ShortsSpec, TranscodeJob};
-use ferrite_queue::JobQueue;
+use ferrite_stream_core::{Clip, Ladder, ShortsSpec, TranscodeJob};
+use ferrite_stream_queue::JobQueue;
 
 use crate::auth::TenantContext;
 use crate::db::{self, Asset};

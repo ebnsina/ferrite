@@ -21,10 +21,10 @@ migrate: ## Apply database migrations
 	sqlx migrate run --database-url "$(DB_URL)"
 
 api: ## Run the API
-	cargo run -p ferrite-api
+	cargo run -p ferrite-stream-api
 
 worker: ## Run a transcode worker
-	cargo run -p ferrite-worker
+	cargo run -p ferrite-stream-worker
 
 web: ## Run the dashboard dev server
 	cd web && pnpm dev
@@ -33,8 +33,8 @@ fresh: ## Kill Ferrite's own procs/ports and restart API+worker+web cleanly
 	./scripts/fresh.sh
 
 kill: ## Stop only Ferrite's processes (API 8787, web 5173) — leaves other projects alone
-	-pkill -f 'target/debug/ferrite-api' 2>/dev/null
-	-pkill -f 'target/debug/ferrite-worker' 2>/dev/null
+	-pkill -f 'target/debug/ferrite-stream-api' 2>/dev/null
+	-pkill -f 'target/debug/ferrite-stream-worker' 2>/dev/null
 	-pkill -f 'Sites/ferrite/web/node_modules' 2>/dev/null
 	-lsof -tiTCP:8787 -sTCP:LISTEN 2>/dev/null | xargs -r kill 2>/dev/null
 	-lsof -tiTCP:5173 -sTCP:LISTEN 2>/dev/null | xargs -r kill 2>/dev/null

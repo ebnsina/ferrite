@@ -1,4 +1,4 @@
-// Thin typed client over the Ferrite API.
+// Thin typed client over the Ferrite Stream API.
 //
 // Every failure path is modelled: non-2xx responses become `ApiError` with the
 // server's code/message; network failures and non-JSON bodies degrade to a

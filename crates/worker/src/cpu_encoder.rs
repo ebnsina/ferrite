@@ -1,12 +1,12 @@
 //! Software (CPU) encoder built on the `ffmpeg`/`ffprobe` binaries.
 //!
-//! Implements [`ferrite_core::Encoder`]. A future `NvencEncoder` will implement
+//! Implements [`ferrite_stream_core::Encoder`]. A future `NvencEncoder` will implement
 //! the same trait and slot into the pipeline unchanged — this type holds no
 //! assumptions the GPU path can't also satisfy.
 
 use std::path::{Path, PathBuf};
 
-use ferrite_core::{
+use ferrite_stream_core::{
     Artifact, ArtifactKind, Encoder, MediaInfo, ProgressSink, TranscodeError, TranscodeJob,
 };
 use serde_json::Value;

@@ -10,7 +10,7 @@
 
 	const nav = [
 		{ id: 'features', label: 'Features' },
-		{ id: 'benefits', label: 'Why Ferrite' },
+		{ id: 'benefits', label: 'Why Ferrite Stream' },
 		{ id: 'pricing', label: 'Pricing' }
 	];
 
@@ -19,7 +19,7 @@
 			title: 'Product',
 			links: [
 				{ scroll: 'features', label: 'Features' },
-				{ scroll: 'benefits', label: 'Why Ferrite' },
+				{ scroll: 'benefits', label: 'Why Ferrite Stream' },
 				{ scroll: 'how', label: 'How it works' },
 				{ scroll: 'pricing', label: 'Pricing' }
 			]
@@ -48,7 +48,7 @@
 	<!-- Transparent header blends into the hero; no divider. -->
 	<header class="absolute inset-x-0 top-0 z-20">
 		<div class="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
-			<a href="/" aria-label="Ferrite home"><Logo /></a>
+			<a href="/" aria-label="Ferrite Stream home"><Logo /></a>
 			<nav class="hidden items-center gap-8 md:flex">
 				{#each nav as l (l.label)}
 					<button

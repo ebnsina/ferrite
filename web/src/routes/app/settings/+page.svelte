@@ -252,7 +252,7 @@
 	<!-- Appearance -->
 	<Card class="mb-6">
 		<h2 class="mb-1 text-sm font-medium text-muted">Appearance</h2>
-		<p class="mb-4 text-xs text-muted">Choose how Ferrite looks on this device.</p>
+		<p class="mb-4 text-xs text-muted">Choose how Ferrite Stream looks on this device.</p>
 		<div class="inline-flex rounded-lg border border-border p-1">
 			{#each modes as m (m.value)}
 				<button
@@ -271,7 +271,7 @@
 	<!-- Session -->
 	<Card>
 		<h2 class="mb-1 text-sm font-medium text-muted">Session</h2>
-		<p class="mb-4 text-xs text-muted">Sign out of Ferrite on this device.</p>
+		<p class="mb-4 text-xs text-muted">Sign out of Ferrite Stream on this device.</p>
 		<Button variant="secondary" onclick={async () => { await logout().catch(() => {}); session.clear(); }}>
 			<Icon icon={SignOut} size={16} /> Sign out
 		</Button>

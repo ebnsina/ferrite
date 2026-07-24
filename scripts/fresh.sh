@@ -20,8 +20,8 @@ kill_port() { # kill whatever listens on $1 (used only for Ferrite's own ports)
 }
 
 say "Stopping Ferrite processes (leaving other projects alone)…"
-pkill -f 'target/debug/ferrite-api' 2>/dev/null || true
-pkill -f 'target/debug/ferrite-worker' 2>/dev/null || true
+pkill -f 'target/debug/ferrite-stream-api' 2>/dev/null || true
+pkill -f 'target/debug/ferrite-stream-worker' 2>/dev/null || true
 pkill -f 'Sites/ferrite/web/node_modules' 2>/dev/null || true   # this project's Vite only
 kill_port "$API_PORT"
 kill_port "$WEB_PORT"
@@ -32,9 +32,9 @@ say "Ensuring infra (Postgres/Redis/MinIO/SRS) is up…"
 ( cd "$ROOT" && docker compose up -d >/dev/null 2>&1 ) || true
 
 say "Starting API on :$API_PORT …"
-( cd "$ROOT" && cargo run -q -p ferrite-api >/tmp/ferrite-api.log 2>&1 & )
+( cd "$ROOT" && cargo run -q -p ferrite-stream-api >/tmp/ferrite-stream-api.log 2>&1 & )
 say "Starting worker …"
-( cd "$ROOT" && cargo run -q -p ferrite-worker >/tmp/ferrite-worker.log 2>&1 & )
+( cd "$ROOT" && cargo run -q -p ferrite-stream-worker >/tmp/ferrite-stream-worker.log 2>&1 & )
 say "Starting web on :$WEB_PORT …"
 ( cd "$ROOT/web" && pnpm dev >/tmp/ferrite-web.log 2>&1 & )
 

@@ -1,4 +1,4 @@
-# Ferrite
+# Ferrite Stream
 
 Self-hosted, multi-tenant video platform — VOD **and** live. Rust API + FFmpeg
 workers, a Redis-backed fair queue, S3-compatible storage, and a SvelteKit
@@ -110,7 +110,7 @@ startup). See `.env.example` for the full list and `make help` for shortcuts.
 ## Optional integrations
 
 All optional — unset means the feature degrades gracefully (logged, skipped, or
-falls back), so Ferrite builds and runs without any of them.
+falls back), so Ferrite Stream builds and runs without any of them.
 
 - **Email** (invites, password reset): `FERRITE_SMTP_HOST/PORT/USER/PASSWORD/FROM`.
   Unset → emails are logged to the console.

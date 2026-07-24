@@ -9,7 +9,7 @@
 use std::path::Path;
 use std::process::Stdio;
 
-use ferrite_core::{Artifact, ArtifactKind, MediaInfo, TranscodeError, TranscodeJob};
+use ferrite_stream_core::{Artifact, ArtifactKind, MediaInfo, TranscodeError, TranscodeJob};
 use tokio::io::{AsyncBufReadExt, AsyncReadExt, BufReader};
 use tokio::process::Command;
 
@@ -193,8 +193,8 @@ fn build_args(
 /// filter_complex that overlays the logo on the source, then splits and scales
 /// it into one output per rendition: `[o0]`, `[o1]`, …
 fn watermark_graph(
-    wm: &ferrite_core::Watermark,
-    renditions: &[ferrite_core::Rendition],
+    wm: &ferrite_stream_core::Watermark,
+    renditions: &[ferrite_stream_core::Rendition],
     src_w: u32,
     src_h: u32,
 ) -> String {

@@ -117,7 +117,7 @@
 				<div class="flex flex-col items-center justify-center py-12 text-center">
 					<span class="mb-3 text-muted"><Icon icon={Key} size={28} /></span>
 					<p class="font-medium">No API keys yet</p>
-					<p class="mt-1 text-sm text-muted">Create one to call the Ferrite API programmatically.</p>
+					<p class="mt-1 text-sm text-muted">Create one to call the Ferrite Stream API programmatically.</p>
 				</div>
 			{:else}
 				<div class="divide-y divide-border">

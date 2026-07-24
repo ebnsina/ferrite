@@ -41,7 +41,7 @@ pub struct Settings {
     pub live_srt_base: String,
     pub live_hls_base: String,
     pub live_api_url: String,
-    /// Shared secret the ingest server includes when calling Ferrite's DVR hook.
+    /// Shared secret the ingest server includes when calling Ferrite Stream's DVR hook.
     pub live_hook_secret: String,
 
     /// Ed25519 seed for content-provenance signing/verification (must match the
@@ -74,7 +74,7 @@ pub struct Settings {
     pub smtp_user: Option<String>,
     #[serde(default)]
     pub smtp_password: Option<String>,
-    /// From address, e.g. `Ferrite <no-reply@yourdomain.com>`.
+    /// From address, e.g. `Ferrite Stream <no-reply@yourdomain.com>`.
     #[serde(default)]
     pub smtp_from: Option<String>,
 }

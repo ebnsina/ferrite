@@ -1,17 +1,17 @@
 [package]
-name = "ferrite-api"
+name = "ferrite-stream-api"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 
 [[bin]]
-name = "ferrite-api"
+name = "ferrite-stream-api"
 path = "src/main.rs"
 
 [dependencies]
-ferrite-core.workspace = true
-ferrite-storage.workspace = true
-ferrite-queue.workspace = true
+ferrite-stream-core.workspace = true
+ferrite-stream-storage.workspace = true
+ferrite-stream-queue.workspace = true
 
 tokio.workspace = true
 axum.workspace = true

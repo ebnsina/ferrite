@@ -181,7 +181,7 @@
 						>Back to sign in</button
 					>
 				{:else}
-					New to Ferrite?
+					New to Ferrite Stream?
 					<button class="text-accent hover:underline" onclick={() => switchMode('signup')}
 						>Create a workspace</button
 					>
