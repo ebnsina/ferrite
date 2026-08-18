@@ -1,0 +1,8 @@
+- name: reload systemd
+  ansible.builtin.systemd_service: { daemon_reload: true }
+
+- name: restart verve-worker
+  ansible.builtin.systemd_service:
+    name: "verve-worker@{{ item }}"
+    state: restarted
+  loop: "{{ range(0, verve_cpu_groups) | list }}"

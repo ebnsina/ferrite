@@ -1,0 +1,130 @@
+# Local dev only. Nothing here is a production topology.
+name: verve
+
+services:
+  # Two databases, not two schemas: neither can read the other's tables.
+  assets-db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: verve
+      POSTGRES_PASSWORD: verve
+      POSTGRES_DB: assets_db
+    ports: ["55432:5432"]
+    volumes: ["assets-db:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U verve -d assets_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  sched-db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: verve
+      POSTGRES_PASSWORD: verve
+      POSTGRES_DB: sched_db
+    ports: ["55433:5432"]
+    volumes: ["sched-db:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U verve -d sched_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # Temporal's own store. Separate again — it holds in-flight work state.
+  temporal-db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: temporal
+      POSTGRES_PASSWORD: temporal
+      POSTGRES_DB: temporal
+    volumes: ["temporal-db:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U temporal"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  temporal:
+    image: temporalio/auto-setup:1.29.7
+    depends_on:
+      temporal-db: { condition: service_healthy }
+    environment:
+      DB: postgres12
+      DB_PORT: 5432
+      POSTGRES_USER: temporal
+      POSTGRES_PWD: temporal
+      POSTGRES_SEEDS: temporal-db
+      DYNAMIC_CONFIG_FILE_PATH: config/dynamicconfig/verve.yaml
+    ports: ["7233:7233"]
+    volumes:
+      - ./deploy/temporal-dynamicconfig.yaml:/etc/temporal/config/dynamicconfig/verve.yaml:ro"
+    healthcheck:
+      test: ["CMD", "temporal", "operator", "cluster", "health", "--address", "temporal:7233"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+  temporal-ui:
+    image: temporalio/ui:2.53.3
+    depends_on: [temporal]
+    environment:
+      TEMPORAL_ADDRESS: temporal:7233
+      TEMPORAL_CORS_ORIGINS: http://localhost:3000
+    ports: ["8233:8080"]
+
+  minio:
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: verve
+      MINIO_ROOT_PASSWORD: verve-dev-secret
+    ports: ["9000:9000", "9001:9001"]
+    volumes: ["minio:/data"]
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # Creates the buckets, then exits. `docker compose up` waits for it.
+  minio-init:
+    image: minio/mc:RELEASE.2025-08-13T08-35-41Z
+    depends_on:
+      minio: { condition: service_healthy }
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 verve verve-dev-secret &&
+      mc mb -p local/verve-sources local/verve-mezzanine local/verve-assets local/verve-outputs &&
+      echo 'buckets ready'
+      "
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.139.0
+    command: ["--config=/etc/otel/config.yaml"]
+    volumes: ["./deploy/otel-collector.yaml:/etc/otel/config.yaml:ro"]
+    ports: ["4317:4317", "4318:4318"]
+    depends_on: [prometheus]
+
+  prometheus:
+    image: prom/prometheus:v3.7.3
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --web.enable-remote-write-receiver
+    volumes: ["./deploy/prometheus.yml:/etc/prometheus/prometheus.yml:ro"]
+    ports: ["9090:9090"]
+
+  grafana:
+    image: grafana/grafana:13.2.0
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+      GF_SECURITY_ADMIN_PASSWORD: verve
+    ports: ["3001:3000"]
+    depends_on: [prometheus]
+
+volumes:
+  assets-db:
+  sched-db:
+  temporal-db:
+  minio:

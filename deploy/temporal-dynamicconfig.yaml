@@ -1,0 +1,5 @@
+# Dev only. Raises the per-workflow history limits the fan-out spike pushes at.
+limit.maxIDLength:
+  - value: 255
+system.forceSearchAttributesCacheRefreshOnRead:
+  - value: true

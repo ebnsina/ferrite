@@ -1,0 +1,28 @@
+[package]
+name = "verve-cli"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "The verve CLI: run the pipeline locally, verify output, operate the system."
+
+[[bin]]
+name = "verve"
+path = "src/main.rs"
+
+[features]
+default = []
+# Local pipeline commands need real video; operate/verify commands do not.
+ffmpeg = ["verve-av/ffmpeg"]
+
+[dependencies]
+anyhow.workspace = true
+clap.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+verve-av.workspace = true
+verve-telemetry.workspace = true
+
+[lints]
+workspace = true

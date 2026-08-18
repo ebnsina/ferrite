@@ -1,0 +1,28 @@
+[package]
+name = "verve-av"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "FFmpeg wrapper. All unsafe in the workspace lives here."
+
+[features]
+# Off by default so `cargo test` works without a built FFmpeg.
+default = []
+ffmpeg = ["dep:ffmpeg-next"]
+
+[dependencies]
+thiserror.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+ffmpeg-next = { workspace = true, optional = true }
+
+[lints.rust]
+# The one crate allowed to call C.
+unsafe_code = "allow"
+missing_debug_implementations = "warn"
+
+[lints.clippy]
+todo = "warn"
+dbg_macro = "warn"

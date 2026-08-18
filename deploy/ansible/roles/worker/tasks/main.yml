@@ -1,0 +1,65 @@
+- name: Service account
+  ansible.builtin.user:
+    name: "{{ verve_user }}"
+    system: true
+    shell: /usr/sbin/nologin
+    home: "{{ verve_root }}"
+
+- name: Directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ verve_user }}"
+    mode: "0750"
+  loop:
+    - "{{ verve_root }}"
+    - "{{ verve_release }}"
+    - "{{ verve_scratch }}"   # local NVMe; chunks never round-trip through S3
+
+- name: Install the binary
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../target/release/verve"
+    dest: "{{ verve_release }}/verve"
+    owner: "{{ verve_user }}"
+    mode: "0755"
+  notify: restart verve-worker
+
+- name: Current symlink
+  ansible.builtin.file:
+    src: "{{ verve_release }}"
+    dest: "{{ verve_root }}/current"
+    state: link
+  notify: restart verve-worker
+
+- name: Unit file, one per CPU group
+  ansible.builtin.template:
+    src: verve-worker.service.j2
+    dest: /etc/systemd/system/verve-worker@.service
+    mode: "0644"
+  notify:
+    - reload systemd
+    - restart verve-worker
+
+- name: Drop-in directory per instance
+  ansible.builtin.file:
+    path: "/etc/systemd/system/verve-worker@{{ item }}.service.d"
+    state: directory
+    mode: "0755"
+  loop: "{{ range(0, verve_cpu_groups) | list }}"
+
+- name: Pin each instance to its own CPU group
+  ansible.builtin.copy:
+    dest: "/etc/systemd/system/verve-worker@{{ item }}.service.d/cpu.conf"
+    content: |
+      [Service]
+      AllowedCPUs={{ item * verve_threads_per_group }}-{{ (item + 1) * verve_threads_per_group - 1 }}
+    mode: "0644"
+  loop: "{{ range(0, verve_cpu_groups) | list }}"
+  notify: restart verve-worker
+
+- name: Enable one worker per CPU group
+  ansible.builtin.systemd_service:
+    name: "verve-worker@{{ item }}"
+    enabled: true
+    state: started
+  loop: "{{ range(0, verve_cpu_groups) | list }}"

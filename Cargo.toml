@@ -1,0 +1,59 @@
+[workspace]
+resolver = "3"
+members = [
+    "crates/verve-av",
+    "crates/verve-keys",
+    "crates/verve-telemetry",
+    "crates/verve-assets",
+    "crates/verve-scheduler",
+    "crates/verve-worker",
+    "crates/verve-cli",
+    "spike/temporal-spike",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.95"
+license = "UNLICENSED"
+
+[workspace.dependencies]
+# internal — dependency direction is enforced here and in docs/02-architecture.md
+verve-av        = { path = "crates/verve-av" }
+verve-keys      = { path = "crates/verve-keys" }
+verve-telemetry = { path = "crates/verve-telemetry" }
+
+anyhow      = "1"
+thiserror   = "2"
+tokio       = { version = "1", features = ["full"] }
+serde       = { version = "1", features = ["derive"] }
+serde_json  = "1"
+tracing     = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+clap        = { version = "4", features = ["derive"] }
+
+# telemetry — opentelemetry crates move in lockstep
+opentelemetry         = "0.31"
+opentelemetry_sdk     = { version = "0.31", features = ["rt-tokio"] }
+opentelemetry-otlp    = { version = "0.31", features = ["grpc-tonic", "trace", "metrics"] }
+opentelemetry-semantic-conventions = { version = "0.31", features = ["semconv_experimental"] }
+tracing-opentelemetry = "0.32"
+
+# storage — provider is a config change
+opendal = { version = "0.58", features = ["services-s3", "services-fs"] }
+
+# av
+ffmpeg-next = "9.0"
+
+[workspace.lints.rust]
+# The unsafe rule: verve-av overrides this in its own manifest.
+unsafe_code = "forbid"
+missing_debug_implementations = "warn"
+
+[workspace.lints.clippy]
+todo = "warn"
+dbg_macro = "warn"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1

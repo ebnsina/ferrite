@@ -1,0 +1,10 @@
+- name: Control plane
+  hosts: control_plane
+  become: true
+  roles: [control-plane]
+
+- name: Workers
+  hosts: workers
+  become: true
+  serial: 1          # Stop pulling, finish in-flight, restart. One at a time.
+  roles: [worker]

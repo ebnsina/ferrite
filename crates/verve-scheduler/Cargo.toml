@@ -1,0 +1,17 @@
+[package]
+name = "verve-scheduler"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Admission control: should this work start now, or wait?"
+
+[dependencies]
+anyhow.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+serde.workspace = true
+verve-telemetry.workspace = true
+
+[lints]
+workspace = true

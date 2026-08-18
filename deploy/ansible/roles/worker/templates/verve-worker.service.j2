@@ -1,0 +1,37 @@
+[Unit]
+Description=verve worker (CPU group %i)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=exec
+User={{ verve_user }}
+WorkingDirectory={{ verve_root }}/current
+ExecStart={{ verve_root }}/current/verve worker run --queues {{ verve_queues }} --threads {{ verve_threads_per_group }}
+Restart=always
+RestartSec=5
+
+Environment=VERVE_ENV={{ verve_env }}
+Environment=VERVE_LOG_FORMAT=json
+Environment=OTEL_EXPORTER_OTLP_ENDPOINT={{ otel_endpoint }}
+Environment=VERVE_SCRATCH={{ verve_scratch }}
+
+# FFmpeg parses untrusted files. Everything below is load-bearing.
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+SystemCallFilter=@system-service
+SystemCallArchitectures=native
+ReadWritePaths={{ verve_scratch }}
+MemoryMax=32G
+TasksMax=512
+
+# Stop pulling, finish in-flight, then exit.
+KillSignal=SIGTERM
+TimeoutStopSec=1800
+
+[Install]
+WantedBy=multi-user.target
