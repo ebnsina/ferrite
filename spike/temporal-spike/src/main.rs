@@ -29,7 +29,7 @@ const TASK_QUEUE: &str = "verve-spike";
 #[command(about = "Temporal SDK load spike: N steps across C child workflows")]
 struct Args {
     /// Temporal frontend address.
-    #[arg(long, default_value = "http://localhost:7233")]
+    #[arg(long, default_value = "http://localhost:7253")]
     address: String,
     /// Namespace.
     #[arg(long, default_value = "default")]

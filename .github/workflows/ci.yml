@@ -40,6 +40,30 @@ jobs:
       - run: cargo test -p verve-av --features ffmpeg
       - run: cargo build -p verve-cli --features ffmpeg
 
+  # The scheduler against a real Postgres: fairness, recovery, 10,000 items.
+  scheduler:
+    runs-on: ubuntu-latest
+    services:
+      sched-db:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: verve
+          POSTGRES_PASSWORD: verve
+          POSTGRES_DB: sched_db
+        ports: ["55433:5432"]
+        options: >-
+          --health-cmd "pg_isready -U verve"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      SCHED_DATABASE_URL: postgres://verve:verve@localhost:55433/sched_db
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with: { toolchain: "1.95.0" }
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test -p verve-scheduler --tests
+      - run: cargo build -p verve-scheduler --features fake-worker
+
   # The engine, end to end. Stage 0 does not get to assume Temporal works.
   spike:
     runs-on: ubuntu-latest
@@ -61,10 +85,13 @@ jobs:
           POSTGRES_USER: temporal
           POSTGRES_PWD: temporal
           POSTGRES_SEEDS: temporal-db
-        ports: ["7233:7233"]
+        ports: ["7253:7233"]
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
         with: { toolchain: "1.95.0" }
       - uses: Swatinem/rust-cache@v2
-      - run: cargo run -p temporal-spike -- --steps 1000 --chunk 50 --run-id "ci-${{ github.run_id }}"
+      - run: |
+          cargo run -p temporal-spike -- \
+            --address http://localhost:7253 \
+            --steps 1000 --chunk 50 --run-id "ci-${{ github.run_id }}"

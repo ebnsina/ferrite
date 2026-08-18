@@ -1,5 +1,7 @@
 # Local dev only. Nothing here is a production topology.
-name: verve
+# Every published port sits in a verve-specific block and is overridable, so
+# this stack never fights another one for a default port. See .env.example.
+name: ${COMPOSE_PROJECT_NAME:-verve}
 
 services:
   # Two databases, not two schemas: neither can read the other's tables.
@@ -9,7 +11,7 @@ services:
       POSTGRES_USER: verve
       POSTGRES_PASSWORD: verve
       POSTGRES_DB: assets_db
-    ports: ["55432:5432"]
+    ports: ["${VERVE_ASSETS_DB_PORT:-55432}:5432"]
     volumes: ["assets-db:/var/lib/postgresql/data"]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U verve -d assets_db"]
@@ -23,7 +25,7 @@ services:
       POSTGRES_USER: verve
       POSTGRES_PASSWORD: verve
       POSTGRES_DB: sched_db
-    ports: ["55433:5432"]
+    ports: ["${VERVE_SCHED_DB_PORT:-55433}:5432"]
     volumes: ["sched-db:/var/lib/postgresql/data"]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U verve -d sched_db"]
@@ -56,7 +58,7 @@ services:
       POSTGRES_PWD: temporal
       POSTGRES_SEEDS: temporal-db
       DYNAMIC_CONFIG_FILE_PATH: config/dynamicconfig/verve.yaml
-    ports: ["7233:7233"]
+    ports: ["${VERVE_TEMPORAL_PORT:-7253}:7233"]
     volumes:
       - ./deploy/temporal-dynamicconfig.yaml:/etc/temporal/config/dynamicconfig/verve.yaml:ro"
     healthcheck:
@@ -71,7 +73,7 @@ services:
     environment:
       TEMPORAL_ADDRESS: temporal:7233
       TEMPORAL_CORS_ORIGINS: http://localhost:3000
-    ports: ["8233:8080"]
+    ports: ["${VERVE_TEMPORAL_UI_PORT:-8253}:8080"]
 
   minio:
     image: minio/minio:RELEASE.2025-09-07T16-13-09Z
@@ -79,7 +81,7 @@ services:
     environment:
       MINIO_ROOT_USER: verve
       MINIO_ROOT_PASSWORD: verve-dev-secret
-    ports: ["9000:9000", "9001:9001"]
+    ports: ["${VERVE_MINIO_PORT:-9020}:9000", "${VERVE_MINIO_CONSOLE_PORT:-9021}:9001"]
     volumes: ["minio:/data"]
     healthcheck:
       test: ["CMD", "mc", "ready", "local"]
@@ -103,7 +105,7 @@ services:
     image: otel/opentelemetry-collector-contrib:0.139.0
     command: ["--config=/etc/otel/config.yaml"]
     volumes: ["./deploy/otel-collector.yaml:/etc/otel/config.yaml:ro"]
-    ports: ["4317:4317", "4318:4318"]
+    ports: ["${VERVE_OTLP_GRPC_PORT:-4327}:4317", "${VERVE_OTLP_HTTP_PORT:-4328}:4318"]
     depends_on: [prometheus]
 
   prometheus:
@@ -112,7 +114,7 @@ services:
       - --config.file=/etc/prometheus/prometheus.yml
       - --web.enable-remote-write-receiver
     volumes: ["./deploy/prometheus.yml:/etc/prometheus/prometheus.yml:ro"]
-    ports: ["9090:9090"]
+    ports: ["${VERVE_PROMETHEUS_PORT:-9092}:9090"]
 
   grafana:
     image: grafana/grafana:13.2.0
@@ -120,7 +122,7 @@ services:
       GF_AUTH_ANONYMOUS_ENABLED: "true"
       GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
       GF_SECURITY_ADMIN_PASSWORD: verve
-    ports: ["3001:3000"]
+    ports: ["${VERVE_GRAFANA_PORT:-3021}:3000"]
     depends_on: [prometheus]
 
 volumes:

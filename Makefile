@@ -1,6 +1,12 @@
 # Stage 0 targets. `make check` is what CI runs.
 SHELL := /usr/bin/env bash
 FEATURES ?= ffmpeg
+# Match .env.example. Override per-invocation or in your own .env.
+VERVE_SCHED_DB_PORT ?= 55433
+VERVE_MINIO_PORT ?= 9020
+VERVE_TEMPORAL_PORT ?= 7253
+SCHED_DATABASE_URL ?= postgres://verve:verve@localhost:$(VERVE_SCHED_DB_PORT)/sched_db
+export SCHED_DATABASE_URL
 
 .PHONY: help
 help:
@@ -34,15 +40,27 @@ test: ## Test without FFmpeg, then with
 .PHONY: test-integration
 test-integration: ## Tests needing the compose stack up
 	VERVE_S3_BUCKET=verve-assets \
-	VERVE_S3_ENDPOINT=http://localhost:9000 \
+	VERVE_S3_ENDPOINT=http://localhost:$(VERVE_MINIO_PORT) \
 	VERVE_S3_REGION=us-east-1 \
 	VERVE_S3_ACCESS_KEY=verve \
 	VERVE_S3_SECRET_KEY=verve-dev-secret \
 	cargo test -p verve-worker --test minio_roundtrip
+	cargo test -p verve-scheduler --tests
+
+.PHONY: scheduler
+scheduler: ## Run the scheduler against Temporal. Needs `make up`.
+	cargo run -p verve-scheduler --features temporal -- --total-slots 8 \
+		--temporal-address http://localhost:$(VERVE_TEMPORAL_PORT)
+
+.PHONY: fake-worker
+fake-worker: ## Run a worker for verve.fake. Needs `make scheduler`.
+	cargo run -p verve-scheduler --features fake-worker --bin verve-fake-worker -- \
+		--address http://localhost:$(VERVE_TEMPORAL_PORT)
 
 .PHONY: spike
 spike: ## 1,000 steps across child workflows. Needs `make up`.
-	cargo run -p temporal-spike -- --steps 1000 --chunk 50 --run-id $$(date +%s)
+	cargo run -p temporal-spike -- --address http://localhost:$(VERVE_TEMPORAL_PORT) \
+		--steps 1000 --chunk 50 --run-id $$(date +%s)
 
 .PHONY: fmt
 fmt: ## Format
