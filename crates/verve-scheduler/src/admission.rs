@@ -22,8 +22,6 @@ pub struct Config {
     pub tick: Duration,
     /// An `admitted` row with no workflow older than this is presumed abandoned.
     pub stall_after: TimeDelta,
-    /// Ticks between stall sweeps. The sweep is a write, so not every tick.
-    pub sweep_every: u32,
     /// Attempts before an item is failed rather than requeued.
     pub max_attempts: i32,
 }
@@ -35,11 +33,13 @@ impl Default for Config {
             shares: LaneShares::default(),
             tick: Duration::from_millis(250),
             stall_after: TimeDelta::minutes(5),
-            sweep_every: 240,
             max_attempts: 5,
         }
     }
 }
+
+/// Ticks between stall sweeps. The sweep is a write, so not every tick.
+const SWEEP_EVERY_TICKS: u32 = 240;
 
 /// What one tick did. Returned so tests can assert on it and so the loop has
 /// something honest to log.
@@ -135,7 +135,7 @@ impl Scheduler {
         let mut report = Tick::default();
         self.ticks = self.ticks.wrapping_add(1);
 
-        if self.ticks.is_multiple_of(self.config.sweep_every.max(1)) {
+        if self.ticks.is_multiple_of(SWEEP_EVERY_TICKS) {
             report.recovered = self.store.requeue_stalled(self.config.stall_after).await?;
             if report.recovered > 0 {
                 warn!(report.recovered, "requeued starts that never landed");

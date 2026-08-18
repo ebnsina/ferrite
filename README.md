@@ -77,11 +77,12 @@ All `unsafe` lives in `verve-av`. Everywhere else the workspace lints set
 
 ```
 crates/verve-av          FFmpeg wrapper, encoder backend seam
-crates/verve-keys        AES key generation and custody
 crates/verve-telemetry   tracing + OpenTelemetry
-crates/verve-assets      public API
 crates/verve-scheduler   admission control, the internal API, the engine seam
 crates/verve-worker      the machines converting video
 crates/verve-cli         the `verve` binary
 spike/temporal-spike     throwaway; proves the Temporal SDK
+
+`verve-assets` (public API) and `verve-keys` (AES custody) arrive with the
+stages that need them — Stage 2 and Stage 5.
 ```

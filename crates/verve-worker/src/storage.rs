@@ -4,7 +4,6 @@
 //! attributes to tenant, asset and rung by path alone, with no lookup.
 
 use opendal::{Operator, services};
-use std::collections::HashMap;
 
 /// What went wrong talking to storage.
 #[derive(Debug, thiserror::Error)]
@@ -101,28 +100,6 @@ pub fn source_key(tenant: &str, source: &str) -> String {
     format!("{tenant}/sources/{source}")
 }
 
-/// Backends keyed by `storage_region`, since a tenant is bound to one forever.
-#[derive(Debug, Default)]
-pub struct RegionMap(HashMap<String, Backend>);
-
-impl RegionMap {
-    /// An empty map.
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    /// Bind `region` to `backend`.
-    pub fn insert(&mut self, region: impl Into<String>, backend: Backend) -> &mut Self {
-        self.0.insert(region.into(), backend);
-        self
-    }
-
-    /// The backend for `region`, if one is configured.
-    pub fn get(&self, region: &str) -> Option<&Backend> {
-        self.0.get(region)
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -157,13 +134,5 @@ mod tests {
             }
         );
         operator(&b).unwrap();
-    }
-
-    #[test]
-    fn a_tenant_reaches_only_its_own_regions_backend() {
-        let mut map = RegionMap::new();
-        map.insert("eu-central", Backend::Fs { root: "/eu".into() });
-        assert!(map.get("eu-central").is_some());
-        assert!(map.get("us-east").is_none());
     }
 }

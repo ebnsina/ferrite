@@ -4447,17 +4447,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 
 [[package]]
-name = "verve-assets"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "serde",
- "tokio",
- "tracing",
- "verve-telemetry",
-]
-
-[[package]]
 name = "verve-av"
 version = "0.1.0"
 dependencies = [
@@ -4479,15 +4468,6 @@ dependencies = [
  "tracing",
  "verve-av",
  "verve-telemetry",
-]
-
-[[package]]
-name = "verve-keys"
-version = "0.1.0"
-dependencies = [
- "serde",
- "thiserror",
- "tracing",
 ]
 
 [[package]]

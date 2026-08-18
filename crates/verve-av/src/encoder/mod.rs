@@ -40,12 +40,6 @@ impl BackendId {
     }
 }
 
-impl std::fmt::Display for BackendId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(self.as_str())
-    }
-}
-
 /// Everything needed to reproduce a rendition. Stored per rendition, not per
 /// fleet — a worker upgraded mid-ladder must not make the record a lie.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -84,7 +78,8 @@ impl std::fmt::Debug for Frame {
 }
 
 impl Frame {
-    /// A frame carrying geometry only.
+    /// A frame carrying geometry only. Test scaffolding.
+    #[cfg(test)]
     pub fn placeholder(pts: i64, width: u32, height: u32) -> Self {
         Self {
             pts,
@@ -130,11 +125,6 @@ impl Frame {
         v.data_mut(2).fill(128);
         v.set_pts(Some(pts));
         Self::from_video(pts, v)
-    }
-
-    /// The wrapped picture, if this frame carries one.
-    pub fn video(&self) -> Option<&ffmpeg_next::frame::Video> {
-        self.inner.as_ref()
     }
 }
 
@@ -395,7 +385,7 @@ mod tests {
 
     #[test]
     fn backend_ids_have_stable_strings() {
-        assert_eq!(BackendId::Cpu.to_string(), "cpu");
+        assert_eq!(BackendId::Cpu.as_str(), "cpu");
         assert_eq!(
             serde_json::to_string(&BackendId::Nvenc).unwrap(),
             r#""nvenc""#

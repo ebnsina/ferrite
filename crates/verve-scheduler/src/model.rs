@@ -37,12 +37,6 @@ impl Lane {
     }
 }
 
-impl fmt::Display for Lane {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(self.as_str())
-    }
-}
-
 impl FromStr for Lane {
     type Err = ParseError;
 
@@ -153,12 +147,6 @@ impl WorkState {
     }
 }
 
-impl fmt::Display for WorkState {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(self.as_str())
-    }
-}
-
 impl FromStr for WorkState {
     type Err = ParseError;
 
@@ -177,20 +165,12 @@ impl FromStr for WorkState {
 
 /// A string that should have been one of a fixed set and was not.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
-#[error("unknown {what}: {value:?}")]
-pub struct ParseError {
-    /// Which enum failed to parse.
-    pub what: &'static str,
-    /// What we were given.
-    pub value: String,
-}
+#[error("unknown {0}")]
+pub struct ParseError(String);
 
 impl ParseError {
     fn new(what: &'static str, value: &str) -> Self {
-        Self {
-            what,
-            value: value.to_string(),
-        }
+        Self(format!("{what}: {value:?}"))
     }
 }
 
@@ -247,13 +227,6 @@ pub struct WorkItem {
     pub admitted_at: Option<chrono::DateTime<chrono::Utc>>,
     /// When it reached a terminal state.
     pub finished_at: Option<chrono::DateTime<chrono::Utc>>,
-}
-
-impl WorkItem {
-    /// How long this item waited for a slot, or has waited so far.
-    pub fn wait(&self, now: chrono::DateTime<chrono::Utc>) -> chrono::TimeDelta {
-        self.admitted_at.unwrap_or(now) - self.created_at
-    }
 }
 
 /// A tenant's plan limits, copied into `sched_db` so admission never reaches

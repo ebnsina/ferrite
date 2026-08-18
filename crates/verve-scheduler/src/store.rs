@@ -4,7 +4,7 @@ use crate::capacity::{FleetState, LaneLoad, LaneShares};
 use crate::fairness::Candidate;
 use crate::model::{Lane, NewWork, TenantBudget, TenantId, WorkId, WorkItem, WorkKind, WorkState};
 use chrono::{DateTime, TimeDelta, Utc};
-use sqlx::{PgPool, Postgres, Row, Transaction, postgres::PgRow};
+use sqlx::{PgPool, Row, postgres::PgRow};
 use uuid::Uuid;
 
 /// What went wrong talking to `sched_db`.
@@ -620,11 +620,6 @@ impl Store {
                 })
             })
             .collect())
-    }
-
-    /// Start a transaction, for tests that need to hold locks.
-    pub async fn begin(&self) -> Result<Transaction<'static, Postgres>> {
-        Ok(self.pool.begin().await?)
     }
 }
 

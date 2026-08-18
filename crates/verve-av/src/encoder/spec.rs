@@ -98,12 +98,6 @@ impl Preset {
     }
 }
 
-impl std::fmt::Display for Preset {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(self.as_str())
-    }
-}
-
 /// How bitrate is chosen. Two-pass is deliberately not representable: split
 /// rule 5, it needs whole-video context a chunk does not have.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -155,11 +149,6 @@ impl Resolution {
     /// A new resolution.
     pub const fn new(width: u32, height: u32) -> Self {
         Self { width, height }
-    }
-
-    /// Pixel count, for comparing rungs against the source.
-    pub const fn pixels(self) -> u64 {
-        self.width as u64 * self.height as u64
     }
 }
 
@@ -239,16 +228,6 @@ impl EncodeSpec {
     pub fn with_extra(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
         self.extra.insert(key.into(), value.into());
         self
-    }
-
-    /// GOP length in seconds — what the split planner cares about.
-    pub fn gop_seconds(&self) -> f64 {
-        let fps = self.frame_rate.as_f64();
-        if fps <= 0.0 {
-            0.0
-        } else {
-            f64::from(self.gop_frames) / fps
-        }
     }
 
     /// Reject a spec before anything is allocated. Every backend calls this.
@@ -346,7 +325,6 @@ mod tests {
         assert!(s.closed_gop);
         assert!(matches!(s.rate_control, RateControl::Crf { .. }));
         assert_eq!(s.gop_frames, 60, "29.97fps rounds to a 2s GOP of 60 frames");
-        assert!((s.gop_seconds() - 2.002).abs() < 0.01);
     }
 
     #[test]

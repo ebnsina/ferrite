@@ -30,7 +30,6 @@ fn config(total_slots: u32) -> Config {
         shares: LaneShares::default(),
         tick: Duration::from_millis(1),
         stall_after: TimeDelta::zero(),
-        sweep_every: u32::MAX,
         max_attempts: 3,
     }
 }

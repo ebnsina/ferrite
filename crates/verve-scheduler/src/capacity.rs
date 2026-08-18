@@ -6,40 +6,21 @@
 use crate::model::Lane;
 use serde::{Deserialize, Serialize};
 
-/// The share of the fleet each lane is guaranteed when it has work.
+/// The share of the fleet each lane is guaranteed when it has work, indexed by
+/// [`Lane::ALL`].
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
-pub struct LaneShares {
-    /// Fast path.
-    pub realtime: f32,
-    /// Quality-path ladders.
-    pub standard: f32,
-    /// Re-encodes and backfills.
-    pub bulk: f32,
-}
+pub struct LaneShares(pub [f32; 3]);
 
 impl Default for LaneShares {
     fn default() -> Self {
-        Self {
-            realtime: 0.40,
-            standard: 0.50,
-            bulk: 0.10,
-        }
+        Self([0.40, 0.50, 0.10])
     }
 }
 
 impl LaneShares {
-    /// The share for `lane`.
-    pub fn get(&self, lane: Lane) -> f32 {
-        match lane {
-            Lane::Realtime => self.realtime,
-            Lane::Standard => self.standard,
-            Lane::Bulk => self.bulk,
-        }
-    }
-
     /// Slots `lane` is guaranteed out of `total`.
     pub fn guarantee(&self, lane: Lane, total: u32) -> u32 {
-        (f64::from(total) * f64::from(self.get(lane))).floor() as u32
+        (f64::from(total) * f64::from(self.0[lane as usize])).floor() as u32
     }
 }
 

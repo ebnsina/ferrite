@@ -1,7 +1,7 @@
 //! Local pipeline commands. No Temporal, no scheduler, no Postgres — you debug
 //! an encode on a laptop with the code the fleet runs.
 
-use anyhow::{Result, bail};
+use anyhow::Result;
 use clap::Args;
 use std::path::PathBuf;
 
@@ -12,20 +12,12 @@ pub struct ProbeArgs {
     pub file: PathBuf,
 }
 
-/// Placeholder arguments for commands that land in Stage 2.
-#[derive(Debug, Args)]
-pub struct StubArgs {
-    /// Anything the eventual command will take.
-    #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
-    pub rest: Vec<String>,
-}
-
 /// `verve probe`.
 pub fn probe(args: &ProbeArgs, json: bool) -> Result<()> {
     #[cfg(not(feature = "ffmpeg"))]
     {
         let _ = (args, json);
-        bail!("this build has no FFmpeg; rebuild with --features ffmpeg");
+        anyhow::bail!("this build has no FFmpeg; rebuild with --features ffmpeg");
     }
     #[cfg(feature = "ffmpeg")]
     {
@@ -113,9 +105,4 @@ pub fn doctor(json: bool) -> Result<()> {
         println!("\nthis build has no FFmpeg; local pipeline commands will refuse to run");
     }
     Ok(())
-}
-
-/// A command whose stage has not landed yet. Says so rather than pretending.
-pub fn not_yet(name: &str, _args: &StubArgs) -> Result<()> {
-    bail!("`verve {name}` lands in a later stage; see docs/07-implementation.md")
 }

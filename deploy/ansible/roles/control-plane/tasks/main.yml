@@ -1,4 +1,0 @@
-# verve-assets, verve-scheduler, Temporal and Postgres. Never on an encoder box.
-- name: Placeholder — filled in at Stage 1, when there is a scheduler to deploy
-  ansible.builtin.debug:
-    msg: "control-plane role is a skeleton; see docs/07-implementation.md"

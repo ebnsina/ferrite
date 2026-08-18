@@ -2,9 +2,7 @@
 resolver = "3"
 members = [
     "crates/verve-av",
-    "crates/verve-keys",
     "crates/verve-telemetry",
-    "crates/verve-assets",
     "crates/verve-scheduler",
     "crates/verve-worker",
     "crates/verve-cli",
@@ -20,7 +18,6 @@ license = "UNLICENSED"
 [workspace.dependencies]
 # internal — dependency direction is enforced here and in docs/02-architecture.md
 verve-av        = { path = "crates/verve-av" }
-verve-keys      = { path = "crates/verve-keys" }
 verve-telemetry = { path = "crates/verve-telemetry" }
 
 anyhow      = "1"

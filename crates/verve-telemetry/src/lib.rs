@@ -71,12 +71,6 @@ impl Config {
             filter: var("RUST_LOG").unwrap_or_else(|| "info".into()),
         }
     }
-
-    /// Send spans to `endpoint`.
-    pub fn with_otlp(mut self, endpoint: impl Into<String>) -> Self {
-        self.otlp_endpoint = Some(endpoint.into());
-        self
-    }
 }
 
 /// Shuts telemetry down when dropped. Hold it for the life of the process.
