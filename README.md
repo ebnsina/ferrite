@@ -40,7 +40,9 @@ converted file back. See [docs/](docs/) — [overview](docs/01-overview.md),
 | Transcode | one decode feeds every rung; rotation, fps, scale via libavfilter |
 | Check | catches a dropped chunk — the file that still plays but is wrong |
 | Package | CMAF + HLS + DASH over one segment set, via Shaka Packager |
-| Not yet | audio encode, thumbnails, contact sheet, pHash, job mode, `quality`/`bench` |
+| Contact sheet | 60 frames, 10×6 grid, one JPEG — what a reviewer opens |
+| Perceptual hash | 64-bit dHash per sampled frame, Hamming ≤ 10 holds |
+| Not yet | audio encode, thumbnails, job mode, `quality`/`conform`/`bench` |
 
 ## Get started
 
@@ -73,6 +75,7 @@ verve split   input.mp4          # where every cut lands
 verve encode  input.mp4 -o out/  # the ladder, decode-once
 verve verify  out/               # frame counts, keyframe alignment, duration
 verve package out/ -o cmaf/      # CMAF + HLS + DASH over one segment set
+verve sheet   input.mp4          # contact sheet + a pHash per sampled frame
 ```
 
 ## Ports

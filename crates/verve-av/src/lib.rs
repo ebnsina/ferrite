@@ -8,11 +8,15 @@ pub mod error;
 pub mod ladder;
 pub mod media;
 pub mod package;
+pub mod phash;
 pub mod split;
 pub mod verify;
 
 #[cfg(feature = "ffmpeg")]
 mod probe;
+
+#[cfg(feature = "ffmpeg")]
+pub mod sheet;
 
 #[cfg(feature = "ffmpeg")]
 pub mod transcode;

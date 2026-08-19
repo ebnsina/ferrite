@@ -35,6 +35,8 @@ enum Command {
     Verify(pipeline::VerifyArgs),
     /// CMAF + HLS + DASH over one segment set.
     Package(pipeline::PackageArgs),
+    /// Contact sheet plus a perceptual hash per sampled frame.
+    Sheet(pipeline::SheetArgs),
     /// What this build links against and which codecs it can produce.
     Doctor,
 }
@@ -57,6 +59,7 @@ fn main() -> ExitCode {
         Command::Encode(args) => pipeline::encode(&args, cli.json),
         Command::Verify(args) => pipeline::verify(&args, cli.json),
         Command::Package(args) => pipeline::package(&args, cli.json),
+        Command::Sheet(args) => pipeline::sheet(&args, cli.json),
         Command::Doctor => pipeline::doctor(cli.json),
     };
 

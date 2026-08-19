@@ -408,3 +408,47 @@ pub fn package(args: &PackageArgs, json: bool) -> Result<()> {
     }
     Ok(())
 }
+
+/// Arguments for `verve sheet`.
+#[derive(Debug, Args)]
+pub struct SheetArgs {
+    /// The file to sample.
+    pub file: PathBuf,
+    /// Where to write the JPEG.
+    #[arg(short, long, default_value = "contactsheet.jpg")]
+    pub out: PathBuf,
+}
+
+/// `verve sheet`.
+pub fn sheet(args: &SheetArgs, json: bool) -> Result<()> {
+    #[cfg(not(feature = "ffmpeg"))]
+    {
+        let _ = (args, json);
+        anyhow::bail!("this build has no FFmpeg; rebuild with --features ffmpeg")
+    }
+    #[cfg(feature = "ffmpeg")]
+    {
+        let sheet = verve_av::sheet::build(&args.file, &args.out)?;
+
+        if json {
+            println!("{}", serde_json::to_string_pretty(&sheet)?);
+            return Ok(());
+        }
+
+        let bytes = std::fs::metadata(&sheet.path).map(|m| m.len()).unwrap_or(0);
+        println!("{} ({} KB)", sheet.path.display(), bytes / 1024);
+        println!("{} frames hashed", sheet.samples.len());
+        for s in sheet.samples.iter().take(4) {
+            println!(
+                "  {:>3}  {:>8.3}s  {:016x}",
+                s.index,
+                s.time_ms as f64 / 1000.0,
+                s.phash
+            );
+        }
+        if sheet.samples.len() > 4 {
+            println!("  ...");
+        }
+        Ok(())
+    }
+}
