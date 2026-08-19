@@ -19,6 +19,7 @@ license = "UNLICENSED"
 # internal — dependency direction is enforced here and in docs/02-architecture.md
 ferrite-av        = { path = "crates/ferrite-av" }
 ferrite-telemetry = { path = "crates/ferrite-telemetry" }
+ferrite-worker    = { path = "crates/ferrite-worker" }
 
 anyhow      = "1"
 thiserror   = "2"

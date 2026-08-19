@@ -43,6 +43,8 @@ enum Command {
     Bench(pipeline::BenchArgs),
     /// Diff two bench reports. This diff is the CI gate.
     Compare(pipeline::CompareArgs),
+    /// Job mode: one file in, one file out.
+    Job(pipeline::JobArgs),
     /// What this build links against and which codecs it can produce.
     Doctor,
 }
@@ -67,6 +69,7 @@ fn main() -> ExitCode {
         Command::Quality(args) => pipeline::quality(&args, cli.json),
         Command::Bench(args) => pipeline::bench(&args, cli.json),
         Command::Compare(args) => pipeline::compare(&args, cli.json),
+        Command::Job(args) => pipeline::job(&args, cli.json),
         Command::Doctor => pipeline::doctor(cli.json),
     };
 

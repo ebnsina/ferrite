@@ -29,10 +29,11 @@ impl MediaInfo {
         self.video.first()
     }
 
-    /// Mezzanine if the file has problems OR more than one output comes from it.
-    /// Asset mode always passes `outputs > 1`, so this only skips work in job mode.
+    /// Mezzanine if the file has problems a normalising pass fixes, OR more
+    /// than one output comes from it. Asset mode always passes `outputs > 1`,
+    /// so this only skips work in job mode.
     pub fn needs_mezzanine(&self, outputs: usize) -> bool {
-        outputs > 1 || !self.warnings.is_empty()
+        outputs > 1 || self.warnings.iter().any(|w| w.needs_normalising())
     }
 }
 
@@ -184,6 +185,30 @@ pub enum Warning {
 }
 
 impl Warning {
+    /// Whether a normalising pass fixes this.
+    ///
+    /// Silence is not a defect, and neither is an unknown duration — a
+    /// mezzanine changes neither, so neither should cost one.
+    pub fn needs_normalising(self) -> bool {
+        match self {
+            Self::VariableFrameRate
+            | Self::RotationMetadata
+            | Self::NonMonotonicTimestamps
+            | Self::StartTimeOffset
+            | Self::Interlaced
+            | Self::NonSquarePixels => true,
+
+            // Real problems, but ones a mezzanine does not solve.
+            Self::NoAudio
+            | Self::UnknownDuration
+            | Self::MultipleVideoStreams
+            | Self::HdrTransfer
+            // Both only matter for chunking, which is asset mode's problem.
+            | Self::NoKeyframeIndex
+            | Self::SparseKeyframes => false,
+        }
+    }
+
     /// The stable string used in JSON output and in `sources.warnings`.
     pub fn as_str(self) -> &'static str {
         match self {
@@ -266,6 +291,42 @@ mod tests {
         assert!(!info(vec![]).needs_mezzanine(1));
         assert!(info(vec![]).needs_mezzanine(4));
         assert!(info(vec![Warning::VariableFrameRate]).needs_mezzanine(1));
+    }
+
+    #[test]
+    fn a_silent_video_does_not_pay_for_a_mezzanine() {
+        // A mezzanine fixes timing and geometry. It does not add audio, and
+        // charging ~23% of the job for that would be for nothing.
+        for harmless in [
+            Warning::NoAudio,
+            Warning::UnknownDuration,
+            Warning::MultipleVideoStreams,
+            Warning::HdrTransfer,
+            Warning::NoKeyframeIndex,
+            Warning::SparseKeyframes,
+        ] {
+            assert!(
+                !info(vec![harmless]).needs_mezzanine(1),
+                "{harmless} demanded a mezzanine it does not need"
+            );
+        }
+    }
+
+    #[test]
+    fn everything_a_normalising_pass_fixes_still_demands_one() {
+        for real in [
+            Warning::VariableFrameRate,
+            Warning::RotationMetadata,
+            Warning::NonMonotonicTimestamps,
+            Warning::StartTimeOffset,
+            Warning::Interlaced,
+            Warning::NonSquarePixels,
+        ] {
+            assert!(
+                info(vec![real]).needs_mezzanine(1),
+                "{real} was let through"
+            );
+        }
     }
 
     #[test]

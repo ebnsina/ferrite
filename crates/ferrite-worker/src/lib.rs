@@ -2,4 +2,7 @@
 
 #![warn(missing_docs)]
 
+#[cfg(feature = "ffmpeg")]
+pub mod job;
+
 pub mod storage;

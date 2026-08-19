@@ -13,7 +13,7 @@ path = "src/main.rs"
 [features]
 default = []
 # Local pipeline commands need real video; operate/verify commands do not.
-ffmpeg = ["ferrite-av/ffmpeg"]
+ffmpeg = ["ferrite-av/ffmpeg", "ferrite-worker/ffmpeg"]
 
 [dependencies]
 anyhow.workspace = true
@@ -22,6 +22,7 @@ serde.workspace = true
 serde_json.workspace = true
 tracing.workspace = true
 ferrite-av.workspace = true
+ferrite-worker.workspace = true
 ferrite-telemetry.workspace = true
 
 [lints]

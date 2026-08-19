@@ -25,6 +25,10 @@ and this project uses [semantic versioning](https://semver.org/spec/v2.0.0.html)
 
 ### Fixed
 
+- A clean silent video reported that it needed a mezzanine. Only problems a
+  normalising pass actually fixes count now; silence, an unknown duration and a
+  missing keyframe index do not.
+
 - Anamorphic sources were laddered from their coded size, so a 720×576 frame
   carrying a 16:9 picture came out 600×480. Display size now applies the sample
   aspect ratio before rotation.
@@ -35,6 +39,11 @@ and this project uses [semantic versioning](https://semver.org/spec/v2.0.0.html)
 ## Stage 2 — one machine, end to end
 
 ### Added
+
+- Job mode: one file in, one file out, on the same `Source` path as asset mode.
+  Never upscales past the source, and still samples frames for the blocklist —
+  there is no mezzanine to hang that off, and the alternative is publishing
+  files nobody has looked at.
 
 - Ladder planning: never upscales, drops rungs above the source bitrate, keeps
   the source aspect ratio.

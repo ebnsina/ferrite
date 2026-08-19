@@ -788,3 +788,63 @@ pub fn compare(args: &CompareArgs, json: bool) -> Result<()> {
         )
     }
 }
+
+/// Arguments for `ferrite job`.
+#[derive(Debug, Args)]
+pub struct JobArgs {
+    /// The file to convert.
+    pub file: PathBuf,
+    /// Where to write the single output.
+    #[arg(short, long, default_value = "output.mp4")]
+    pub out: PathBuf,
+    /// Target height. Never upscales past the source.
+    #[arg(long)]
+    pub height: Option<u32>,
+    /// Quality target, 0–51. Lower is better.
+    #[arg(long, default_value_t = 23)]
+    pub crf: u8,
+}
+
+/// `ferrite job`.
+pub fn job(args: &JobArgs, json: bool) -> Result<()> {
+    #[cfg(not(feature = "ffmpeg"))]
+    {
+        let _ = (args, json);
+        anyhow::bail!("this build has no FFmpeg; rebuild with --features ffmpeg")
+    }
+    #[cfg(feature = "ffmpeg")]
+    {
+        use ferrite_worker::job::{self, Request};
+
+        let request = Request {
+            height: args.height,
+            crf: args.crf,
+            ..Request::default()
+        };
+        let done = job::run(&args.file, &args.out, &request)?;
+
+        if json {
+            println!("{}", serde_json::to_string_pretty(&done)?);
+            return Ok(());
+        }
+
+        println!("  output      {}", done.path.display());
+        println!("  size        {}x{}", done.width, done.height);
+        println!("  frames      {}", done.frames);
+        println!("  bytes       {} KB", done.bytes / 1024);
+        println!(
+            "  mezzanine   {}",
+            if done.mezzanine {
+                "required"
+            } else {
+                "not needed"
+            }
+        );
+        println!("  sheet       {}", done.contact_sheet.display());
+        println!(
+            "  hashes      {} frames sampled for the blocklist",
+            done.hashes.len()
+        );
+        Ok(())
+    }
+}

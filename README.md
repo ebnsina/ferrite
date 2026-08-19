@@ -42,7 +42,9 @@ converted file back.
 | Contact sheet | 60 frames, 10×6 grid, one JPEG — what a reviewer opens |
 | Perceptual hash | 64-bit dHash per sampled frame, Hamming ≤ 10 holds |
 | Quality | VMAF, PSNR, SSIM, MS-SSIM, CIEDE2000, CAMBI in one libvmaf pass |
-| Not yet | audio encode, thumbnails, job mode, `conform`/`bench` + corpus |
+| Job mode | one file in, one file out, sharing steps 1–3 with asset mode |
+| Corpus | eleven awkward files, a JSON report, and a diff that gates a merge |
+| Not yet | audio encode, thumbnails, `conform` against external validators |
 
 ## Get started
 
@@ -77,6 +79,9 @@ ferrite verify  out/               # frame counts, keyframe alignment, duration
 ferrite package out/ -o cmaf/      # CMAF + HLS + DASH over one segment set
 ferrite sheet   input.mp4          # contact sheet + a pHash per sampled frame
 ferrite quality mezz.mp4 out/1080p.mp4 --min-vmaf 93
+ferrite job    input.mp4 -o out.mp4 --height 720   # job mode: one output
+ferrite bench  testdata/corpus -o bench.json       # the corpus report
+ferrite compare before.json after.json             # the CI gate
 ```
 
 `ferrite quality` needs an ffmpeg built `--enable-libvmaf`. Compare against the
