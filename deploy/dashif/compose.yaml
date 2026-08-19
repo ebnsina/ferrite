@@ -1,0 +1,19 @@
+# DASH-IF Conformance, pinned. Validates MPEG-DASH, CMAF and HLS.
+#
+# Pinned to 2.4.1 deliberately: 3.0.0 is a Laravel rewrite whose validator
+# still sits in a to_be_ported/ directory, so its CMAF, DASH and HLS trees are
+# empty. 2.4.1 is the last release that actually validates anything.
+name: ferrite-dashif
+
+services:
+  conformance:
+    # The upstream image hardcodes an amd64 JDK 8 path, so it does not build on
+    # arm64. Emulated here; native in CI, which is amd64.
+    platform: linux/amd64
+    build:
+      context: https://github.com/Dash-Industry-Forum/DASH-IF-Conformance.git#v2.4.1
+    ports: ["${FERRITE_DASHIF_PORT:-8088}:80"]
+    volumes:
+      # The validator fetches by URL, so the asset has to be reachable from
+      # inside the container. Mounting it is simpler than running a web server.
+      - "${FERRITE_ASSET_DIR:-./asset}:/var/www/html/asset:ro"

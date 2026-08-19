@@ -930,3 +930,57 @@ pub fn run(args: &RunArgs, json: bool) -> Result<()> {
         Ok(())
     }
 }
+
+/// Arguments for `ferrite conform`.
+#[derive(Debug, Args)]
+pub struct ConformArgs {
+    /// The manifest, as the validator will fetch it. Must be reachable from
+    /// inside the validator container — see scripts/dashif.sh.
+    pub manifest_url: String,
+    /// Where the validator listens.
+    #[arg(long, default_value = ferrite_av::conform::DEFAULT_ENDPOINT)]
+    pub endpoint: String,
+    /// Also read every box. Much slower, and where join bugs show up.
+    #[arg(long)]
+    pub segments: bool,
+}
+
+/// `ferrite conform`. Exit 1 on anything that breaks the spec.
+pub fn conform(args: &ConformArgs, json: bool) -> Result<()> {
+    use ferrite_av::conform::{self, Severity};
+
+    let verdict = conform::check(&args.endpoint, &args.manifest_url, args.segments)?;
+
+    if json {
+        println!("{}", serde_json::to_string_pretty(&verdict)?);
+    } else {
+        for f in &verdict.findings {
+            let mark = match f.severity {
+                Severity::Error => "error",
+                Severity::Warning => "warn ",
+                Severity::Info => "info ",
+            };
+            println!("  {mark}  {:<40} {}", f.section, f.message);
+        }
+        let errors = verdict.at_least(Severity::Error).count();
+        println!(
+            "{} — {} checks, {errors} errors, {} findings",
+            if verdict.is_conformant() {
+                "conformant"
+            } else {
+                "NOT conformant"
+            },
+            verdict.tests_run,
+            verdict.findings.len()
+        );
+        if verdict.tests_run == 0 {
+            println!("the validator ran no checks — it could not reach the manifest");
+        }
+    }
+
+    if verdict.is_conformant() {
+        Ok(())
+    } else {
+        anyhow::bail!("{} is not conformant", args.manifest_url)
+    }
+}

@@ -100,6 +100,10 @@ pub fn run(inputs: &[Input], out_dir: &Path) -> Result<Packaged> {
         // Without this the MPD comes out type="dynamic" with a time-shift
         // buffer: a live manifest describing a file that is already whole.
         .arg("--generate_static_live_mpd")
+        // sidx is only required for the on-demand profile, which addresses by
+        // byte range. We address by template, so it is bytes in every segment
+        // for nothing — and it makes each one claim indexing it does not need.
+        .arg("--nogenerate_sidx_in_media_segments")
         .arg("--segment_duration")
         .arg(SEGMENT_SECONDS.to_string())
         .arg("--hls_master_playlist_output")

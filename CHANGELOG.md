@@ -25,6 +25,10 @@ and this project uses [semantic versioning](https://semver.org/spec/v2.0.0.html)
 
 ### Fixed
 
+- Segments no longer carry a `sidx` index. It is only required for the
+  on-demand profile, which addresses by byte range; we address by template, so
+  it was bytes in every segment for nothing and made each one claim indexing it
+  did not have.
 - `probe` refused any file without a video stream, so it could not read the
   audio renditions we produce ourselves. Audio-only is now legitimate; only a
   file with neither pictures nor sound is refused.
@@ -43,6 +47,10 @@ and this project uses [semantic versioning](https://semver.org/spec/v2.0.0.html)
 
 ### Added
 
+- `ferrite conform`: MPEG-DASH and CMAF standards checks against DASH-IF,
+  pinned to 2.4.1 and run as a container. Manifest-level checks pass. Segment
+  checks report seven findings from the validator's ISO/IEC 23009-1:2012 rules,
+  which CMAF supersedes — recorded rather than silenced.
 - `ferrite run`: the whole pipeline end to end on one machine — probe, ladder,
   decode-once encode, audio, checks, contact sheet, thumbnails and packaging.
   Publishing is gated on the checks passing.

@@ -47,6 +47,8 @@ enum Command {
     Job(pipeline::JobArgs),
     /// The whole pipeline, end to end, on this machine.
     Run(pipeline::RunArgs),
+    /// MPEG-DASH and CMAF standards checks, via DASH-IF.
+    Conform(pipeline::ConformArgs),
     /// What this build links against and which codecs it can produce.
     Doctor,
 }
@@ -73,6 +75,7 @@ fn main() -> ExitCode {
         Command::Compare(args) => pipeline::compare(&args, cli.json),
         Command::Job(args) => pipeline::job(&args, cli.json),
         Command::Run(args) => pipeline::run(&args, cli.json),
+        Command::Conform(args) => pipeline::conform(&args, cli.json),
         Command::Doctor => pipeline::doctor(cli.json),
     };
 

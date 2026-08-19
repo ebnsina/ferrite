@@ -47,7 +47,7 @@ converted file back.
 | End to end | `ferrite run` publishes a playable asset from a source |
 | Job mode | one file in, one file out, sharing steps 1–3 with asset mode |
 | Corpus | eleven awkward files, a JSON report, and a diff that gates a merge |
-| Not yet | `conform` against external validators |
+| Conformance | MPEG-DASH and CMAF against DASH-IF; HLS wants Apple's tool |
 
 ## Get started
 
@@ -86,6 +86,9 @@ ferrite run    input.mp4 -o asset/                  # the whole pipeline
 ferrite job    input.mp4 -o out.mp4 --height 720   # job mode: one output
 ferrite bench  testdata/corpus -o bench.json       # the corpus report
 ferrite compare before.json after.json             # the CI gate
+
+./scripts/dashif.sh asset/                         # start the validator
+ferrite conform http://localhost/asset/cmaf/manifest.mpd
 ```
 
 `ferrite quality` needs an ffmpeg built `--enable-libvmaf`. Compare against the
