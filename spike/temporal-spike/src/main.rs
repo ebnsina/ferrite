@@ -23,7 +23,7 @@ use temporalio_sdk::{
     WorkflowContextView, WorkflowResult,
 };
 
-const TASK_QUEUE: &str = "verve-spike";
+const TASK_QUEUE: &str = "ferrite-spike";
 
 #[derive(Debug, Parser)]
 #[command(about = "Temporal SDK load spike: N steps across C child workflows")]
@@ -172,7 +172,7 @@ async fn main() -> Result<()> {
     let runtime = Runtime::new_assume_tokio(Default::default())?;
     let connection = Connection::connect(
         ConnectionOptions::new(args.address.parse::<url::Url>().context("bad --address")?)
-            .identity("verve-spike".to_string())
+            .identity("ferrite-spike".to_string())
             .build(),
     )
     .await
@@ -197,7 +197,7 @@ async fn main() -> Result<()> {
         }
     });
 
-    let workflow_id = format!("verve-spike-{}", args.run_id);
+    let workflow_id = format!("ferrite-spike-{}", args.run_id);
     tracing::info!(
         steps = args.steps,
         chunk = args.chunk,

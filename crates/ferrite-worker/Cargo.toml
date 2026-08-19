@@ -1,0 +1,23 @@
+[package]
+name = "ferrite-worker"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "The machines converting video: probe, mezzanine, encode, join, check, package."
+
+[dependencies]
+anyhow.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+serde.workspace = true
+ferrite-av.workspace = true
+ferrite-telemetry.workspace = true
+opendal.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+tokio = { workspace = true }
+
+[lints]
+workspace = true

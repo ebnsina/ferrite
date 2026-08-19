@@ -1,11 +1,11 @@
 [workspace]
 resolver = "3"
 members = [
-    "crates/verve-av",
-    "crates/verve-telemetry",
-    "crates/verve-scheduler",
-    "crates/verve-worker",
-    "crates/verve-cli",
+    "crates/ferrite-av",
+    "crates/ferrite-telemetry",
+    "crates/ferrite-scheduler",
+    "crates/ferrite-worker",
+    "crates/ferrite-cli",
     "spike/temporal-spike",
 ]
 
@@ -17,8 +17,8 @@ license = "UNLICENSED"
 
 [workspace.dependencies]
 # internal — dependency direction is enforced here and in docs/02-architecture.md
-verve-av        = { path = "crates/verve-av" }
-verve-telemetry = { path = "crates/verve-telemetry" }
+ferrite-av        = { path = "crates/ferrite-av" }
+ferrite-telemetry = { path = "crates/ferrite-telemetry" }
 
 anyhow      = "1"
 thiserror   = "2"
@@ -50,7 +50,7 @@ opendal = { version = "0.58", features = ["services-s3", "services-fs"] }
 ffmpeg-next = "9.0"
 
 [workspace.lints.rust]
-# The unsafe rule: verve-av overrides this in its own manifest.
+# The unsafe rule: ferrite-av overrides this in its own manifest.
 unsafe_code = "forbid"
 missing_debug_implementations = "warn"
 

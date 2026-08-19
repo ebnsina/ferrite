@@ -2,10 +2,10 @@
 SHELL := /usr/bin/env bash
 FEATURES ?= ffmpeg
 # Match .env.example. Override per-invocation or in your own .env.
-VERVE_SCHED_DB_PORT ?= 55433
-VERVE_MINIO_PORT ?= 9020
-VERVE_TEMPORAL_PORT ?= 7253
-SCHED_DATABASE_URL ?= postgres://verve:verve@localhost:$(VERVE_SCHED_DB_PORT)/sched_db
+FERRITE_SCHED_DB_PORT ?= 55433
+FERRITE_MINIO_PORT ?= 9020
+FERRITE_TEMPORAL_PORT ?= 7253
+SCHED_DATABASE_URL ?= postgres://ferrite:ferrite@localhost:$(FERRITE_SCHED_DB_PORT)/sched_db
 export SCHED_DATABASE_URL
 
 .PHONY: help
@@ -34,36 +34,36 @@ packager: ## Fetch the pinned Shaka Packager into vendor/
 
 .PHONY: build
 build: ## Build the workspace with FFmpeg
-	cargo build --workspace --features verve-av/$(FEATURES)
+	cargo build --workspace --features ferrite-av/$(FEATURES)
 
 .PHONY: test
 test: ## Test without FFmpeg, then with
 	cargo test --workspace
-	cargo test -p verve-av --features $(FEATURES)
+	cargo test -p ferrite-av --features $(FEATURES)
 
 .PHONY: test-integration
 test-integration: ## Tests needing the compose stack up
-	VERVE_S3_BUCKET=verve-assets \
-	VERVE_S3_ENDPOINT=http://localhost:$(VERVE_MINIO_PORT) \
-	VERVE_S3_REGION=us-east-1 \
-	VERVE_S3_ACCESS_KEY=verve \
-	VERVE_S3_SECRET_KEY=verve-dev-secret \
-	cargo test -p verve-worker --test minio_roundtrip
-	cargo test -p verve-scheduler --tests
+	FERRITE_S3_BUCKET=ferrite-assets \
+	FERRITE_S3_ENDPOINT=http://localhost:$(FERRITE_MINIO_PORT) \
+	FERRITE_S3_REGION=us-east-1 \
+	FERRITE_S3_ACCESS_KEY=ferrite \
+	FERRITE_S3_SECRET_KEY=ferrite-dev-secret \
+	cargo test -p ferrite-worker --test minio_roundtrip
+	cargo test -p ferrite-scheduler --tests
 
 .PHONY: scheduler
 scheduler: ## Run the scheduler against Temporal. Needs `make up`.
-	cargo run -p verve-scheduler --features temporal -- --total-slots 8 \
-		--temporal-address http://localhost:$(VERVE_TEMPORAL_PORT)
+	cargo run -p ferrite-scheduler --features temporal -- --total-slots 8 \
+		--temporal-address http://localhost:$(FERRITE_TEMPORAL_PORT)
 
 .PHONY: fake-worker
-fake-worker: ## Run a worker for verve.fake. Needs `make scheduler`.
-	cargo run -p verve-scheduler --features fake-worker --bin verve-fake-worker -- \
-		--address http://localhost:$(VERVE_TEMPORAL_PORT)
+fake-worker: ## Run a worker for ferrite.fake. Needs `make scheduler`.
+	cargo run -p ferrite-scheduler --features fake-worker --bin ferrite-fake-worker -- \
+		--address http://localhost:$(FERRITE_TEMPORAL_PORT)
 
 .PHONY: spike
 spike: ## 1,000 steps across child workflows. Needs `make up`.
-	cargo run -p temporal-spike -- --address http://localhost:$(VERVE_TEMPORAL_PORT) \
+	cargo run -p temporal-spike -- --address http://localhost:$(FERRITE_TEMPORAL_PORT) \
 		--steps 1000 --chunk 50 --run-id $$(date +%s)
 
 .PHONY: fmt

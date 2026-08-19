@@ -914,6 +914,87 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "da7c62ceae207dd37ea5b845da6a0696c799f85e97da1ab5b7910be3c1c80223"
 
 [[package]]
+name = "ferrite-av"
+version = "0.1.0"
+dependencies = [
+ "ffmpeg-next",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tracing",
+]
+
+[[package]]
+name = "ferrite-cli"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "ferrite-av",
+ "ferrite-telemetry",
+ "serde",
+ "serde_json",
+ "tracing",
+]
+
+[[package]]
+name = "ferrite-scheduler"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "axum",
+ "chrono",
+ "clap",
+ "ferrite-telemetry",
+ "futures",
+ "reqwest 0.13.4",
+ "serde",
+ "serde_json",
+ "sqlx",
+ "temporalio-client",
+ "temporalio-common",
+ "temporalio-macros",
+ "temporalio-sdk",
+ "temporalio-workflow",
+ "thiserror",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "url",
+ "uuid",
+]
+
+[[package]]
+name = "ferrite-telemetry"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "opentelemetry",
+ "opentelemetry-otlp",
+ "opentelemetry-semantic-conventions",
+ "opentelemetry_sdk",
+ "thiserror",
+ "tracing",
+ "tracing-opentelemetry",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "ferrite-worker"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "ferrite-av",
+ "ferrite-telemetry",
+ "opendal",
+ "serde",
+ "thiserror",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "ffmpeg-next"
 version = "9.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4445,87 +4526,6 @@ name = "version_check"
 version = "0.9.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
-
-[[package]]
-name = "verve-av"
-version = "0.1.0"
-dependencies = [
- "ffmpeg-next",
- "serde",
- "serde_json",
- "thiserror",
- "tracing",
-]
-
-[[package]]
-name = "verve-cli"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "clap",
- "serde",
- "serde_json",
- "tracing",
- "verve-av",
- "verve-telemetry",
-]
-
-[[package]]
-name = "verve-scheduler"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "async-trait",
- "axum",
- "chrono",
- "clap",
- "futures",
- "reqwest 0.13.4",
- "serde",
- "serde_json",
- "sqlx",
- "temporalio-client",
- "temporalio-common",
- "temporalio-macros",
- "temporalio-sdk",
- "temporalio-workflow",
- "thiserror",
- "tokio",
- "tracing",
- "tracing-subscriber",
- "url",
- "uuid",
- "verve-telemetry",
-]
-
-[[package]]
-name = "verve-telemetry"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "opentelemetry",
- "opentelemetry-otlp",
- "opentelemetry-semantic-conventions",
- "opentelemetry_sdk",
- "thiserror",
- "tracing",
- "tracing-opentelemetry",
- "tracing-subscriber",
-]
-
-[[package]]
-name = "verve-worker"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "opendal",
- "serde",
- "thiserror",
- "tokio",
- "tracing",
- "verve-av",
- "verve-telemetry",
-]
 
 [[package]]
 name = "walkdir"

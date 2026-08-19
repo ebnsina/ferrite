@@ -1,4 +1,4 @@
-# verve
+# ferrite
 
 Video transcoding: upload a file, get a link that plays anywhere, or get a
 converted file back. See [docs/](docs/) — [overview](docs/01-overview.md),
@@ -11,10 +11,10 @@ converted file back. See [docs/](docs/) — [overview](docs/01-overview.md),
 | | |
 |---|---|
 | Rust workspace | 7 crates, dependency direction pinned in `Cargo.toml` |
-| `verve-av` | probe + encoder backend seam, compiling against FFmpeg |
+| `ferrite-av` | probe + encoder backend seam, compiling against FFmpeg |
 | Encoder backend interface | CPU (`x264`/`x265`) the only implementation |
 | docker-compose | Postgres ×2, Temporal, MinIO, OTel, Prometheus, Grafana |
-| OpenTelemetry | `verve-telemetry`, one init for every binary |
+| OpenTelemetry | `ferrite-telemetry`, one init for every binary |
 | Ansible | `deploy/ansible` — worker role, systemd, CPU pinning, sandboxing |
 | Temporal spike | 1,000 steps across 20 child workflows, exactly-once |
 
@@ -53,34 +53,34 @@ make up                 # Postgres x2, Temporal, MinIO, OTel, Prometheus, Grafan
 make test               # without FFmpeg, then with
 make test-integration   # needs the stack up
 make spike              # 1,000 steps through Temporal
-cargo run -p verve-cli --features ffmpeg -- doctor
+cargo run -p ferrite-cli --features ffmpeg -- doctor
 ```
 
 To watch the scheduler move real work, in two terminals:
 
 ```sh
 make scheduler          # admission loop + internal API on :8081
-make fake-worker        # runs verve.fake, reports completion back
+make fake-worker        # runs ferrite.fake, reports completion back
 ```
 
 `make ffmpeg` builds the pinned FFmpeg into `vendor/ffmpeg`; until then the
 crate links against whatever `pkg-config` finds. `make packager` fetches the
-pinned Shaka Packager into `vendor/packager`, which `verve package` needs.
+pinned Shaka Packager into `vendor/packager`, which `ferrite package` needs.
 
 Local pipeline, end to end:
 
 ```sh
-verve probe   input.mp4          # codecs, duration, keyframes, problems
-verve ladder  input.mp4          # which rungs, and why
-verve split   input.mp4          # where every cut lands
-verve encode  input.mp4 -o out/  # the ladder, decode-once
-verve verify  out/               # frame counts, keyframe alignment, duration
-verve package out/ -o cmaf/      # CMAF + HLS + DASH over one segment set
-verve sheet   input.mp4          # contact sheet + a pHash per sampled frame
-verve quality mezz.mp4 out/1080p.mp4 --min-vmaf 93
+ferrite probe   input.mp4          # codecs, duration, keyframes, problems
+ferrite ladder  input.mp4          # which rungs, and why
+ferrite split   input.mp4          # where every cut lands
+ferrite encode  input.mp4 -o out/  # the ladder, decode-once
+ferrite verify  out/               # frame counts, keyframe alignment, duration
+ferrite package out/ -o cmaf/      # CMAF + HLS + DASH over one segment set
+ferrite sheet   input.mp4          # contact sheet + a pHash per sampled frame
+ferrite quality mezz.mp4 out/1080p.mp4 --min-vmaf 93
 ```
 
-`verve quality` needs an ffmpeg built `--enable-libvmaf`. Compare against the
+`ferrite quality` needs an ffmpeg built `--enable-libvmaf`. Compare against the
 mezzanine, never another encode: two encodes differing tells you nothing about
 which is correct.
 
@@ -91,30 +91,30 @@ the same machine. Copy `.env.example` to `.env` to change any of them.
 
 | | | override |
 |---|---|---|
-| `assets_db` | 55432 | `VERVE_ASSETS_DB_PORT` |
-| `sched_db` | 55433 | `VERVE_SCHED_DB_PORT` |
-| Temporal | 7253 | `VERVE_TEMPORAL_PORT` |
-| Temporal UI | 8253 | `VERVE_TEMPORAL_UI_PORT` |
-| MinIO | 9020, console 9021 | `VERVE_MINIO_PORT` |
-| OTLP | 4327 gRPC, 4328 HTTP | `VERVE_OTLP_GRPC_PORT` |
-| Prometheus | 9092 | `VERVE_PROMETHEUS_PORT` |
-| Grafana | 3021 | `VERVE_GRAFANA_PORT` |
+| `assets_db` | 55432 | `FERRITE_ASSETS_DB_PORT` |
+| `sched_db` | 55433 | `FERRITE_SCHED_DB_PORT` |
+| Temporal | 7253 | `FERRITE_TEMPORAL_PORT` |
+| Temporal UI | 8253 | `FERRITE_TEMPORAL_UI_PORT` |
+| MinIO | 9020, console 9021 | `FERRITE_MINIO_PORT` |
+| OTLP | 4327 gRPC, 4328 HTTP | `FERRITE_OTLP_GRPC_PORT` |
+| Prometheus | 9092 | `FERRITE_PROMETHEUS_PORT` |
+| Grafana | 3021 | `FERRITE_GRAFANA_PORT` |
 
 ## The unsafe rule
 
-All `unsafe` lives in `verve-av`. Everywhere else the workspace lints set
+All `unsafe` lives in `ferrite-av`. Everywhere else the workspace lints set
 `unsafe_code = "forbid"`.
 
 ## Layout
 
 ```
-crates/verve-av          FFmpeg wrapper, encoder backend seam
-crates/verve-telemetry   tracing + OpenTelemetry
-crates/verve-scheduler   admission control, the internal API, the engine seam
-crates/verve-worker      the machines converting video
-crates/verve-cli         the `verve` binary
+crates/ferrite-av          FFmpeg wrapper, encoder backend seam
+crates/ferrite-telemetry   tracing + OpenTelemetry
+crates/ferrite-scheduler   admission control, the internal API, the engine seam
+crates/ferrite-worker      the machines converting video
+crates/ferrite-cli         the `ferrite` binary
 spike/temporal-spike     throwaway; proves the Temporal SDK
 
-`verve-assets` (public API) and `verve-keys` (AES custody) arrive with the
+`ferrite-assets` (public API) and `ferrite-keys` (AES custody) arrive with the
 stages that need them — Stage 2 and Stage 5.
 ```

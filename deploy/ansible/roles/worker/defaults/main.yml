@@ -1,5 +1,5 @@
 # One process per CPU group. Encoders stop scaling past ~16 threads.
-verve_cpu_groups: 1
-verve_threads_per_group: 8
-verve_queues: "realtime,standard,bulk"
-verve_scratch: /var/lib/verve/scratch
+ferrite_cpu_groups: 1
+ferrite_threads_per_group: 8
+ferrite_queues: "realtime,standard,bulk"
+ferrite_scratch: /var/lib/ferrite/scratch

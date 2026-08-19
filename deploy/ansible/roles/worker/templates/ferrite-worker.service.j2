@@ -1,0 +1,37 @@
+[Unit]
+Description=ferrite worker (CPU group %i)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=exec
+User={{ ferrite_user }}
+WorkingDirectory={{ ferrite_root }}/current
+ExecStart={{ ferrite_root }}/current/ferrite worker run --queues {{ ferrite_queues }} --threads {{ ferrite_threads_per_group }}
+Restart=always
+RestartSec=5
+
+Environment=FERRITE_ENV={{ ferrite_env }}
+Environment=FERRITE_LOG_FORMAT=json
+Environment=OTEL_EXPORTER_OTLP_ENDPOINT={{ otel_endpoint }}
+Environment=FERRITE_SCRATCH={{ ferrite_scratch }}
+
+# FFmpeg parses untrusted files. Everything below is load-bearing.
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+SystemCallFilter=@system-service
+SystemCallArchitectures=native
+ReadWritePaths={{ ferrite_scratch }}
+MemoryMax=32G
+TasksMax=512
+
+# Stop pulling, finish in-flight, then exit.
+KillSignal=SIGTERM
+TimeoutStopSec=1800
+
+[Install]
+WantedBy=multi-user.target

@@ -1,6 +1,6 @@
-verve_user: verve
-verve_root: /opt/verve
-verve_release: "{{ verve_root }}/releases/{{ verve_version }}"
-verve_version: "0.1.0"
-verve_env: prod
+ferrite_user: ferrite
+ferrite_root: /opt/ferrite
+ferrite_release: "{{ ferrite_root }}/releases/{{ ferrite_version }}"
+ferrite_version: "0.1.0"
+ferrite_env: prod
 otel_endpoint: "http://10.0.0.10:4317"
