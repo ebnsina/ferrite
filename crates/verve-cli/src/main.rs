@@ -39,6 +39,10 @@ enum Command {
     Sheet(pipeline::SheetArgs),
     /// VMAF, PSNR, SSIM, MS-SSIM, CIEDE2000, CAMBI.
     Quality(pipeline::QualityArgs),
+    /// Run the corpus through the pipeline and write a report.
+    Bench(pipeline::BenchArgs),
+    /// Diff two bench reports. This diff is the CI gate.
+    Compare(pipeline::CompareArgs),
     /// What this build links against and which codecs it can produce.
     Doctor,
 }
@@ -63,6 +67,8 @@ fn main() -> ExitCode {
         Command::Package(args) => pipeline::package(&args, cli.json),
         Command::Sheet(args) => pipeline::sheet(&args, cli.json),
         Command::Quality(args) => pipeline::quality(&args, cli.json),
+        Command::Bench(args) => pipeline::bench(&args, cli.json),
+        Command::Compare(args) => pipeline::compare(&args, cli.json),
         Command::Doctor => pipeline::doctor(cli.json),
     };
 

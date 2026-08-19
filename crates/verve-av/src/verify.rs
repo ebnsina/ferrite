@@ -197,6 +197,7 @@ mod tests {
                 frame_rate: Rational::new(30, 1),
                 pixel_format: "yuv420p".into(),
                 rotation_degrees: 0,
+                sample_aspect_ratio: Rational::new(1, 1),
                 color: ColorInfo::default(),
                 bit_rate: None,
                 frame_count: Some(frames),

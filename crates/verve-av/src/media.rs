@@ -53,6 +53,9 @@ pub struct VideoStream {
     pub pixel_format: String,
     /// Rotation in degrees from display matrix side data.
     pub rotation_degrees: i32,
+    /// Pixel shape. Anamorphic sources code a 16:9 picture into a 4:3 grid, so
+    /// the coded size is not what a viewer sees.
+    pub sample_aspect_ratio: Rational,
     /// Colour description, when the container states one.
     pub color: ColorInfo,
     /// Stream bitrate in bits per second, when known.
@@ -62,12 +65,20 @@ pub struct VideoStream {
 }
 
 impl VideoStream {
-    /// Width and height as a viewer sees them, with rotation applied.
+    /// Width and height as a viewer sees them: pixel shape applied, then
+    /// rotation. Laddering from the coded size squashes anamorphic sources.
     pub fn display_size(&self) -> (u32, u32) {
-        if self.rotation_degrees.rem_euclid(180) == 90 {
-            (self.height, self.width)
+        let (num, den) = (self.sample_aspect_ratio.num, self.sample_aspect_ratio.den);
+        let width = if num > 0 && den > 0 && num != den {
+            ((u64::from(self.width) * num as u64 + den as u64 / 2) / den as u64) as u32
         } else {
-            (self.width, self.height)
+            self.width
+        };
+
+        if self.rotation_degrees.rem_euclid(180) == 90 {
+            (self.height, width)
+        } else {
+            (width, self.height)
         }
     }
 }
@@ -211,6 +222,7 @@ mod tests {
             frame_rate: Rational::new(30000, 1001),
             pixel_format: "yuv420p".into(),
             rotation_degrees: rotation,
+            sample_aspect_ratio: Rational::new(1, 1),
             color: ColorInfo::default(),
             bit_rate: Some(8_000_000),
             frame_count: None,
@@ -228,6 +240,16 @@ mod tests {
             keyframes_ms: vec![0, 10_000],
             warnings,
         }
+    }
+
+    #[test]
+    fn anamorphic_pixels_widen_the_display_size() {
+        // 720x576 carrying a 16:9 picture displays as 1024x576.
+        let mut wide = stream(0);
+        wide.width = 720;
+        wide.height = 576;
+        wide.sample_aspect_ratio = Rational::new(64, 45);
+        assert_eq!(wide.display_size(), (1024, 576));
     }
 
     #[test]

@@ -123,7 +123,12 @@ fn read_video(
     }
 
     let aspect = decoder.aspect_ratio();
-    if aspect.numerator() != 0 && aspect.numerator() != aspect.denominator() {
+    let sample_aspect_ratio = if aspect.numerator() > 0 && aspect.denominator() > 0 {
+        Rational::new(aspect.numerator(), aspect.denominator())
+    } else {
+        Rational::new(1, 1)
+    };
+    if sample_aspect_ratio.num != sample_aspect_ratio.den {
         warnings.insert(Warning::NonSquarePixels);
     }
 
@@ -151,6 +156,7 @@ fn read_video(
             .descriptor()
             .map_or_else(|| "unknown".to_string(), |d| d.name().to_string()),
         rotation_degrees: rotation,
+        sample_aspect_ratio,
         color,
         bit_rate: (decoder.bit_rate() > 0).then(|| decoder.bit_rate() as u64),
         frame_count: (stream.frames() > 0).then(|| stream.frames() as u64),
@@ -214,18 +220,22 @@ fn scan_keyframes(
 ) -> Vec<u64> {
     let tb = f64::from(time_base.numerator()) / f64::from(time_base.denominator());
     let mut keyframes = Vec::new();
-    let mut last_pts = i64::MIN;
+    let mut last_dts = i64::MIN;
     let mut non_monotonic = false;
 
     for (stream, packet) in input.packets() {
         if stream.index() != video_index {
             continue;
         }
-        let Some(pts) = packet.pts() else { continue };
-        if pts < last_pts {
-            non_monotonic = true;
+        // Decode timestamps must climb; presentation timestamps need not. Every
+        // B-frame reorders PTS, so checking those flags healthy files.
+        if let Some(dts) = packet.dts() {
+            if dts < last_dts {
+                non_monotonic = true;
+            }
+            last_dts = dts;
         }
-        last_pts = pts;
+        let Some(pts) = packet.pts() else { continue };
         if packet.is_key() {
             keyframes.push((pts.max(0) as f64 * tb * 1000.0).round() as u64);
         }

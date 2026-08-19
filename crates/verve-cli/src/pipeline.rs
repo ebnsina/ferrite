@@ -509,3 +509,282 @@ pub fn quality(args: &QualityArgs, json: bool) -> Result<()> {
         _ => Ok(()),
     }
 }
+
+/// Arguments for `verve bench`.
+#[derive(Debug, Args)]
+pub struct BenchArgs {
+    /// Directory of corpus files.
+    #[arg(default_value = "testdata/corpus")]
+    pub corpus: PathBuf,
+    /// Where to write the report.
+    #[arg(short, long, default_value = "bench.json")]
+    pub out: PathBuf,
+    /// Where to put renditions. Deleted afterwards unless --keep.
+    #[arg(long, default_value = "bench-work")]
+    pub work: PathBuf,
+    /// Score every Nth frame. Never quote a subsampled run as a release number.
+    #[arg(long, default_value_t = 1)]
+    pub subsample: u32,
+    /// Keep the encoded renditions for inspection.
+    #[arg(long)]
+    pub keep: bool,
+    /// Skip quality measurement. Structural checks only, much faster.
+    #[arg(long)]
+    pub no_quality: bool,
+}
+
+/// `verve bench`.
+pub fn bench(args: &BenchArgs, json: bool) -> Result<()> {
+    #[cfg(not(feature = "ffmpeg"))]
+    {
+        let _ = (args, json);
+        anyhow::bail!("this build has no FFmpeg; rebuild with --features ffmpeg")
+    }
+    #[cfg(feature = "ffmpeg")]
+    {
+        use std::time::Instant;
+        use verve_av::bench::{Entry, Report, Rung, Scores};
+        use verve_av::encoder::Preset;
+        use verve_av::quality::Options;
+        use verve_av::transcode::Output;
+        use verve_av::verify::Rendition;
+
+        let preset = Preset::Medium;
+        let mut files: Vec<PathBuf> = std::fs::read_dir(&args.corpus)
+            .with_context(|| format!("reading {}", args.corpus.display()))?
+            .filter_map(|e| e.ok().map(|e| e.path()))
+            .filter(|p| {
+                p.is_file()
+                    && !p
+                        .file_name()
+                        .is_some_and(|n| n.to_string_lossy().starts_with('.'))
+            })
+            .collect();
+        if files.is_empty() {
+            anyhow::bail!("no corpus files in {}", args.corpus.display());
+        }
+        files.sort();
+
+        let mut report = Report::new(
+            verve_av::ffmpeg_version(),
+            preset.as_str().to_string(),
+            args.subsample,
+        );
+
+        for file in &files {
+            let name = file
+                .file_name()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .to_string();
+            if !json {
+                println!("{name}");
+            }
+
+            let info = match probe_file(file) {
+                Ok(info) => info,
+                Err(e) => {
+                    // A corpus of awkward files must produce a clear error,
+                    // never a hang and never a silent skip.
+                    report.entries.push(Entry {
+                        file: name,
+                        duration_ms: 0,
+                        warnings: Vec::new(),
+                        rungs: Vec::new(),
+                        findings: vec![format!("unreadable: {e}")],
+                        encode_seconds: 0.0,
+                    });
+                    continue;
+                }
+            };
+
+            let Some(video) = info.primary_video() else {
+                report.entries.push(Entry {
+                    file: name,
+                    duration_ms: info.duration_ms,
+                    warnings: info.warnings.iter().map(ToString::to_string).collect(),
+                    rungs: Vec::new(),
+                    findings: vec!["no video stream".into()],
+                    encode_seconds: 0.0,
+                });
+                continue;
+            };
+
+            let work = args.work.join(name.replace('.', "_"));
+            let steps = verve_av::ladder::plan(video, &verve_av::ladder::STANDARD, preset);
+            let outputs: Vec<Output> = steps
+                .iter()
+                .map(|s| Output {
+                    path: work.join(format!("{}.mp4", s.name)),
+                    spec: s.spec.clone(),
+                })
+                .collect();
+
+            let started = Instant::now();
+            let reports = verve_av::transcode::run(
+                file,
+                &outputs,
+                std::sync::Arc::new(verve_av::NeverCancel),
+            )?;
+            let encode_seconds = started.elapsed().as_secs_f64();
+
+            let probed: Vec<verve_av::MediaInfo> = reports
+                .iter()
+                .map(|r| probe_file(&r.path))
+                .collect::<Result<_>>()?;
+            let renditions: Vec<Rendition<'_>> = steps
+                .iter()
+                .zip(&probed)
+                .map(|(s, i)| Rendition {
+                    name: s.name,
+                    info: i,
+                })
+                .collect();
+            let verdict = verve_av::verify::verify(&renditions);
+
+            let mut rungs = Vec::with_capacity(steps.len());
+            for (step, encoded) in steps.iter().zip(&reports) {
+                let scores = if args.no_quality {
+                    None
+                } else {
+                    let options = Options {
+                        subsample: args.subsample,
+                        ..Options::default()
+                    };
+                    verve_av::quality::measure(file, &encoded.path, &options)
+                        .ok()
+                        .map(|m| Scores::from_metrics(&m))
+                };
+                rungs.push(Rung {
+                    name: step.name.to_string(),
+                    width: step.spec.resolution.width,
+                    height: step.spec.resolution.height,
+                    frames: encoded.frames,
+                    bytes: encoded.bytes,
+                    scores,
+                });
+            }
+
+            report.entries.push(Entry {
+                file: name,
+                duration_ms: info.duration_ms,
+                warnings: info.warnings.iter().map(ToString::to_string).collect(),
+                rungs,
+                findings: verdict
+                    .findings
+                    .iter()
+                    .map(|f| format!("{} {:?}", f.rendition, f.problem))
+                    .collect(),
+                encode_seconds,
+            });
+
+            if !args.keep {
+                let _ = std::fs::remove_dir_all(&work);
+            }
+        }
+
+        if !args.keep {
+            let _ = std::fs::remove_dir_all(&args.work);
+        }
+        std::fs::write(&args.out, serde_json::to_string_pretty(&report)?)?;
+
+        let findings = report.findings();
+        if json {
+            println!("{}", serde_json::to_string_pretty(&report)?);
+        } else {
+            for entry in &report.entries {
+                for rung in &entry.rungs {
+                    let vmaf = rung
+                        .scores
+                        .map_or("—".to_string(), |s| format!("{:.2}", s.vmaf));
+                    println!(
+                        "  {:<20} {:<6} {:>5}x{:<5} {:>7} KB  VMAF {vmaf}",
+                        entry.file,
+                        rung.name,
+                        rung.width,
+                        rung.height,
+                        rung.bytes / 1024
+                    );
+                }
+            }
+            println!("{} files → {}", report.entries.len(), args.out.display());
+        }
+
+        if findings.is_empty() {
+            Ok(())
+        } else {
+            for f in &findings {
+                eprintln!("  {f}");
+            }
+            anyhow::bail!("{} structural findings", findings.len())
+        }
+    }
+}
+
+/// Arguments for `verve compare`.
+#[derive(Debug, Args)]
+pub struct CompareArgs {
+    /// The baseline report.
+    pub before: PathBuf,
+    /// The new report.
+    pub after: PathBuf,
+    /// Allowed VMAF movement before it counts as a regression.
+    #[arg(long)]
+    pub vmaf_tolerance: Option<f64>,
+}
+
+/// `verve compare`. Exit 1 on a regression — this diff is the CI gate.
+pub fn compare(args: &CompareArgs, json: bool) -> Result<()> {
+    use verve_av::bench::{Report, Tolerance};
+
+    let read = |path: &PathBuf| -> Result<Report> {
+        let text =
+            std::fs::read_to_string(path).with_context(|| format!("reading {}", path.display()))?;
+        Ok(serde_json::from_str(&text)?)
+    };
+
+    let before = read(&args.before)?;
+    let after = read(&args.after)?;
+
+    let mut tolerance = Tolerance::default();
+    if let Some(v) = args.vmaf_tolerance {
+        tolerance.vmaf = v;
+    }
+    let diff = verve_av::bench::compare(&before, &after, &tolerance);
+
+    if json {
+        println!("{}", serde_json::to_string_pretty(&diff)?);
+    } else {
+        if before.preset != after.preset || before.ffmpeg != after.ffmpeg {
+            println!(
+                "settings changed: {} {} → {} {}",
+                before.preset, before.ffmpeg, after.preset, after.ffmpeg
+            );
+        }
+        for r in &diff.regressions {
+            println!(
+                "  {:<20} {:<6} {:<10} {:.4} → {:.4}  ({:+.4})",
+                r.file, r.rung, r.metric, r.before, r.after, r.delta
+            );
+        }
+        for m in &diff.missing {
+            println!("  missing  {m}");
+        }
+        for a in &diff.added {
+            println!("  added    {a}");
+        }
+        if diff.is_clean() {
+            println!("no regressions");
+        }
+    }
+
+    if diff.is_clean() {
+        Ok(())
+    } else {
+        anyhow::bail!(
+            "{} regressions, {} missing",
+            diff.regressions.len(),
+            diff.missing.len()
+        )
+    }
+}

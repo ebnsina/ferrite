@@ -3,6 +3,7 @@
 
 #![warn(missing_docs)]
 
+pub mod bench;
 pub mod encoder;
 pub mod error;
 pub mod ladder;
