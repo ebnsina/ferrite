@@ -1,8 +1,7 @@
 # ferrite
 
 Video transcoding: upload a file, get a link that plays anywhere, or get a
-converted file back. See [docs/](docs/) — [overview](docs/01-overview.md),
-[architecture](docs/02-architecture.md), [stages](docs/07-implementation.md).
+converted file back.
 
 ## Status
 

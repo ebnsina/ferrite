@@ -59,7 +59,7 @@ pub struct Step {
 
 /// Choose rungs for `source`.
 ///
-/// Two rules from docs/05-pipeline.md: never make a rung bigger than the
+/// Two rules: never make a rung bigger than the
 /// source, and drop rungs above the source bitrate. The smallest rung always
 /// survives, so a tiny or low-bitrate source still produces something.
 pub fn plan(source: &VideoStream, rungs: &[Rung], preset: Preset) -> Vec<Step> {

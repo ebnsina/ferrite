@@ -8,3 +8,7 @@
 /vendor/build
 /.env
 /vendor/packager
+
+# Internal planning docs and data stay local — public repo carries no roadmap
+/docs
+/data

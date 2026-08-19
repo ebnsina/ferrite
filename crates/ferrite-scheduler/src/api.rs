@@ -1,6 +1,6 @@
 //! The internal API. Not public — between our services only.
 //!
-//! Four routes come from docs/04-api-and-cli.md. Two more are here because
+//! Four routes are the documented internal API. Two more are here because
 //! `sched_db` cannot read `assets_db`: budgets have to be pushed in, and
 //! something has to report a workflow finishing so the slot comes back.
 
