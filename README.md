@@ -38,7 +38,9 @@ converted file back.
 | Join | compressed data concatenated, timestamps fixed, nothing re-encoded |
 | Quality | ΔVMAF −0.15 against single-pass, well inside the 0.5 gate |
 | Distributed | chunks fan out across workers via Temporal, joined on completion |
-| Not yet | straggler re-issue, two-path fast/quality split, progressive publish |
+| Fast path | one rung first: a 150s source is playable in 6.8s, complete in 26.5s |
+| Progressive publish | the manifest grows as each rung lands |
+| Not yet | straggler re-issue, lane split between the two paths |
 
 **Stage 2 — one machine, end to end**
 

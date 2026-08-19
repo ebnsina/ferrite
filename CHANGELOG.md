@@ -62,6 +62,10 @@ and this project uses [semantic versioning](https://semver.org/spec/v2.0.0.html)
   travels with the job rather than being recomputed on a worker, so a retried
   chunk reproduces identical boundaries.
 
+- Two-path encoding: one mid rung goes first so the asset becomes playable,
+  and the rest of the ladder follows. The manifest is rewritten as each rung
+  lands rather than appearing all at once.
+
 ### Measured
 
 Against a 150s source, chunked versus whole: VMAF 97.579 against 97.429, worst
@@ -69,6 +73,10 @@ frame identical, CAMBI 0.4008 against 0.4015, CIEDE2000 57.95 against 57.59.
 Frame counts and durations match exactly, and keyframes stay identical across
 every rung after the join. The gate is a drop of no more than 0.5 VMAF; chunking
 came out marginally ahead.
+
+Time to first play on a 150s source, distributed across three workers: playable
+after 6.8s with one rung, complete after 26.5s with all three. The promise is
+under 45s at p50 and under 20s on premium.
 
 Distributed across three workers: 150s of video, 15 chunks, 3 rungs, 32.4s wall
 clock and 424.8 CPU-seconds. Output is structurally identical to the

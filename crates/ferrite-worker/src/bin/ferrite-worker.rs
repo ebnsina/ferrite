@@ -136,6 +136,27 @@ impl Encoder {
         Ok(done)
     }
 
+    /// Encode the audio track. One per asset, never chunked and never per rung.
+    #[activity]
+    pub async fn encode_audio(_ctx: ActivityContext, job: AssetJob) -> Result<bool, ActivityError> {
+        tokio::task::spawn_blocking(move || ferrite_worker::asset::encode_audio(&job))
+            .await
+            .map_err(|e| ActivityError::from(anyhow::anyhow!("audio panicked: {e}")))?
+            .map_err(|e| ActivityError::from(anyhow::anyhow!("{e}")))
+    }
+
+    /// Package whatever has landed. Called as each rung finishes, so the
+    /// manifest grows instead of appearing all at once.
+    #[activity]
+    pub async fn publish(_ctx: ActivityContext, job: AssetJob) -> Result<usize, ActivityError> {
+        tokio::task::spawn_blocking(move || {
+            ferrite_worker::asset::publish(&job).map(|p| p.renditions.len())
+        })
+        .await
+        .map_err(|e| ActivityError::from(anyhow::anyhow!("publish panicked: {e}")))?
+        .map_err(|e| ActivityError::from(anyhow::anyhow!("{e}")))
+    }
+
     /// Tell the scheduler the asset is done, so the slot comes back and the
     /// work is billed. Without this a finished asset holds capacity forever.
     #[activity]
@@ -214,45 +235,95 @@ impl AssetWorkflow {
     #[run(name = "ferrite.asset_quality")]
     pub async fn run(ctx: &mut WorkflowContext<Self>) -> WorkflowResult<u64> {
         let job = ctx.state(|s| s.job.clone());
+        let (fast, quality) = job.two_paths();
 
         // A chunk is ten seconds of video; the timeout allows for a slow
         // machine without letting a wedged one hold the asset forever.
         let encode = ActivityOptions::start_to_close_timeout(Duration::from_secs(600));
-        let started: Vec<_> = job
-            .chunks()
-            .into_iter()
-            .map(|chunk| ctx.execute_activity(Encoder::encode_chunk, chunk, encode.clone()))
-            .collect();
+        let short = ActivityOptions::start_to_close_timeout(Duration::from_secs(300));
 
-        // join_all, not futures::join_all: replay must poll in declaration order.
+        // Audio first and alongside: one track, and the fast rung is unwatchable
+        // without it.
+        let audio = ctx.execute_activity(Encoder::encode_audio, job.clone(), short.clone());
+
+        // The fast path: one mid rung across every free machine, so the asset
+        // becomes playable without waiting for the whole ladder.
         let mut frames = 0u64;
         let mut cpu_seconds = 0.0;
-        for done in join_all(started).await {
+        let mut bytes = 0u64;
+
+        for done in join_all(
+            fast.chunks()
+                .into_iter()
+                .map(|chunk| ctx.execute_activity(Encoder::encode_chunk, chunk, encode.clone()))
+                .collect::<Vec<_>>(),
+        )
+        .await
+        {
             let done = done?;
             frames += done.frames;
             cpu_seconds += done.seconds;
         }
 
-        // Every chunk is in, so the rungs can be reassembled.
-        let join = ActivityOptions::start_to_close_timeout(Duration::from_secs(600));
-        let joins: Vec<_> = job
-            .rungs
-            .iter()
-            .map(|rung| ctx.execute_activity(Encoder::join_rung, job.join_rung(rung), join.clone()))
-            .collect();
-        let mut bytes = 0u64;
-        for joined in join_all(joins).await {
+        for joined in join_all(
+            fast.rungs
+                .iter()
+                .map(|rung| {
+                    ctx.execute_activity(Encoder::join_rung, fast.join_rung(rung), encode.clone())
+                })
+                .collect::<Vec<_>>(),
+        )
+        .await
+        {
             bytes += joined?;
         }
 
-        let report = ActivityOptions::start_to_close_timeout(Duration::from_secs(30));
+        audio.await?;
+        // Playable from here. Everything below only adds quality.
+        ctx.execute_activity(Encoder::publish, fast.clone(), short.clone())
+            .await?;
+
+        if quality.rungs.is_empty() {
+            ctx.execute_activity(
+                Encoder::report_done,
+                (ctx.workflow_id().to_string(), bytes, cpu_seconds),
+                short,
+            )
+            .await?;
+            return Ok(frames);
+        }
+
+        // The quality path: the rest of the ladder, published as it lands.
+        for done in join_all(
+            quality
+                .chunks()
+                .into_iter()
+                .map(|chunk| ctx.execute_activity(Encoder::encode_chunk, chunk, encode.clone()))
+                .collect::<Vec<_>>(),
+        )
+        .await
+        {
+            let done = done?;
+            frames += done.frames;
+            cpu_seconds += done.seconds;
+        }
+
+        for rung in &quality.rungs {
+            ctx.execute_activity(Encoder::join_rung, quality.join_rung(rung), encode.clone())
+                .await?;
+            // Republished per rung: the manifest grows rather than appearing
+            // all at once, and a viewer gets the better rung as soon as it is
+            // there.
+            ctx.execute_activity(Encoder::publish, job.clone(), short.clone())
+                .await?;
+        }
+
         ctx.execute_activity(
             Encoder::report_done,
             (ctx.workflow_id().to_string(), bytes, cpu_seconds),
-            report,
+            short,
         )
         .await?;
-
         Ok(frames)
     }
 }

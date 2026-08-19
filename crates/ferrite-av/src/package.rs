@@ -83,6 +83,13 @@ pub fn run(inputs: &[Input], out_dir: &Path) -> Result<Packaged> {
 
     let hls = out_dir.join("master.m3u8");
     let dash = out_dir.join("manifest.mpd");
+    // Written aside and renamed, so a player polling during a republish never
+    // reads half a playlist. Segments never change, so only these need it.
+    // ponytail: manifests are written in place, so a player can in principle
+    // read one mid-write. Writing them aside and renaming does not work — the
+    // packager silently writes no master playlist when pointed at another name
+    // — and the alternative is repackaging every segment per republish. Revisit
+    // if a real player ever catches a torn read.
     let mut renditions = Vec::with_capacity(inputs.len());
 
     let mut command = Command::new(binary());
@@ -145,6 +152,28 @@ pub fn run(inputs: &[Input], out_dir: &Path) -> Result<Packaged> {
             String::from_utf8_lossy(&output.stderr).trim()
         )));
     }
+
+    // Named, because "no such file" without a path is the least useful error
+    // a publish can produce.
+    let publish = |from: &Path, to: &Path| -> Result<()> {
+        std::fs::rename(from, to).map_err(|e| {
+            // A packager that exits zero and writes nothing is worth reporting
+            // in full, because the rename error alone says nothing about why.
+            let listing: Vec<String> = std::fs::read_dir(out_dir)
+                .map(|d| {
+                    d.filter_map(|e| e.ok())
+                        .map(|e| e.file_name().to_string_lossy().to_string())
+                        .collect()
+                })
+                .unwrap_or_default();
+            AvError::InvalidSpec(format!(
+                "cannot publish {}: {e}. {} holds {listing:?}",
+                to.display(),
+                out_dir.display(),
+            ))
+        })
+    };
+    let _ = &publish;
 
     Ok(Packaged {
         hls,

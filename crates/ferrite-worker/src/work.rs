@@ -58,6 +58,38 @@ pub struct Rung {
 }
 
 impl AssetJob {
+    /// The rungs already on disk, so a republish can include whatever has
+    /// landed rather than waiting for the whole ladder.
+    pub fn ready_rungs(&self) -> Vec<&Rung> {
+        self.rungs
+            .iter()
+            .filter(|r| self.rendition(r).is_file())
+            .collect()
+    }
+
+    /// Split into the rung that makes the asset playable and the rest.
+    ///
+    /// The fast path is one mid rung: high enough to watch, small enough to
+    /// finish. Latency beats efficiency for exactly one rendition.
+    pub fn two_paths(&self) -> (AssetJob, AssetJob) {
+        let middle = self.rungs.len() / 2;
+        let fast = AssetJob {
+            rungs: self.rungs.get(middle).cloned().into_iter().collect(),
+            ..self.clone()
+        };
+        let quality = AssetJob {
+            rungs: self
+                .rungs
+                .iter()
+                .enumerate()
+                .filter(|(i, _)| *i != middle)
+                .map(|(_, r)| r.clone())
+                .collect(),
+            ..self.clone()
+        };
+        (fast, quality)
+    }
+
     /// Where a rung's finished rendition goes.
     pub fn rendition(&self, rung: &Rung) -> PathBuf {
         self.out_dir
@@ -185,6 +217,50 @@ mod tests {
         let mut sorted = join.parts.clone();
         sorted.sort();
         assert_eq!(sorted, join.parts, "parts would join out of order");
+    }
+
+    #[test]
+    fn the_fast_path_takes_one_middle_rung_and_leaves_the_rest() {
+        let job = job();
+        let (fast, quality) = job.two_paths();
+
+        assert_eq!(fast.rungs.len(), 1, "the fast path is one rung");
+        assert_eq!(quality.rungs.len(), job.rungs.len() - 1);
+
+        // Between them they cover the ladder exactly once.
+        let mut names: Vec<&str> = fast
+            .rungs
+            .iter()
+            .chain(&quality.rungs)
+            .map(|r| r.name.as_str())
+            .collect();
+        names.sort_unstable();
+        let mut all: Vec<&str> = job.rungs.iter().map(|r| r.name.as_str()).collect();
+        all.sort_unstable();
+        assert_eq!(names, all);
+    }
+
+    #[test]
+    fn both_paths_cut_at_the_same_places() {
+        // They land in one manifest, so a player switching between a fast rung
+        // and a quality one needs identical boundaries.
+        let job = job();
+        let (fast, quality) = job.two_paths();
+        assert_eq!(fast.plan, job.plan);
+        assert_eq!(quality.plan, job.plan);
+        assert_eq!(fast.out_dir, quality.out_dir);
+    }
+
+    #[test]
+    fn a_single_rung_ladder_leaves_the_quality_path_empty() {
+        let mut job = job();
+        job.rungs.truncate(1);
+        let (fast, quality) = job.two_paths();
+        assert_eq!(fast.rungs.len(), 1);
+        assert!(
+            quality.rungs.is_empty(),
+            "there is nothing left to follow up with"
+        );
     }
 
     #[test]

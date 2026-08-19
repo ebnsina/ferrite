@@ -128,6 +128,50 @@ pub fn plan(
     })
 }
 
+/// Package whatever renditions have landed, plus audio if there is any.
+///
+/// Called every time a rung finishes, so the manifest grows rather than
+/// appearing all at once. Nothing here re-encodes; the segments already exist.
+pub fn publish(job: &crate::work::AssetJob) -> Result<ferrite_av::package::Packaged, AssetError> {
+    let ready = job.ready_rungs();
+    if ready.is_empty() {
+        return Err(AssetError::Rejected(
+            "nothing has finished encoding yet".into(),
+        ));
+    }
+
+    let mut inputs: Vec<Input> = ready
+        .iter()
+        .map(|rung| Input {
+            name: rung.name.clone(),
+            path: job.rendition(rung),
+            kind: Track::Video,
+            language: None,
+        })
+        .collect();
+
+    let audio = job.out_dir.join("renditions").join("audio.m4a");
+    if audio.is_file() {
+        inputs.push(Input {
+            name: "audio".into(),
+            path: audio,
+            kind: Track::Audio,
+            language: None,
+        });
+    }
+
+    Ok(ferrite_av::package::run(
+        &inputs,
+        &job.out_dir.join("cmaf"),
+    )?)
+}
+
+/// Encode the one audio track, shared by every rung and never chunked.
+pub fn encode_audio(job: &crate::work::AssetJob) -> Result<bool, AssetError> {
+    let output = job.out_dir.join("renditions").join("audio.m4a");
+    Ok(ferrite_av::audio::encode(&job.input, &output, &Default::default())?.is_some())
+}
+
 /// Run the pipeline over `input` and leave a playable directory in `out_dir`.
 ///
 /// Publishing is gated on the checks: a dropped chunk produces a file that
