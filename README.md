@@ -40,7 +40,8 @@ converted file back.
 | Distributed | chunks fan out across workers via Temporal, joined on completion |
 | Fast path | one rung first: a 150s source is playable in 6.8s, complete in 26.5s |
 | Progressive publish | the manifest grows as each rung lands |
-| Not yet | straggler re-issue, lane split between the two paths |
+| Straggler re-issue | a wedged chunk moves to another machine; proven by killing one |
+| Not yet | lane split between the two paths |
 
 **Stage 2 — one machine, end to end**
 

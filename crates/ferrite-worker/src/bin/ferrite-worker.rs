@@ -12,8 +12,9 @@ use std::time::Duration;
 
 use anyhow::{Context, Result};
 use clap::Parser;
-use ferrite_worker::work::{AssetJob, EncodeChunk, JoinRung};
+use ferrite_worker::work::{AssetJob, EncodeChunk, JoinRung, straggler_budget};
 use temporalio_client::{Client, ClientOptions, Connection, ConnectionOptions};
+use temporalio_common::RetryPolicy;
 use temporalio_macros::activities;
 use temporalio_sdk::activities::{ActivityContext, ActivityError};
 use temporalio_sdk::workflows::{join_all, workflow, workflow_methods};
@@ -237,9 +238,24 @@ impl AssetWorkflow {
         let job = ctx.state(|s| s.job.clone());
         let (fast, quality) = job.two_paths();
 
-        // A chunk is ten seconds of video; the timeout allows for a slow
-        // machine without letting a wedged one hold the asset forever.
-        let encode = ActivityOptions::start_to_close_timeout(Duration::from_secs(600));
+        // A chunk that stops making progress is re-issued rather than waited
+        // for: the fast path is only as fast as its slowest chunk. The retry
+        // lands wherever there is capacity, which is usually another machine.
+        let chunk_options = |chunk: &ferrite_av::split::Chunk, rungs: usize| {
+            ActivityOptions::with_start_to_close_timeout(straggler_budget(chunk, rungs))
+                .retry_policy(
+                    RetryPolicy::builder()
+                        .initial_interval(Duration::from_secs(1))
+                        .backoff_coefficient(1.0)
+                        .maximum_interval(Duration::from_secs(5))
+                        // Bounded: a chunk that fails everywhere is broken, not
+                        // unlucky, and should fail the asset rather than loop.
+                        .maximum_attempts(4)
+                        .build(),
+                )
+                .build()
+        };
+        let join = ActivityOptions::start_to_close_timeout(Duration::from_secs(600));
         let short = ActivityOptions::start_to_close_timeout(Duration::from_secs(300));
 
         // Audio first and alongside: one track, and the fast rung is unwatchable
@@ -255,7 +271,10 @@ impl AssetWorkflow {
         for done in join_all(
             fast.chunks()
                 .into_iter()
-                .map(|chunk| ctx.execute_activity(Encoder::encode_chunk, chunk, encode.clone()))
+                .map(|job| {
+                    let options = chunk_options(&job.chunk, job.outputs.len());
+                    ctx.execute_activity(Encoder::encode_chunk, job, options)
+                })
                 .collect::<Vec<_>>(),
         )
         .await
@@ -269,7 +288,7 @@ impl AssetWorkflow {
             fast.rungs
                 .iter()
                 .map(|rung| {
-                    ctx.execute_activity(Encoder::join_rung, fast.join_rung(rung), encode.clone())
+                    ctx.execute_activity(Encoder::join_rung, fast.join_rung(rung), join.clone())
                 })
                 .collect::<Vec<_>>(),
         )
@@ -298,7 +317,10 @@ impl AssetWorkflow {
             quality
                 .chunks()
                 .into_iter()
-                .map(|chunk| ctx.execute_activity(Encoder::encode_chunk, chunk, encode.clone()))
+                .map(|job| {
+                    let options = chunk_options(&job.chunk, job.outputs.len());
+                    ctx.execute_activity(Encoder::encode_chunk, job, options)
+                })
                 .collect::<Vec<_>>(),
         )
         .await
@@ -309,7 +331,7 @@ impl AssetWorkflow {
         }
 
         for rung in &quality.rungs {
-            ctx.execute_activity(Encoder::join_rung, quality.join_rung(rung), encode.clone())
+            ctx.execute_activity(Encoder::join_rung, quality.join_rung(rung), join.clone())
                 .await?;
             // Republished per rung: the manifest grows rather than appearing
             // all at once, and a viewer gets the better rung as soon as it is

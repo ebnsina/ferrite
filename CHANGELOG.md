@@ -66,6 +66,10 @@ and this project uses [semantic versioning](https://semver.org/spec/v2.0.0.html)
   and the rest of the ladder follows. The manifest is rewritten as each rung
   lands rather than appearing all at once.
 
+- Straggler re-issue: a chunk that stops making progress is given up on and
+  re-issued wherever there is capacity, rather than waited for. The budget
+  scales with chunk length and rung count, with a floor.
+
 ### Measured
 
 Against a 150s source, chunked versus whole: VMAF 97.579 against 97.429, worst
@@ -73,6 +77,10 @@ frame identical, CAMBI 0.4008 against 0.4015, CIEDE2000 57.95 against 57.59.
 Frame counts and durations match exactly, and keyframes stay identical across
 every rung after the join. The gate is a drop of no more than 0.5 VMAF; chunking
 came out marginally ahead.
+
+Killing a worker mid-encode: five chunks re-issued on their second attempt and
+picked up by the survivors. The asset completed with all three rungs at 4500
+frames and 150.000000s, and every rendition still agreed.
 
 Time to first play on a 150s source, distributed across three workers: playable
 after 6.8s with one rung, complete after 26.5s with all three. The promise is

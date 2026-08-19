@@ -8,6 +8,7 @@ use ferrite_av::split::{Chunk, SplitPlan};
 use ferrite_av::transcode::Output;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+use std::time::Duration;
 
 /// Encode one slice of one source across every rung.
 ///
@@ -144,6 +145,27 @@ impl AssetJob {
     }
 }
 
+/// Nothing finishes faster than this, however short the chunk: process start,
+/// seek and muxing all cost time that has nothing to do with length.
+pub const STRAGGLER_FLOOR: Duration = Duration::from_secs(60);
+
+/// How much slower than realtime, per rung, a machine is allowed to be before
+/// the chunk is presumed wedged rather than merely slow.
+pub const STRAGGLER_FACTOR: u32 = 4;
+
+/// How long one chunk gets before it is re-issued somewhere else.
+///
+/// The fast path is only as fast as its slowest chunk, so a machine that has
+/// stopped making progress has to be given up on rather than waited for. The
+/// budget scales with the work: more rungs and longer chunks are legitimately
+/// slower.
+pub fn straggler_budget(chunk: &Chunk, rungs: usize) -> Duration {
+    let work = Duration::from_millis(chunk.duration_ms())
+        .saturating_mul(STRAGGLER_FACTOR)
+        .saturating_mul(rungs.max(1) as u32);
+    work.max(STRAGGLER_FLOOR)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -261,6 +283,63 @@ mod tests {
             quality.rungs.is_empty(),
             "there is nothing left to follow up with"
         );
+    }
+
+    #[test]
+    fn a_longer_chunk_gets_longer_before_it_is_given_up_on() {
+        let short = Chunk {
+            index: 0,
+            start_ms: 0,
+            end_ms: 10_000,
+        };
+        let long = Chunk {
+            index: 0,
+            start_ms: 0,
+            end_ms: 60_000,
+        };
+        assert!(straggler_budget(&long, 3) > straggler_budget(&short, 3));
+    }
+
+    #[test]
+    fn more_rungs_get_more_time() {
+        let chunk = Chunk {
+            index: 0,
+            start_ms: 0,
+            end_ms: 30_000,
+        };
+        assert!(straggler_budget(&chunk, 4) > straggler_budget(&chunk, 1));
+    }
+
+    #[test]
+    fn a_tiny_chunk_still_gets_the_floor() {
+        // Process start, seek and muxing cost time regardless of length.
+        let tiny = Chunk {
+            index: 0,
+            start_ms: 0,
+            end_ms: 200,
+        };
+        assert_eq!(straggler_budget(&tiny, 1), STRAGGLER_FLOOR);
+    }
+
+    #[test]
+    fn a_ten_second_chunk_across_three_rungs_gets_two_minutes() {
+        // Encoding that is seconds of work; two minutes means wedged.
+        let chunk = Chunk {
+            index: 0,
+            start_ms: 0,
+            end_ms: 10_000,
+        };
+        assert_eq!(straggler_budget(&chunk, 3), Duration::from_secs(120));
+    }
+
+    #[test]
+    fn the_budget_never_overflows_on_an_absurd_chunk() {
+        let absurd = Chunk {
+            index: 0,
+            start_ms: 0,
+            end_ms: u64::MAX,
+        };
+        assert!(straggler_budget(&absurd, 64) > STRAGGLER_FLOOR);
     }
 
     #[test]
