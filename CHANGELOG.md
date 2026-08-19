@@ -25,6 +25,9 @@ and this project uses [semantic versioning](https://semver.org/spec/v2.0.0.html)
 
 ### Fixed
 
+- `probe` refused any file without a video stream, so it could not read the
+  audio renditions we produce ourselves. Audio-only is now legitimate; only a
+  file with neither pictures nor sound is refused.
 - A clean silent video reported that it needed a mezzanine. Only problems a
   normalising pass actually fixes count now; silence, an unknown duration and a
   missing keyframe index do not.
@@ -40,6 +43,9 @@ and this project uses [semantic versioning](https://semver.org/spec/v2.0.0.html)
 
 ### Added
 
+- Audio normalisation: one AAC stereo track, encoded once and shared by every
+  video rung, never chunked. Source audio was passed straight through before,
+  which the packager refuses outright for an MP3 soundtrack in an MP4.
 - Job mode: one file in, one file out, on the same `Source` path as asset mode.
   Never upscales past the source, and still samples frames for the blocklist —
   there is no mezzanine to hang that off, and the alternative is publishing

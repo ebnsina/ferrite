@@ -50,9 +50,12 @@ pub fn probe(path: impl AsRef<Path>) -> Result<MediaInfo> {
         }
     }
 
-    let Some(video_index) = video_index else {
-        return Err(AvError::NoStream { kind: "video" });
-    };
+    // Audio-only is legitimate: we probe our own audio renditions with this.
+    if video.is_empty() && audio.is_empty() {
+        return Err(AvError::NoStream {
+            kind: "video or audio",
+        });
+    }
     if video.len() > 1 {
         warnings.insert(Warning::MultipleVideoStreams);
     }
@@ -60,15 +63,21 @@ pub fn probe(path: impl AsRef<Path>) -> Result<MediaInfo> {
         warnings.insert(Warning::NoAudio);
     }
 
-    let time_base = input
-        .streams()
-        .find(|s| s.index() == video_index)
-        .map(|s| s.time_base())
-        .unwrap_or(ff::Rational(1, 1000));
+    let keyframes_ms = match video_index {
+        Some(index) => {
+            let time_base = input
+                .streams()
+                .find(|s| s.index() == index)
+                .map(|s| s.time_base())
+                .unwrap_or(ff::Rational(1, 1000));
+            scan_keyframes(&mut input, index, time_base, &mut warnings)
+        }
+        None => Vec::new(),
+    };
 
-    let keyframes_ms = scan_keyframes(&mut input, video_index, time_base, &mut warnings);
-
-    if keyframes_ms.is_empty() {
+    if video_index.is_none() {
+        // Nothing below applies to a file with no pictures in it.
+    } else if keyframes_ms.is_empty() {
         warnings.insert(Warning::NoKeyframeIndex);
     } else if keyframes_ms
         .windows(2)
@@ -252,6 +261,15 @@ fn scan_keyframes(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_file_with_neither_pictures_nor_sound_is_refused() {
+        // Audio-only is fine; nothing at all is not.
+        assert!(matches!(
+            probe("/nonexistent/silence.bin"),
+            Err(AvError::OpenInput { .. })
+        ));
+    }
 
     #[test]
     fn a_missing_file_names_the_path() {

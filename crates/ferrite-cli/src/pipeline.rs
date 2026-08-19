@@ -389,12 +389,18 @@ pub fn package(args: &PackageArgs, json: bool) -> Result<()> {
         })
         .collect();
 
-    if let Some(audio) = &args.audio {
-        inputs.push(Input {
-            name: "audio".into(),
-            path: audio.clone(),
-            kind: Track::Audio,
-        });
+    if let Some(source) = &args.audio {
+        // Normalise first: an MP3 soundtrack in an MP4 is something the
+        // packager refuses outright, so passing source audio through fails.
+        let track = args.out.join("audio.m4a");
+        match ferrite_av::audio::encode(source, &track, &Default::default())? {
+            Some(_) => inputs.push(Input {
+                name: "audio".into(),
+                path: track,
+                kind: Track::Audio,
+            }),
+            None => eprintln!("note: {} has no audio track", source.display()),
+        }
     }
 
     let packaged = ferrite_av::package::run(&inputs, &args.out)?;

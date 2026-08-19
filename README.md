@@ -42,9 +42,10 @@ converted file back.
 | Contact sheet | 60 frames, 10×6 grid, one JPEG — what a reviewer opens |
 | Perceptual hash | 64-bit dHash per sampled frame, Hamming ≤ 10 holds |
 | Quality | VMAF, PSNR, SSIM, MS-SSIM, CIEDE2000, CAMBI in one libvmaf pass |
+| Audio | one AAC stereo track, encoded once, never chunked |
 | Job mode | one file in, one file out, sharing steps 1–3 with asset mode |
 | Corpus | eleven awkward files, a JSON report, and a diff that gates a merge |
-| Not yet | audio encode, thumbnails, `conform` against external validators |
+| Not yet | thumbnails, `conform` against external validators |
 
 ## Get started
 
