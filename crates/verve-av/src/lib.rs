@@ -9,6 +9,7 @@ pub mod ladder;
 pub mod media;
 pub mod package;
 pub mod phash;
+pub mod quality;
 pub mod split;
 pub mod verify;
 

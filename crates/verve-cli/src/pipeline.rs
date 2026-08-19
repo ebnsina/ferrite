@@ -452,3 +452,60 @@ pub fn sheet(args: &SheetArgs, json: bool) -> Result<()> {
         Ok(())
     }
 }
+
+/// Arguments for `verve quality`.
+#[derive(Debug, Args)]
+pub struct QualityArgs {
+    /// The reference. Use the mezzanine, not another encode.
+    pub reference: PathBuf,
+    /// The encode being judged.
+    pub distorted: PathBuf,
+    /// libvmaf model. `version=vmaf_4k_v0.6.1` for 4K sources.
+    #[arg(long, default_value = verve_av::quality::DEFAULT_MODEL)]
+    pub model: String,
+    /// Score every Nth frame. Never quote a subsampled score as final.
+    #[arg(long, default_value_t = 1)]
+    pub subsample: u32,
+    /// Fail if mean VMAF falls below this.
+    #[arg(long)]
+    pub min_vmaf: Option<f64>,
+}
+
+/// `verve quality`.
+pub fn quality(args: &QualityArgs, json: bool) -> Result<()> {
+    use verve_av::quality::{Options, measure};
+
+    let options = Options {
+        model: args.model.clone(),
+        subsample: args.subsample,
+        threads: 0,
+    };
+    let metrics = measure(&args.reference, &args.distorted, &options)?;
+
+    if json {
+        println!("{}", serde_json::to_string_pretty(&metrics)?);
+    } else {
+        let row = |name: &str, p: Option<verve_av::quality::Pooled>| {
+            if let Some(p) = p {
+                println!("  {name:<12} {:>8.4}   worst {:>8.4}", p.mean, p.min);
+            }
+        };
+        println!("{} frames", metrics.frames);
+        row("VMAF", Some(metrics.vmaf));
+        row("PSNR-Y", Some(metrics.psnr_y));
+        row("SSIM", metrics.ssim);
+        row("MS-SSIM", metrics.ms_ssim);
+        row("CIEDE2000", metrics.ciede2000);
+        row("CAMBI", metrics.cambi);
+        if args.subsample > 1 {
+            println!("subsampled 1/{} — not a final number", args.subsample);
+        }
+    }
+
+    match args.min_vmaf {
+        Some(threshold) if !metrics.passes(threshold) => {
+            anyhow::bail!("VMAF {:.2} is below {threshold:.2}", metrics.vmaf.mean)
+        }
+        _ => Ok(()),
+    }
+}

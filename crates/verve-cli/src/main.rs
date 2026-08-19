@@ -37,6 +37,8 @@ enum Command {
     Package(pipeline::PackageArgs),
     /// Contact sheet plus a perceptual hash per sampled frame.
     Sheet(pipeline::SheetArgs),
+    /// VMAF, PSNR, SSIM, MS-SSIM, CIEDE2000, CAMBI.
+    Quality(pipeline::QualityArgs),
     /// What this build links against and which codecs it can produce.
     Doctor,
 }
@@ -60,6 +62,7 @@ fn main() -> ExitCode {
         Command::Verify(args) => pipeline::verify(&args, cli.json),
         Command::Package(args) => pipeline::package(&args, cli.json),
         Command::Sheet(args) => pipeline::sheet(&args, cli.json),
+        Command::Quality(args) => pipeline::quality(&args, cli.json),
         Command::Doctor => pipeline::doctor(cli.json),
     };
 

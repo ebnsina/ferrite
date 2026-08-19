@@ -42,7 +42,8 @@ converted file back. See [docs/](docs/) — [overview](docs/01-overview.md),
 | Package | CMAF + HLS + DASH over one segment set, via Shaka Packager |
 | Contact sheet | 60 frames, 10×6 grid, one JPEG — what a reviewer opens |
 | Perceptual hash | 64-bit dHash per sampled frame, Hamming ≤ 10 holds |
-| Not yet | audio encode, thumbnails, job mode, `quality`/`conform`/`bench` |
+| Quality | VMAF, PSNR, SSIM, MS-SSIM, CIEDE2000, CAMBI in one libvmaf pass |
+| Not yet | audio encode, thumbnails, job mode, `conform`/`bench` + corpus |
 
 ## Get started
 
@@ -76,7 +77,12 @@ verve encode  input.mp4 -o out/  # the ladder, decode-once
 verve verify  out/               # frame counts, keyframe alignment, duration
 verve package out/ -o cmaf/      # CMAF + HLS + DASH over one segment set
 verve sheet   input.mp4          # contact sheet + a pHash per sampled frame
+verve quality mezz.mp4 out/1080p.mp4 --min-vmaf 93
 ```
+
+`verve quality` needs an ffmpeg built `--enable-libvmaf`. Compare against the
+mezzanine, never another encode: two encodes differing tells you nothing about
+which is correct.
 
 ## Ports
 
