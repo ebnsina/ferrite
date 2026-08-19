@@ -25,6 +25,10 @@ struct Cli {
 enum Command {
     /// Print MediaInfo as JSON — codecs, duration, keyframes, problems.
     Probe(pipeline::ProbeArgs),
+    /// Print the split plan: where every cut lands and why.
+    Split(pipeline::ProbeArgs),
+    /// Print the ladder: which rungs this source gets, and why.
+    Ladder(pipeline::ProbeArgs),
     /// What this build links against and which codecs it can produce.
     Doctor,
 }
@@ -42,6 +46,8 @@ fn main() -> ExitCode {
 
     let result = match cli.command {
         Command::Probe(args) => pipeline::probe(&args, cli.json),
+        Command::Split(args) => pipeline::split(&args, cli.json),
+        Command::Ladder(args) => pipeline::ladder(&args, cli.json),
         Command::Doctor => pipeline::doctor(cli.json),
     };
 

@@ -5,7 +5,9 @@
 
 pub mod encoder;
 pub mod error;
+pub mod ladder;
 pub mod media;
+pub mod split;
 
 #[cfg(feature = "ffmpeg")]
 mod probe;

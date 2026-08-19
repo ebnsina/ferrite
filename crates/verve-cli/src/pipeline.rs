@@ -12,16 +12,23 @@ pub struct ProbeArgs {
     pub file: PathBuf,
 }
 
-/// `verve probe`.
-pub fn probe(args: &ProbeArgs, json: bool) -> Result<()> {
-    #[cfg(not(feature = "ffmpeg"))]
-    {
-        let _ = (args, json);
-        anyhow::bail!("this build has no FFmpeg; rebuild with --features ffmpeg");
-    }
+/// Read a file, or say why this build cannot.
+fn probe_file(path: &std::path::Path) -> Result<verve_av::MediaInfo> {
     #[cfg(feature = "ffmpeg")]
     {
-        let info = verve_av::probe(&args.file)?;
+        Ok(verve_av::probe(path)?)
+    }
+    #[cfg(not(feature = "ffmpeg"))]
+    {
+        let _ = path;
+        anyhow::bail!("this build has no FFmpeg; rebuild with --features ffmpeg")
+    }
+}
+
+/// `verve probe`.
+pub fn probe(args: &ProbeArgs, json: bool) -> Result<()> {
+    {
+        let info = probe_file(&args.file)?;
         if json {
             println!("{}", serde_json::to_string_pretty(&info)?);
             return Ok(());
@@ -103,6 +110,77 @@ pub fn doctor(json: bool) -> Result<()> {
     }
     if !verve_av::has_ffmpeg() {
         println!("\nthis build has no FFmpeg; local pipeline commands will refuse to run");
+    }
+    Ok(())
+}
+
+/// `verve split`.
+pub fn split(args: &ProbeArgs, json: bool) -> Result<()> {
+    let info = probe_file(&args.file)?;
+    let plan = verve_av::split::plan(
+        &info.keyframes_ms,
+        info.duration_ms,
+        verve_av::split::TARGET_CHUNK_MS,
+    );
+
+    if json {
+        println!("{}", serde_json::to_string_pretty(&plan)?);
+        return Ok(());
+    }
+
+    match plan.whole {
+        Some(reason) => println!("one chunk ({reason:?})"),
+        None => println!("{} chunks", plan.chunks.len()),
+    }
+    for c in &plan.chunks {
+        println!(
+            "  {:>4}  {:>9.3}s → {:>9.3}s  ({:.3}s)",
+            c.index,
+            c.start_ms as f64 / 1000.0,
+            c.end_ms as f64 / 1000.0,
+            c.duration_ms() as f64 / 1000.0
+        );
+    }
+    Ok(())
+}
+
+/// `verve ladder`.
+pub fn ladder(args: &ProbeArgs, json: bool) -> Result<()> {
+    use verve_av::encoder::Preset;
+
+    let info = probe_file(&args.file)?;
+    let Some(video) = info.primary_video() else {
+        anyhow::bail!("no video stream in {}", args.file.display());
+    };
+    let steps = verve_av::ladder::plan(video, &verve_av::ladder::STANDARD, Preset::Medium);
+    let fast = verve_av::ladder::fast_path(&steps).map(|s| s.name);
+
+    if json {
+        let rows: Vec<_> = steps
+            .iter()
+            .map(|s| {
+                serde_json::json!({
+                    "name": s.name,
+                    "width": s.spec.resolution.width,
+                    "height": s.spec.resolution.height,
+                    "rate_control": s.spec.rate_control,
+                    "fast_path": Some(s.name) == fast,
+                })
+            })
+            .collect();
+        println!("{}", serde_json::to_string_pretty(&rows)?);
+        return Ok(());
+    }
+
+    let (w, h) = video.display_size();
+    println!("source      {w}x{h}");
+    for s in &steps {
+        let marker = if Some(s.name) == fast {
+            "  ← fast path"
+        } else {
+            ""
+        };
+        println!("  {:<6} {}{marker}", s.name, s.spec.resolution);
     }
     Ok(())
 }
