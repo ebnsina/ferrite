@@ -4,7 +4,7 @@
 use chrono::TimeDelta;
 use ferrite_scheduler::capacity::LaneShares;
 use ferrite_scheduler::model::{Lane, NewWork, WorkKind, WorkState};
-use ferrite_scheduler::store::{Store, StoreError, Submitted};
+use ferrite_scheduler::store::{Scope, Store, StoreError, Submitted};
 use serde_json::json;
 use uuid::Uuid;
 
@@ -401,11 +401,13 @@ async fn cost_is_recorded_against_the_work_and_its_tenant() {
     store.record_cost(id, 12.5, 4096, "worker-1").await.unwrap();
     store.record_cost(id, 2.5, 1024, "worker-1").await.unwrap();
 
+    // Scoped, because an unscoped read of a tenant table returns nothing.
+    let mut tx = store.scoped(Scope::Tenant(t)).await.unwrap();
     let (tenant_id, cpu, bytes): (Uuid, f64, i64) = sqlx::query_as(
         "SELECT tenant_id, cpu_seconds, bytes_written FROM work_cost WHERE work_id = $1",
     )
     .bind(id)
-    .fetch_one(store.pool())
+    .fetch_one(&mut *tx)
     .await
     .unwrap();
     assert_eq!(tenant_id, t);

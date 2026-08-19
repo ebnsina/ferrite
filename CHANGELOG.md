@@ -16,6 +16,13 @@ and this project uses [semantic versioning](https://semver.org/spec/v2.0.0.html)
   an endpoint or a log level. The CLI still runs unconfigured, having nowhere
   to send telemetry and nobody reading it.
 
+- Row-level security on every tenant-scoped table in `sched_db`, forced so the
+  owner is subject to it too. Each query declares a scope: one tenant, or the
+  cross-tenant service scope that admission needs. A query with no scope returns
+  nothing.
+- The application connects as `ferrite_app`, a non-superuser role. Superusers
+  bypass row-level security outright, which made the policies decorative.
+
 ### Fixed
 
 - Anamorphic sources were laddered from their coded size, so a 720×576 frame

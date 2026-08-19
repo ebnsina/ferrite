@@ -4,7 +4,7 @@ use crate::capacity::{FleetState, LaneLoad, LaneShares};
 use crate::fairness::Candidate;
 use crate::model::{Lane, NewWork, TenantBudget, TenantId, WorkId, WorkItem, WorkKind, WorkState};
 use chrono::{DateTime, TimeDelta, Utc};
-use sqlx::{PgPool, Row, postgres::PgRow};
+use sqlx::{PgPool, Postgres, Row, Transaction, postgres::PgRow};
 use uuid::Uuid;
 
 /// What went wrong talking to `sched_db`.
@@ -32,6 +32,19 @@ pub enum StoreError {
 
 /// Result alias for store operations.
 pub type Result<T, E = StoreError> = std::result::Result<T, E>;
+
+/// Who a query runs as, under row-level security.
+///
+/// There is no third option on purpose: every query declares one, so a path
+/// that forgets its tenant returns nothing rather than everything.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Scope {
+    /// Cross-tenant. Admission compares tenants to decide who runs next, and
+    /// sweeps repair rows without knowing whose they are.
+    Service,
+    /// One tenant's rows and no others.
+    Tenant(TenantId),
+}
 
 /// A handle on `sched_db`.
 #[derive(Debug, Clone)]
@@ -136,6 +149,28 @@ impl Store {
         &self.pool
     }
 
+    /// Open a transaction with `scope` applied for its lifetime.
+    ///
+    /// `set_config(..., true)` is `SET LOCAL`: it ends with the transaction and
+    /// cannot leak to the next borrower of the connection.
+    pub async fn scoped(&self, scope: Scope) -> Result<Transaction<'static, Postgres>> {
+        let mut tx = self.pool.begin().await?;
+        match scope {
+            Scope::Service => {
+                sqlx::query("SELECT set_config('ferrite.scope', 'service', true)")
+                    .execute(&mut *tx)
+                    .await?;
+            }
+            Scope::Tenant(tenant_id) => {
+                sqlx::query("SELECT set_config('ferrite.tenant_id', $1, true)")
+                    .bind(tenant_id.to_string())
+                    .execute(&mut *tx)
+                    .await?;
+            }
+        }
+        Ok(tx)
+    }
+
     /// Set a tenant's limits. Called when a plan changes.
     pub async fn upsert_budget(
         &self,
@@ -144,6 +179,7 @@ impl Store {
         rate_limit_per_min: i32,
         fairness_weight: f32,
     ) -> Result<()> {
+        let mut tx = self.scoped(Scope::Tenant(tenant_id)).await?;
         sqlx::query(
             "INSERT INTO tenant_budgets
                (tenant_id, max_concurrent_tasks, rate_limit_per_min, fairness_weight)
@@ -158,31 +194,35 @@ impl Store {
         .bind(max_concurrent_tasks)
         .bind(rate_limit_per_min)
         .bind(fairness_weight)
-        .execute(&self.pool)
+        .execute(&mut *tx)
         .await?;
+        tx.commit().await?;
         Ok(())
     }
 
     /// Stop or resume admission for a tenant.
     pub async fn set_suspended(&self, tenant_id: TenantId, suspended: bool) -> Result<()> {
+        let mut tx = self.scoped(Scope::Tenant(tenant_id)).await?;
         sqlx::query(
             "UPDATE tenant_budgets SET suspended = $2, updated_at = now() WHERE tenant_id = $1",
         )
         .bind(tenant_id)
         .bind(suspended)
-        .execute(&self.pool)
+        .execute(&mut *tx)
         .await?;
+        tx.commit().await?;
         Ok(())
     }
 
     /// A tenant's budget.
     pub async fn budget(&self, tenant_id: TenantId) -> Result<TenantBudget> {
+        let mut tx = self.scoped(Scope::Tenant(tenant_id)).await?;
         sqlx::query(
             "SELECT tenant_id, max_concurrent_tasks, in_flight, rate_limit_per_min
              FROM tenant_budgets WHERE tenant_id = $1",
         )
         .bind(tenant_id)
-        .fetch_optional(&self.pool)
+        .fetch_optional(&mut *tx)
         .await?
         .map(|row| TenantBudget {
             tenant_id: row.get("tenant_id"),
@@ -198,7 +238,7 @@ impl Store {
     /// `fairness_weight` is copied onto the row, not looked up later, so a plan
     /// downgrade cannot retroactively demote work already queued.
     pub async fn submit(&self, new: &NewWork) -> Result<Submitted> {
-        let mut tx = self.pool.begin().await?;
+        let mut tx = self.scoped(Scope::Tenant(new.tenant_id)).await?;
 
         let budget: Option<(f32, bool)> = sqlx::query_as(
             "SELECT fairness_weight, suspended FROM tenant_budgets WHERE tenant_id = $1",
@@ -257,13 +297,14 @@ impl Store {
 
     /// One item by id.
     pub async fn get(&self, id: WorkId) -> Result<Option<WorkItem>> {
+        let mut tx = self.scoped(Scope::Service).await?;
         let row = sqlx::query(
             "SELECT id, tenant_id, kind, ref_id, spec, lane, priority_key, fairness_weight,
                     state, workflow_id, dedupe_key, attempts, created_at,
                     admitted_at, finished_at FROM work WHERE id = $1",
         )
         .bind(id)
-        .fetch_optional(&self.pool)
+        .fetch_optional(&mut *tx)
         .await?;
         row.as_ref().map(work_from_row).transpose()
     }
@@ -275,6 +316,9 @@ impl Store {
         state: Option<WorkState>,
         limit: i64,
     ) -> Result<Vec<WorkItem>> {
+        let mut tx = self
+            .scoped(tenant_id.map_or(Scope::Service, Scope::Tenant))
+            .await?;
         let rows = sqlx::query(
             "SELECT id, tenant_id, kind, ref_id, spec, lane, priority_key, fairness_weight,
                     state, workflow_id, dedupe_key, attempts, created_at,
@@ -287,13 +331,14 @@ impl Store {
         .bind(tenant_id)
         .bind(state.map(|s| s.as_str()))
         .bind(limit)
-        .fetch_all(&self.pool)
+        .fetch_all(&mut *tx)
         .await?;
         rows.iter().map(work_from_row).collect()
     }
 
     /// Per-lane running and pending counts, for the capacity planner.
     pub async fn fleet_state(&self, total_slots: u32, shares: LaneShares) -> Result<FleetState> {
+        let mut tx = self.scoped(Scope::Service).await?;
         let rows = sqlx::query(
             "SELECT lane,
                     count(*) FILTER (WHERE state IN ('admitted', 'running')) AS running,
@@ -302,7 +347,7 @@ impl Store {
              WHERE state IN ('pending', 'admitted', 'running')
              GROUP BY lane",
         )
-        .fetch_all(&self.pool)
+        .fetch_all(&mut *tx)
         .await?;
 
         let mut state = FleetState {
@@ -328,6 +373,7 @@ impl Store {
     /// Suspended tenants and tenants over their per-minute rate are excluded
     /// here rather than filtered later, so they never consume a fairness turn.
     pub async fn candidates(&self, lane: Lane) -> Result<Vec<Candidate>> {
+        let mut tx = self.scoped(Scope::Service).await?;
         let rows = sqlx::query(
             "WITH pending AS (
                SELECT tenant_id, count(*) AS n, max(fairness_weight) AS weight
@@ -351,7 +397,7 @@ impl Store {
              WHERE b.suspended = FALSE",
         )
         .bind(lane.as_str())
-        .fetch_all(&self.pool)
+        .fetch_all(&mut *tx)
         .await?;
 
         Ok(rows
@@ -384,7 +430,7 @@ impl Store {
         if count == 0 {
             return Ok(Vec::new());
         }
-        let mut tx = self.pool.begin().await?;
+        let mut tx = self.scoped(Scope::Tenant(tenant_id)).await?;
 
         let rows = sqlx::query(
             "WITH picked AS (
@@ -432,14 +478,16 @@ impl Store {
 
     /// Record that the workflow started.
     pub async fn mark_running(&self, id: WorkId, workflow_id: &str) -> Result<()> {
+        let mut tx = self.scoped(Scope::Service).await?;
         sqlx::query(
             "UPDATE work SET state = 'running', workflow_id = $2
              WHERE id = $1 AND state = 'admitted'",
         )
         .bind(id)
         .bind(workflow_id)
-        .execute(&self.pool)
+        .execute(&mut *tx)
         .await?;
+        tx.commit().await?;
         Ok(())
     }
 
@@ -449,7 +497,7 @@ impl Store {
     /// completion cannot drive `in_flight` below zero.
     pub async fn finish(&self, id: WorkId, state: WorkState, error: Option<&str>) -> Result<bool> {
         debug_assert!(state.is_terminal());
-        let mut tx = self.pool.begin().await?;
+        let mut tx = self.scoped(Scope::Service).await?;
 
         let released: Option<(Uuid,)> = sqlx::query_as(
             "UPDATE work SET state = $2, finished_at = now(), last_error = $3
@@ -484,7 +532,7 @@ impl Store {
     /// Used when starting the workflow failed: the work is not lost, and the
     /// attempt is already counted so a permanently broken item eventually fails.
     pub async fn release_to_pending(&self, id: WorkId) -> Result<bool> {
-        let mut tx = self.pool.begin().await?;
+        let mut tx = self.scoped(Scope::Service).await?;
 
         let released: Option<(Uuid,)> = sqlx::query_as(
             "UPDATE work SET state = 'pending', admitted_at = NULL, last_error = $2
@@ -519,7 +567,7 @@ impl Store {
     /// `admitted` with no workflow. Nothing else would ever pick them up.
     pub async fn requeue_stalled(&self, older_than: TimeDelta) -> Result<u64> {
         let seconds = older_than.num_seconds().max(0) as f64;
-        let mut tx = self.pool.begin().await?;
+        let mut tx = self.scoped(Scope::Service).await?;
 
         let rows = sqlx::query(
             "UPDATE work SET state = 'pending', admitted_at = NULL
@@ -551,6 +599,7 @@ impl Store {
     /// The counter is a cache of a count. Run at startup, because a process
     /// killed mid-transaction is exactly when a cache stops matching.
     pub async fn reconcile_in_flight(&self) -> Result<u64> {
+        let mut tx = self.scoped(Scope::Service).await?;
         let result = sqlx::query(
             "UPDATE tenant_budgets b
              SET in_flight = (
@@ -563,8 +612,9 @@ impl Store {
                    WHERE w.tenant_id = b.tenant_id AND w.state IN ('admitted', 'running')
                  )",
         )
-        .execute(&self.pool)
+        .execute(&mut *tx)
         .await?;
+        tx.commit().await?;
         Ok(result.rows_affected())
     }
 
@@ -576,6 +626,7 @@ impl Store {
         bytes_written: i64,
         machine: &str,
     ) -> Result<()> {
+        let mut tx = self.scoped(Scope::Service).await?;
         sqlx::query(
             "INSERT INTO work_cost (work_id, tenant_id, cpu_seconds, bytes_written, machine)
              SELECT $1, tenant_id, $2, $3, $4 FROM work WHERE id = $1
@@ -589,13 +640,15 @@ impl Store {
         .bind(cpu_seconds)
         .bind(bytes_written)
         .bind(machine)
-        .execute(&self.pool)
+        .execute(&mut *tx)
         .await?;
+        tx.commit().await?;
         Ok(())
     }
 
     /// Lane wait times and depths, for `ferrite capacity`.
     pub async fn lane_stats(&self) -> Result<Vec<LaneStats>> {
+        let mut tx = self.scoped(Scope::Service).await?;
         let rows = sqlx::query(
             "SELECT lane,
                     count(*) FILTER (WHERE state = 'pending') AS waiting,
@@ -605,7 +658,7 @@ impl Store {
              WHERE state IN ('pending', 'admitted', 'running')
              GROUP BY lane",
         )
-        .fetch_all(&self.pool)
+        .fetch_all(&mut *tx)
         .await?;
 
         Ok(rows

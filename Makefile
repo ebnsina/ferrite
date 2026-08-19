@@ -5,7 +5,7 @@ FEATURES ?= ffmpeg
 FERRITE_SCHED_DB_PORT ?= 55433
 FERRITE_MINIO_PORT ?= 9020
 FERRITE_TEMPORAL_PORT ?= 7253
-SCHED_DATABASE_URL ?= postgres://ferrite:ferrite@localhost:$(FERRITE_SCHED_DB_PORT)/sched_db
+SCHED_DATABASE_URL ?= postgres://ferrite_app:ferrite-app-dev@localhost:$(FERRITE_SCHED_DB_PORT)/sched_db
 export SCHED_DATABASE_URL
 
 .PHONY: help

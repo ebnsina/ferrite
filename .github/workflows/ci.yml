@@ -57,9 +57,14 @@ jobs:
           --health-cmd "pg_isready -U ferrite"
           --health-interval 5s --health-timeout 5s --health-retries 20
     env:
-      SCHED_DATABASE_URL: postgres://ferrite:ferrite@localhost:55433/sched_db
+      SCHED_DATABASE_URL: postgres://ferrite_app:ferrite-app-dev@localhost:55433/sched_db
     steps:
       - uses: actions/checkout@v4
+      - name: Application role
+        # A superuser bypasses row-level security, so the tests must not be one.
+        run: |
+          PGPASSWORD=ferrite psql -h localhost -p 55433 -U ferrite -d sched_db \
+            -f deploy/postgres-init/01-app-role.sql
       - uses: dtolnay/rust-toolchain@stable
         with: { toolchain: "1.95.0" }
       - uses: Swatinem/rust-cache@v2

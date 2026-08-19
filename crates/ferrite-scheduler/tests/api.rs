@@ -2,7 +2,7 @@
 
 use ferrite_scheduler::api::{ApiState, router};
 use ferrite_scheduler::engine::RecordingEngine;
-use ferrite_scheduler::store::Store;
+use ferrite_scheduler::store::{Scope, Store};
 use serde_json::json;
 use std::sync::Arc;
 use uuid::Uuid;
@@ -327,10 +327,12 @@ async fn finishing_releases_the_slot_and_records_what_it_cost() {
     assert_eq!(res.status(), 200);
 
     assert_eq!(s.store.budget(t).await.unwrap().in_flight, 0);
+    // Scoped, because an unscoped read of a tenant table returns nothing.
+    let mut tx = s.store.scoped(Scope::Tenant(t)).await.unwrap();
     let (cpu, machine): (f64, String) =
         sqlx::query_as("SELECT cpu_seconds, machine FROM work_cost WHERE work_id = $1")
             .bind(id)
-            .fetch_one(s.store.pool())
+            .fetch_one(&mut *tx)
             .await
             .unwrap();
     assert_eq!(cpu, 42.5);
