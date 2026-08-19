@@ -319,6 +319,60 @@ fn a_short_source_still_produces_a_sheet() {
 }
 
 #[test]
+fn thumbnails_come_out_of_the_same_decode_as_the_sheet() {
+    let Some(fx) = Fixture::new("thumbs") else {
+        return;
+    };
+    let Some(source) = fx.moving("source", 60) else {
+        return;
+    };
+
+    let thumbs = fx.out("thumbs");
+    let sheet = sheet::build_with(
+        &source,
+        &fx.out("sheet.jpg"),
+        &sheet::Options {
+            thumbnails: Some(thumbs.clone()),
+        },
+    )
+    .expect("build sheet");
+
+    assert_eq!(sheet.thumbnails.len(), sheet.samples.len());
+    for (path, sample) in sheet.thumbnails.iter().zip(&sheet.samples) {
+        assert!(path.is_file(), "{} was not written", path.display());
+        assert!(std::fs::metadata(path).unwrap().len() > 0);
+        // Named by source time, so a player can pick one by position alone.
+        assert!(
+            path.file_name()
+                .unwrap()
+                .to_string_lossy()
+                .contains(&sample.time_ms.to_string()),
+            "{} does not name its timestamp",
+            path.display()
+        );
+    }
+
+    let Some((w, h)) = dimensions(&sheet.thumbnails[0]) else {
+        return;
+    };
+    assert_eq!((w, h), CELL);
+}
+
+#[test]
+fn no_thumbnails_are_written_unless_asked_for() {
+    let Some(fx) = Fixture::new("nothumbs") else {
+        return;
+    };
+    let Some(source) = fx.moving("source", 30) else {
+        return;
+    };
+
+    let sheet = sheet::build(&source, &fx.out("sheet.jpg")).expect("build sheet");
+    assert!(sheet.thumbnails.is_empty());
+    assert!(!fx.out("thumbs").exists());
+}
+
+#[test]
 fn a_file_that_is_not_video_is_an_error_not_a_panic() {
     let Some(fx) = Fixture::new("garbage") else {
         return;

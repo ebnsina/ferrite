@@ -854,3 +854,79 @@ pub fn job(args: &JobArgs, json: bool) -> Result<()> {
         Ok(())
     }
 }
+
+/// Arguments for `ferrite run`.
+#[derive(Debug, Args)]
+pub struct RunArgs {
+    /// The source to publish.
+    pub file: PathBuf,
+    /// Where the playable asset goes.
+    #[arg(short, long, default_value = "asset")]
+    pub out: PathBuf,
+    /// Encode only the rung that makes it playable.
+    #[arg(long)]
+    pub fast: bool,
+}
+
+/// `ferrite run`.
+pub fn run(args: &RunArgs, json: bool) -> Result<()> {
+    #[cfg(not(feature = "ffmpeg"))]
+    {
+        let _ = (args, json);
+        anyhow::bail!("this build has no FFmpeg; rebuild with --features ffmpeg")
+    }
+    #[cfg(feature = "ffmpeg")]
+    {
+        use ferrite_av::encoder::Preset;
+        use ferrite_worker::asset::{self, Request};
+        use std::time::Instant;
+
+        let request = Request {
+            preset: if args.fast {
+                Preset::Veryfast
+            } else {
+                Preset::Medium
+            },
+            fast_only: args.fast,
+        };
+
+        let started = Instant::now();
+        let published = asset::run(&args.file, &args.out, &request)?;
+        let elapsed = started.elapsed();
+
+        if json {
+            println!("{}", serde_json::to_string_pretty(&published)?);
+            return Ok(());
+        }
+
+        for r in &published.renditions {
+            println!(
+                "  {:<6} {:>5}x{:<5} {:>7} frames  {:>8} KB",
+                r.name,
+                r.width,
+                r.height,
+                r.frames,
+                r.bytes / 1024
+            );
+        }
+        println!(
+            "  audio  {}",
+            if published.audio {
+                "aac stereo"
+            } else {
+                "none"
+            }
+        );
+        println!("  sheet  {}", published.contact_sheet.display());
+        println!("  thumbs {}", published.thumbnails);
+        println!("  hls    {}", published.hls.display());
+        println!("  dash   {}", published.dash.display());
+        println!(
+            "{:.2}s for {:.1}s of video ({:.1}x realtime)",
+            elapsed.as_secs_f64(),
+            published.duration_ms as f64 / 1000.0,
+            published.duration_ms as f64 / 1000.0 / elapsed.as_secs_f64().max(0.001)
+        );
+        Ok(())
+    }
+}

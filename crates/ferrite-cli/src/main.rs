@@ -45,6 +45,8 @@ enum Command {
     Compare(pipeline::CompareArgs),
     /// Job mode: one file in, one file out.
     Job(pipeline::JobArgs),
+    /// The whole pipeline, end to end, on this machine.
+    Run(pipeline::RunArgs),
     /// What this build links against and which codecs it can produce.
     Doctor,
 }
@@ -70,6 +72,7 @@ fn main() -> ExitCode {
         Command::Bench(args) => pipeline::bench(&args, cli.json),
         Command::Compare(args) => pipeline::compare(&args, cli.json),
         Command::Job(args) => pipeline::job(&args, cli.json),
+        Command::Run(args) => pipeline::run(&args, cli.json),
         Command::Doctor => pipeline::doctor(cli.json),
     };
 

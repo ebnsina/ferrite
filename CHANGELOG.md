@@ -43,6 +43,11 @@ and this project uses [semantic versioning](https://semver.org/spec/v2.0.0.html)
 
 ### Added
 
+- `ferrite run`: the whole pipeline end to end on one machine — probe, ladder,
+  decode-once encode, audio, checks, contact sheet, thumbnails and packaging.
+  Publishing is gated on the checks passing.
+- Thumbnails, written from the same decode as the contact sheet and named by
+  the source time they were taken from.
 - Audio normalisation: one AAC stereo track, encoded once and shared by every
   video rung, never chunked. Source audio was passed straight through before,
   which the packager refuses outright for an MP3 soundtrack in an MP4.

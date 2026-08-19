@@ -32,6 +32,13 @@ pub struct Sample {
     pub phash: i64,
 }
 
+/// What else to write from the same decode.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Options {
+    /// Write each sampled frame as its own JPEG here, for scrub previews.
+    pub thumbnails: Option<PathBuf>,
+}
+
 /// The sheet and what was hashed to build it.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Sheet {
@@ -39,6 +46,9 @@ pub struct Sheet {
     pub path: PathBuf,
     /// One per sampled frame.
     pub samples: Vec<Sample>,
+    /// Individual frames, when they were asked for.
+    #[serde(default)]
+    pub thumbnails: Vec<PathBuf>,
 }
 
 impl Sheet {
@@ -65,6 +75,14 @@ impl Sheet {
 
 /// Sample `input`, write the sheet to `out`, and hash every frame taken.
 pub fn build(input: &Path, out: &Path) -> Result<Sheet> {
+    build_with(input, out, &Options::default())
+}
+
+/// [`build`], plus whatever else `options` asks for from the same decode.
+///
+/// Thumbnails are free here and a second pass later is not: the frames are
+/// already scaled and in memory.
+pub fn build_with(input: &Path, out: &Path, options: &Options) -> Result<Sheet> {
     crate::init()?;
 
     let mut source = ff::format::input(input).map_err(|e| AvError::OpenInput {
@@ -135,11 +153,34 @@ pub fn build(input: &Path, out: &Path) -> Result<Sheet> {
         });
     }
 
+    let thumbnails = match &options.thumbnails {
+        Some(dir) => write_thumbnails(&cells, &samples, dir)?,
+        None => Vec::new(),
+    };
+
     write_sheet(&cells, out)?;
     Ok(Sheet {
         path: out.to_path_buf(),
         samples,
+        thumbnails,
     })
+}
+
+/// One JPEG per sampled frame, named by the time it was taken from.
+fn write_thumbnails(
+    cells: &[ff::frame::Video],
+    samples: &[Sample],
+    dir: &Path,
+) -> Result<Vec<PathBuf>> {
+    std::fs::create_dir_all(dir)?;
+    let mut written = Vec::with_capacity(cells.len());
+
+    for (cell, sample) in cells.iter().zip(samples) {
+        let path = dir.join(format!("{:08}ms.jpg", sample.time_ms));
+        std::fs::write(&path, encode_jpeg(cell)?)?;
+        written.push(path);
+    }
+    Ok(written)
 }
 
 /// Seek to `time_ms` and decode one frame there.
@@ -214,6 +255,20 @@ fn write_sheet(cells: &[ff::frame::Video], out: &Path) -> Result<()> {
 
     // YUVJ420P is deprecated but it is what mjpeg means by full range, and the
     // encoder refuses anything else. The swscaler notice about it is cosmetic.
+    if let Some(parent) = out.parent()
+        && !parent.as_os_str().is_empty()
+    {
+        std::fs::create_dir_all(parent)?;
+    }
+    std::fs::write(out, encode_jpeg(&sheet)?)?;
+    Ok(())
+}
+
+/// One frame as a JPEG. An MJPEG packet is a complete JPEG file, so there is no
+/// container to write.
+fn encode_jpeg(frame: &ff::frame::Video) -> Result<Vec<u8>> {
+    // YUVJ420P is deprecated but it is what mjpeg means by full range, and the
+    // encoder refuses anything else. The swscaler notice about it is cosmetic.
     let codec = ff::encoder::find_by_name("mjpeg").ok_or_else(|| AvError::CodecUnavailable {
         codec: "mjpeg".into(),
         reason: "not in this FFmpeg build".into(),
@@ -223,8 +278,8 @@ fn write_sheet(cells: &[ff::frame::Video], out: &Path) -> Result<()> {
         .encoder()
         .video()
         .map_err(wrap("open mjpeg"))?;
-    context.set_width(sheet.width());
-    context.set_height(sheet.height());
+    context.set_width(frame.width());
+    context.set_height(frame.height());
     context.set_format(ff::format::Pixel::YUVJ420P);
     context.set_time_base(ff::Rational(1, 1));
 
@@ -234,25 +289,19 @@ fn write_sheet(cells: &[ff::frame::Video], out: &Path) -> Result<()> {
         .open_with(options)
         .map_err(wrap("configure mjpeg"))?;
 
-    sheet.set_pts(Some(0));
-    encoder.send_frame(&sheet).map_err(wrap("encode sheet"))?;
-    encoder.send_eof().map_err(wrap("finish sheet"))?;
+    let mut copy = frame.clone();
+    copy.set_pts(Some(0));
+    encoder.send_frame(&copy).map_err(wrap("encode jpeg"))?;
+    encoder.send_eof().map_err(wrap("finish jpeg"))?;
 
     let mut packet = ff::Packet::empty();
     encoder
         .receive_packet(&mut packet)
-        .map_err(wrap("read sheet"))?;
-    let jpeg = packet
+        .map_err(wrap("read jpeg"))?;
+    Ok(packet
         .data()
-        .ok_or_else(|| AvError::InvalidSpec("empty sheet".into()))?;
-
-    if let Some(parent) = out.parent()
-        && !parent.as_os_str().is_empty()
-    {
-        std::fs::create_dir_all(parent)?;
-    }
-    std::fs::write(out, jpeg)?;
-    Ok(())
+        .ok_or_else(|| AvError::InvalidSpec("empty jpeg".into()))?
+        .to_vec())
 }
 
 /// Copy one cell into the sheet at a pixel offset.
