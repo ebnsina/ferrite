@@ -12,6 +12,9 @@ pub mod split;
 #[cfg(feature = "ffmpeg")]
 mod probe;
 
+#[cfg(feature = "ffmpeg")]
+pub mod transcode;
+
 pub use encoder::{
     BackendId, BackendRegistry, CancelSignal, EncodeSpec, EncoderBackend, Frame, NeverCancel,
     Packet, PixelFormat, Preset, Provenance, RateControl, Resolution, VideoCodecName, VideoEncoder,

@@ -184,3 +184,101 @@ pub fn ladder(args: &ProbeArgs, json: bool) -> Result<()> {
     }
     Ok(())
 }
+
+/// Arguments for `verve encode`.
+#[derive(Debug, Args)]
+pub struct EncodeArgs {
+    /// The file to encode.
+    pub file: PathBuf,
+    /// Directory to write renditions into.
+    #[arg(short, long, default_value = "out")]
+    pub out: PathBuf,
+    /// Encode the fast-path rung only.
+    #[arg(long)]
+    pub fast: bool,
+}
+
+/// `verve encode`.
+pub fn encode(args: &EncodeArgs, json: bool) -> Result<()> {
+    #[cfg(not(feature = "ffmpeg"))]
+    {
+        let _ = (args, json);
+        anyhow::bail!("this build has no FFmpeg; rebuild with --features ffmpeg")
+    }
+    #[cfg(feature = "ffmpeg")]
+    {
+        use std::time::Instant;
+        use verve_av::encoder::Preset;
+        use verve_av::transcode::Output;
+
+        let info = probe_file(&args.file)?;
+        let Some(video) = info.primary_video() else {
+            anyhow::bail!("no video stream in {}", args.file.display());
+        };
+
+        let preset = if args.fast {
+            Preset::Veryfast
+        } else {
+            Preset::Medium
+        };
+        let mut steps = verve_av::ladder::plan(video, &verve_av::ladder::STANDARD, preset);
+        if args.fast {
+            steps = verve_av::ladder::fast_path(&steps)
+                .cloned()
+                .into_iter()
+                .collect();
+        }
+
+        let outputs: Vec<Output> = steps
+            .iter()
+            .map(|s| Output {
+                path: args.out.join(format!("{}.mp4", s.name)),
+                spec: s.spec.clone(),
+            })
+            .collect();
+
+        let started = Instant::now();
+        let reports = verve_av::transcode::run(
+            &args.file,
+            &outputs,
+            std::sync::Arc::new(verve_av::NeverCancel),
+        )?;
+        let elapsed = started.elapsed();
+
+        if json {
+            let rows: Vec<_> = reports
+                .iter()
+                .zip(&steps)
+                .map(|(r, s)| {
+                    serde_json::json!({
+                        "name": s.name,
+                        "path": r.path,
+                        "frames": r.frames,
+                        "bytes": r.bytes,
+                        "provenance": r.provenance,
+                    })
+                })
+                .collect();
+            println!("{}", serde_json::to_string_pretty(&rows)?);
+            return Ok(());
+        }
+
+        for (r, s) in reports.iter().zip(&steps) {
+            println!(
+                "  {:<6} {:<10} {:>7} frames  {:>9} KB  {}",
+                s.name,
+                s.spec.resolution.to_string(),
+                r.frames,
+                r.bytes / 1024,
+                r.path.display()
+            );
+        }
+        println!(
+            "{} rungs in {:.2}s ({:.1}x realtime)",
+            reports.len(),
+            elapsed.as_secs_f64(),
+            info.duration_ms as f64 / 1000.0 / elapsed.as_secs_f64().max(0.001)
+        );
+        Ok(())
+    }
+}

@@ -226,6 +226,19 @@ mod imp {
             }
         }
 
+        fn extradata(&self) -> Vec<u8> {
+            // SAFETY: the encoder is open, so FFmpeg owns a buffer of exactly
+            // extradata_size bytes here, or a null pointer and zero.
+            unsafe {
+                let ctx = self.encoder.as_ptr();
+                let size = (*ctx).extradata_size;
+                if (*ctx).extradata.is_null() || size <= 0 {
+                    return Vec::new();
+                }
+                std::slice::from_raw_parts((*ctx).extradata, size as usize).to_vec()
+            }
+        }
+
         fn provenance(&self) -> Provenance {
             Provenance {
                 backend: BackendId::Cpu,

@@ -156,6 +156,13 @@ pub trait VideoEncoder: Send + std::fmt::Debug {
     /// Take the next available packet, or `None` when the encoder is drained.
     fn receive_packet(&mut self) -> Result<Option<Packet>>;
 
+    /// Codec setup bytes the container stores out of band — SPS/PPS for H.264.
+    /// Empty until the encoder is open. A muxer that never gets these writes a
+    /// file that decodes to nothing.
+    fn extradata(&self) -> Vec<u8> {
+        Vec::new()
+    }
+
     /// What ran, for the rendition record.
     fn provenance(&self) -> Provenance;
 }

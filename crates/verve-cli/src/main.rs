@@ -29,6 +29,8 @@ enum Command {
     Split(pipeline::ProbeArgs),
     /// Print the ladder: which rungs this source gets, and why.
     Ladder(pipeline::ProbeArgs),
+    /// Run the ladder locally, decode-once.
+    Encode(pipeline::EncodeArgs),
     /// What this build links against and which codecs it can produce.
     Doctor,
 }
@@ -48,6 +50,7 @@ fn main() -> ExitCode {
         Command::Probe(args) => pipeline::probe(&args, cli.json),
         Command::Split(args) => pipeline::split(&args, cli.json),
         Command::Ladder(args) => pipeline::ladder(&args, cli.json),
+        Command::Encode(args) => pipeline::encode(&args, cli.json),
         Command::Doctor => pipeline::doctor(cli.json),
     };
 
