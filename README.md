@@ -90,6 +90,8 @@ ferrite compare before.json after.json             # the CI gate
 
 ./scripts/dashif.sh asset/                         # start the validator
 ferrite conform http://localhost/asset/cmaf/manifest.mpd
+
+./scripts/play.sh asset/                           # watch it in a browser
 ```
 
 `ferrite quality` needs an ffmpeg built `--enable-libvmaf`. Compare against the

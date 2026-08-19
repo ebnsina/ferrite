@@ -47,6 +47,8 @@ and this project uses [semantic versioning](https://semver.org/spec/v2.0.0.html)
 
 ### Added
 
+- `scripts/play.sh`: serves a published asset with hls.js and dash.js side by
+  side. Conformance tools prove the files are correct; this proves they play.
 - Audio renditions carry the source's language when it states one. The packager
   rejects `und`, so an unknown language is left unclaimed rather than guessed at.
 - `ferrite conform`: MPEG-DASH and CMAF standards checks against DASH-IF,

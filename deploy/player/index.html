@@ -1,0 +1,63 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>ferrite — playback check</title>
+<style>
+  body { font: 14px/1.5 ui-monospace, monospace; margin: 2rem; max-width: 60rem; }
+  h1 { font-size: 1.1rem; margin: 0 0 1.5rem; }
+  section { margin-bottom: 2.5rem; }
+  h2 { font-size: .9rem; text-transform: uppercase; letter-spacing: .08em; color: #666; }
+  video { width: 100%; max-width: 40rem; background: #000; }
+  pre { background: #f4f4f4; padding: .75rem; overflow-x: auto; font-size: 12px; }
+  .ok { color: #0a7d28; } .bad { color: #b00020; }
+</style>
+
+<h1>ferrite playback check</h1>
+
+<section>
+  <h2>HLS — hls.js</h2>
+  <video id="hls" controls muted playsinline></video>
+  <pre id="hls-log"></pre>
+</section>
+
+<section>
+  <h2>DASH — dash.js</h2>
+  <video id="dash" controls muted playsinline></video>
+  <pre id="dash-log"></pre>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
+<script src="https://cdn.dashjs.org/v4.7.4/dash.all.min.js"></script>
+<script>
+const write = (id, message, bad) => {
+  const el = document.getElementById(id);
+  el.innerHTML += `<span class="${bad ? 'bad' : 'ok'}">${message}</span>\n`;
+};
+
+// Both players are checked: conformance tools prove the files are correct,
+// these prove they actually play.
+if (Hls.isSupported()) {
+  const video = document.getElementById('hls');
+  const hls = new Hls();
+  hls.loadSource('cmaf/master.m3u8');
+  hls.attachMedia(video);
+  hls.on(Hls.Events.MANIFEST_PARSED, (_, d) =>
+    write('hls-log', `${d.levels.length} levels, ${(d.audioTracks || []).length} audio tracks`));
+  hls.on(Hls.Events.LEVEL_SWITCHED, (_, d) =>
+    write('hls-log', `switched to ${hls.levels[d.level].height}p`));
+  hls.on(Hls.Events.ERROR, (_, d) => d.fatal && write('hls-log', `${d.type} ${d.details}`, true));
+  video.addEventListener('playing', () => {
+    const q = video.getVideoPlaybackQuality();
+    write('hls-log', `playing ${video.videoWidth}x${video.videoHeight}, ${q.droppedVideoFrames} dropped`);
+  });
+} else {
+  write('hls-log', 'hls.js unsupported here', true);
+}
+
+const dash = dashjs.MediaPlayer().create();
+dash.initialize(document.getElementById('dash'), 'cmaf/manifest.mpd', false);
+dash.on(dashjs.MediaPlayer.events.STREAM_INITIALIZED, () =>
+  write('dash-log', 'manifest loaded, stream initialised'));
+dash.on(dashjs.MediaPlayer.events.QUALITY_CHANGE_RENDERED, (e) =>
+  e.mediaType === 'video' && write('dash-log', `quality index ${e.newQuality}`));
+dash.on(dashjs.MediaPlayer.events.ERROR, (e) => write('dash-log', String(e.error), true));
+</script>
