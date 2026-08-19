@@ -9,3 +9,4 @@ pub mod asset;
 pub mod job;
 
 pub mod storage;
+pub mod work;

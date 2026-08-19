@@ -88,6 +88,46 @@ pub enum AssetError {
     Rejected(String),
 }
 
+/// Plan an asset without encoding it, for handing to the fleet.
+///
+/// The plan is computed once here and travels with the job: a worker that
+/// resplit could cut somewhere else, and a retried chunk must reproduce its
+/// boundaries exactly.
+pub fn plan(
+    input: &Path,
+    out_dir: &Path,
+    request: &Request,
+) -> Result<crate::work::AssetJob, AssetError> {
+    let info = ferrite_av::probe(input)?;
+    let video = info
+        .primary_video()
+        .ok_or_else(|| AssetError::NoVideo(input.display().to_string()))?;
+
+    let mut steps = ferrite_av::ladder::plan(video, &ferrite_av::ladder::STANDARD, request.preset);
+    if request.fast_only {
+        steps = ferrite_av::ladder::fast_path(&steps)
+            .cloned()
+            .into_iter()
+            .collect();
+    }
+    if steps.is_empty() {
+        return Err(AssetError::Rejected("the ladder planned no rungs".into()));
+    }
+
+    Ok(crate::work::AssetJob {
+        input: input.to_path_buf(),
+        out_dir: out_dir.to_path_buf(),
+        plan: ferrite_av::split::plan(&info.keyframes_ms, info.duration_ms, request.chunk_ms),
+        rungs: steps
+            .iter()
+            .map(|s| crate::work::Rung {
+                name: s.name.to_string(),
+                spec: s.spec.clone(),
+            })
+            .collect(),
+    })
+}
+
 /// Run the pipeline over `input` and leave a playable directory in `out_dir`.
 ///
 /// Publishing is gated on the checks: a dropped chunk produces a file that

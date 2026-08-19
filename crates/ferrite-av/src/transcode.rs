@@ -10,12 +10,13 @@ use crate::encoder::{
 };
 use crate::error::{AvError, Result};
 use ffmpeg_next as ff;
+use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 /// One file to produce.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Output {
     /// Where to write it.
     pub path: PathBuf,
@@ -24,7 +25,7 @@ pub struct Output {
 }
 
 /// What one output cost and what produced it.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Report {
     /// Where it was written.
     pub path: PathBuf,

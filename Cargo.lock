@@ -986,13 +986,23 @@ name = "ferrite-worker"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "clap",
  "ferrite-av",
  "ferrite-telemetry",
+ "futures",
  "opendal",
  "serde",
+ "serde_json",
+ "temporalio-client",
+ "temporalio-common",
+ "temporalio-macros",
+ "temporalio-sdk",
+ "temporalio-workflow",
  "thiserror",
  "tokio",
  "tracing",
+ "tracing-subscriber",
+ "url",
 ]
 
 [[package]]

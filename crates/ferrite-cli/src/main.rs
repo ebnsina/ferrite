@@ -49,6 +49,8 @@ enum Command {
     Run(pipeline::RunArgs),
     /// MPEG-DASH and CMAF standards checks, via DASH-IF.
     Conform(pipeline::ConformArgs),
+    /// Submit an asset to the fleet and wait for it.
+    Submit(pipeline::SubmitArgs),
     /// What this build links against and which codecs it can produce.
     Doctor,
 }
@@ -76,6 +78,7 @@ fn main() -> ExitCode {
         Command::Job(args) => pipeline::job(&args, cli.json),
         Command::Run(args) => pipeline::run(&args, cli.json),
         Command::Conform(args) => pipeline::conform(&args, cli.json),
+        Command::Submit(args) => pipeline::submit(&args, cli.json),
         Command::Doctor => pipeline::doctor(cli.json),
     };
 

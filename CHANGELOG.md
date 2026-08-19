@@ -55,6 +55,13 @@ and this project uses [semantic versioning](https://semver.org/spec/v2.0.0.html)
   exists to preserve.
 - `ferrite run --whole` encodes in one pass, for comparing against.
 
+- `ferrite-worker`: the machine that pulls chunks off the queue. Temporal
+  activities encode a chunk across every rung from one decode, join each rung,
+  and report what it cost so the slot comes back and the work is billed.
+- `ferrite submit`: plans an asset and hands the plan to the fleet. The plan
+  travels with the job rather than being recomputed on a worker, so a retried
+  chunk reproduces identical boundaries.
+
 ### Measured
 
 Against a 150s source, chunked versus whole: VMAF 97.579 against 97.429, worst
@@ -62,6 +69,10 @@ frame identical, CAMBI 0.4008 against 0.4015, CIEDE2000 57.95 against 57.59.
 Frame counts and durations match exactly, and keyframes stay identical across
 every rung after the join. The gate is a drop of no more than 0.5 VMAF; chunking
 came out marginally ahead.
+
+Distributed across three workers: 150s of video, 15 chunks, 3 rungs, 32.4s wall
+clock and 424.8 CPU-seconds. Output is structurally identical to the
+single-machine run — 4500 frames and 150.000000s in every rendition.
 
 ## Stage 2 — one machine, end to end
 

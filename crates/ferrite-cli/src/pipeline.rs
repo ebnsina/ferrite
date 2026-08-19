@@ -994,3 +994,113 @@ pub fn conform(args: &ConformArgs, json: bool) -> Result<()> {
         anyhow::bail!("{} is not conformant", args.manifest_url)
     }
 }
+
+/// Arguments for `ferrite submit`.
+#[derive(Debug, Args)]
+pub struct SubmitArgs {
+    /// The source to publish. Must be readable by every worker.
+    pub file: PathBuf,
+    /// Where the asset goes. Also shared with the workers.
+    #[arg(short, long, default_value = "asset")]
+    pub out: PathBuf,
+    /// The scheduler's internal API.
+    #[arg(long, default_value = "http://127.0.0.1:8081")]
+    pub scheduler: String,
+    /// Which tenant this belongs to.
+    #[arg(long)]
+    pub tenant: String,
+    /// Which lane it queues in.
+    #[arg(long, default_value = "standard")]
+    pub lane: String,
+    /// Chunk length in milliseconds.
+    #[arg(long, default_value_t = ferrite_av::split::TARGET_CHUNK_MS)]
+    pub chunk_ms: u64,
+}
+
+/// `ferrite submit`. Plans the asset here and hands the plan to the fleet.
+pub fn submit(args: &SubmitArgs, json: bool) -> Result<()> {
+    #[cfg(not(feature = "ffmpeg"))]
+    {
+        let _ = (args, json);
+        anyhow::bail!("this build has no FFmpeg; rebuild with --features ffmpeg")
+    }
+    #[cfg(feature = "ffmpeg")]
+    {
+        use ferrite_worker::asset::{self, Request};
+
+        // Planned here, not on a worker: a resplit could cut somewhere else,
+        // and a retried chunk has to reproduce its boundaries.
+        let request = Request {
+            chunk_ms: args.chunk_ms,
+            ..Request::default()
+        };
+        let job = asset::plan(&args.file, &args.out, &request)?;
+
+        let body = serde_json::json!({
+            "tenant_id": args.tenant,
+            "kind": "asset_quality",
+            "ref_id": uuid_like(&args.file),
+            "spec": job,
+            "lane": args.lane,
+            "dedupe_key": format!("asset:{}", args.file.display()),
+        });
+
+        let response = ureq_post(&format!("{}/internal/work", args.scheduler), &body)?;
+        if json {
+            println!("{}", serde_json::to_string_pretty(&response)?);
+        } else {
+            println!("  work    {}", response["id"].as_str().unwrap_or("?"));
+            println!("  state   {}", response["state"].as_str().unwrap_or("?"));
+            println!("  chunks  {}", job.plan.chunks.len());
+            println!("  rungs   {}", job.rungs.len());
+        }
+        Ok(())
+    }
+}
+
+/// A stable id for a source path, so resubmitting the same file dedupes.
+#[cfg(feature = "ffmpeg")]
+fn uuid_like(path: &std::path::Path) -> String {
+    use std::hash::{Hash, Hasher};
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    path.hash(&mut hasher);
+    let h = hasher.finish();
+    // Version 4 shape, so it parses as a UUID; the bits are a path hash.
+    format!(
+        "{:08x}-{:04x}-4{:03x}-8{:03x}-{:012x}",
+        (h >> 32) as u32,
+        (h >> 16) as u16,
+        ((h >> 4) & 0xfff) as u16,
+        (h & 0xfff) as u16,
+        h & 0xffff_ffff_ffff_u64
+    )
+}
+
+/// The one HTTP call the CLI makes. Not worth a client dependency.
+#[cfg(feature = "ffmpeg")]
+fn ureq_post(url: &str, body: &serde_json::Value) -> Result<serde_json::Value> {
+    let output = std::process::Command::new("curl")
+        .args([
+            "-sS",
+            "-X",
+            "POST",
+            "-H",
+            "content-type: application/json",
+            "-d",
+        ])
+        .arg(serde_json::to_string(body)?)
+        .arg(url)
+        .output()
+        .with_context(|| format!("posting to {url}"))?;
+
+    if !output.status.success() {
+        anyhow::bail!("{}", String::from_utf8_lossy(&output.stderr).trim());
+    }
+    let text = String::from_utf8_lossy(&output.stdout);
+    let parsed: serde_json::Value =
+        serde_json::from_str(&text).with_context(|| format!("scheduler said: {}", text.trim()))?;
+    if let Some(error) = parsed.get("error").and_then(|e| e.as_str()) {
+        anyhow::bail!("{error}: {}", parsed["message"].as_str().unwrap_or(""));
+    }
+    Ok(parsed)
+}

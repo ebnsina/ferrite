@@ -37,6 +37,7 @@ converted file back.
 | Chunked encode | split at keyframes, one decode per chunk feeds every rung |
 | Join | compressed data concatenated, timestamps fixed, nothing re-encoded |
 | Quality | ΔVMAF −0.15 against single-pass, well inside the 0.5 gate |
+| Distributed | chunks fan out across workers via Temporal, joined on completion |
 | Not yet | straggler re-issue, two-path fast/quality split, progressive publish |
 
 **Stage 2 — one machine, end to end**
