@@ -43,6 +43,26 @@ and this project uses [semantic versioning](https://semver.org/spec/v2.0.0.html)
   PTS monotonicity in decode order, which every B-frame violates by design; it
   now checks decode timestamps.
 
+## Stage 3 — chunking
+
+### Added
+
+- Chunked encoding: the source is split at keyframes and each piece encoded
+  separately, with one decode per chunk still feeding every rung. Time then
+  depends on how many machines are free rather than on how long the video is.
+- `join`: concatenates compressed data and fixes timestamps. Nothing is
+  re-encoded — decoding a joined chunk would throw away the quality chunking
+  exists to preserve.
+- `ferrite run --whole` encodes in one pass, for comparing against.
+
+### Measured
+
+Against a 150s source, chunked versus whole: VMAF 97.579 against 97.429, worst
+frame identical, CAMBI 0.4008 against 0.4015, CIEDE2000 57.95 against 57.59.
+Frame counts and durations match exactly, and keyframes stay identical across
+every rung after the join. The gate is a drop of no more than 0.5 VMAF; chunking
+came out marginally ahead.
+
 ## Stage 2 — one machine, end to end
 
 ### Added

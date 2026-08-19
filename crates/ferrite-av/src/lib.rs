@@ -22,6 +22,9 @@ mod probe;
 pub mod audio;
 
 #[cfg(feature = "ffmpeg")]
+pub mod join;
+
+#[cfg(feature = "ffmpeg")]
 pub mod sheet;
 
 #[cfg(feature = "ffmpeg")]

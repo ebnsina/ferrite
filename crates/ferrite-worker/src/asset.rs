@@ -18,6 +18,11 @@ pub struct Request {
     pub preset: Preset,
     /// Encode only the rung that makes the asset playable.
     pub fast_only: bool,
+    /// Split the source and encode the pieces separately. Time then depends on
+    /// how many machines are free rather than on how long the video is.
+    pub chunked: bool,
+    /// Chunk length. The industry norm is ten seconds.
+    pub chunk_ms: u64,
 }
 
 impl Default for Request {
@@ -25,6 +30,8 @@ impl Default for Request {
         Self {
             preset: Preset::Medium,
             fast_only: false,
+            chunked: true,
+            chunk_ms: ferrite_av::split::TARGET_CHUNK_MS,
         }
     }
 }
@@ -63,6 +70,8 @@ pub struct Published {
     pub thumbnails: usize,
     /// Source duration.
     pub duration_ms: u64,
+    /// Chunks the source was split into. One means it was encoded whole.
+    pub chunks: usize,
 }
 
 /// Why an asset could not be published.
@@ -108,7 +117,19 @@ pub fn run(input: &Path, out_dir: &Path, request: &Request) -> Result<Published,
             spec: s.spec.clone(),
         })
         .collect();
-    let reports = ferrite_av::transcode::run(input, &outputs, Arc::new(NeverCancel))?;
+    let plan = ferrite_av::split::plan(&info.keyframes_ms, info.duration_ms, request.chunk_ms);
+    let split = request.chunked && plan.is_split();
+    let (reports, chunks) = if split {
+        (
+            encode_in_chunks(input, &outputs, &plan, &encoded_dir)?,
+            plan.chunks.len(),
+        )
+    } else {
+        (
+            ferrite_av::transcode::run(input, &outputs, Arc::new(NeverCancel))?,
+            1,
+        )
+    };
 
     // Never chunked and never per rung: one track, shared.
     let audio_track = encoded_dir.join("audio.m4a");
@@ -186,5 +207,63 @@ pub fn run(input: &Path, out_dir: &Path, request: &Request) -> Result<Published,
         hashes: sheet.samples.iter().map(|s| s.phash).collect(),
         thumbnails: sheet.thumbnails.len(),
         duration_ms: info.duration_ms,
+        chunks,
     })
+}
+
+/// Encode each chunk across every rung, then join the pieces per rung.
+///
+/// One decode per chunk still feeds all rungs, so splitting the work does not
+/// undo decode-once.
+fn encode_in_chunks(
+    input: &Path,
+    outputs: &[Output],
+    plan: &ferrite_av::split::SplitPlan,
+    work_dir: &Path,
+) -> Result<Vec<ferrite_av::transcode::Report>, AssetError> {
+    let parts_dir = work_dir.join("parts");
+    let mut per_rung: Vec<Vec<PathBuf>> = vec![Vec::new(); outputs.len()];
+
+    for chunk in &plan.chunks {
+        let chunk_outputs: Vec<Output> = outputs
+            .iter()
+            .enumerate()
+            .map(|(rung, out)| {
+                let name = out.path.file_stem().unwrap_or_default().to_string_lossy();
+                let path = parts_dir.join(format!("{name}-{:05}.mp4", chunk.index));
+                per_rung[rung].push(path.clone());
+                Output {
+                    path,
+                    spec: out.spec.clone(),
+                }
+            })
+            .collect();
+
+        ferrite_av::transcode::run_range(
+            input,
+            &chunk_outputs,
+            Some(*chunk),
+            Arc::new(NeverCancel),
+        )?;
+    }
+
+    let mut reports = Vec::with_capacity(outputs.len());
+    for (out, parts) in outputs.iter().zip(&per_rung) {
+        let joined = ferrite_av::join::run(parts, &out.path)?;
+        reports.push(ferrite_av::transcode::Report {
+            path: joined.path,
+            frames: joined.frames,
+            bytes: joined.bytes,
+            provenance: ferrite_av::Provenance {
+                backend: ferrite_av::BackendId::Cpu,
+                encoder: ferrite_av::encoder::CpuBackend::encoder_name(out.spec.codec).to_string(),
+                encoder_version: None,
+                ffmpeg_version: ferrite_av::ffmpeg_version(),
+            },
+        });
+    }
+
+    // The pieces only matter while a straggler might still be re-issued.
+    let _ = std::fs::remove_dir_all(&parts_dir);
+    Ok(reports)
 }

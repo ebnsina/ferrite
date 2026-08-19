@@ -868,6 +868,12 @@ pub struct RunArgs {
     /// Encode only the rung that makes it playable.
     #[arg(long)]
     pub fast: bool,
+    /// Encode the whole source in one pass instead of splitting it.
+    #[arg(long)]
+    pub whole: bool,
+    /// Chunk length in milliseconds.
+    #[arg(long, default_value_t = ferrite_av::split::TARGET_CHUNK_MS)]
+    pub chunk_ms: u64,
 }
 
 /// `ferrite run`.
@@ -890,6 +896,8 @@ pub fn run(args: &RunArgs, json: bool) -> Result<()> {
                 Preset::Medium
             },
             fast_only: args.fast,
+            chunked: !args.whole,
+            chunk_ms: args.chunk_ms,
         };
 
         let started = Instant::now();

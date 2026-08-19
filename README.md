@@ -30,7 +30,16 @@ converted file back.
 | Internal API | `/internal/work`, `/cancel`, `/finish`, `/budgets`, `/capacity` |
 | Temporal | behind the engine trait; workflows started untyped, by name |
 
-**Stage 2 — one machine, end to end** (in progress)
+**Stage 3 — chunking** (in progress)
+
+| | |
+|---|---|
+| Chunked encode | split at keyframes, one decode per chunk feeds every rung |
+| Join | compressed data concatenated, timestamps fixed, nothing re-encoded |
+| Quality | ΔVMAF −0.15 against single-pass, well inside the 0.5 gate |
+| Not yet | straggler re-issue, two-path fast/quality split, progressive publish |
+
+**Stage 2 — one machine, end to end**
 
 | | |
 |---|---|

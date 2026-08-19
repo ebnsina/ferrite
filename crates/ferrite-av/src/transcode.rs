@@ -10,6 +10,7 @@ use crate::encoder::{
 };
 use crate::error::{AvError, Result};
 use ffmpeg_next as ff;
+use std::cmp::Ordering;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -40,6 +41,19 @@ pub struct Report {
 /// Cancellation is checked per frame, so a cancelled four-hour encode stops
 /// now rather than at the next chunk boundary.
 pub fn run(input: &Path, outputs: &[Output], cancel: Arc<dyn CancelSignal>) -> Result<Vec<Report>> {
+    run_range(input, outputs, None, cancel)
+}
+
+/// [`run`] over one slice of the timeline, for chunked encoding.
+///
+/// The range must start on a keyframe, which is what the split planner
+/// guarantees — otherwise the chunk cannot be decoded on its own.
+pub fn run_range(
+    input: &Path,
+    outputs: &[Output],
+    range: Option<crate::split::Chunk>,
+    cancel: Arc<dyn CancelSignal>,
+) -> Result<Vec<Report>> {
     if outputs.is_empty() {
         return Ok(Vec::new());
     }
@@ -94,12 +108,43 @@ pub fn run(input: &Path, outputs: &[Output], cancel: Arc<dyn CancelSignal>) -> R
         .collect::<Result<_>>()?;
 
     let mut decoded = ff::frame::Video::empty();
-    for (packet_stream, packet) in source.packets() {
+    // Seeking lands at or before the target keyframe, so the first frames may
+    // be lead-in that belongs to the previous chunk.
+    if let Some(chunk) = range {
+        let ts = (chunk.start_ms as i64) * i64::from(ff::ffi::AV_TIME_BASE) / 1000;
+        source.seek(ts, ..ts).map_err(wrap("seek to chunk"))?;
+        decoder.flush();
+    }
+
+    let tb = f64::from(source_time_base.numerator()) / f64::from(source_time_base.denominator());
+    let in_range = |frame: &ff::frame::Video| -> Ordering {
+        let Some(chunk) = range else {
+            return Ordering::Equal;
+        };
+        let Some(pts) = frame.pts() else {
+            return Ordering::Equal;
+        };
+        let ms = (pts.max(0) as f64 * tb * 1000.0).round() as u64;
+        if ms < chunk.start_ms {
+            Ordering::Less
+        } else if ms >= chunk.end_ms {
+            Ordering::Greater
+        } else {
+            Ordering::Equal
+        }
+    };
+
+    'demux: for (packet_stream, packet) in source.packets() {
         if packet_stream.index() != stream_index {
             continue;
         }
         decoder.send_packet(&packet).map_err(wrap("send packet"))?;
         while decoder.receive_frame(&mut decoded).is_ok() {
+            match in_range(&decoded) {
+                Ordering::Less => continue,
+                Ordering::Greater => break 'demux,
+                Ordering::Equal => {}
+            }
             for sink in &mut sinks {
                 sink.push(&decoded)?;
             }
@@ -108,6 +153,9 @@ pub fn run(input: &Path, outputs: &[Output], cancel: Arc<dyn CancelSignal>) -> R
 
     decoder.send_eof().map_err(wrap("decoder eof"))?;
     while decoder.receive_frame(&mut decoded).is_ok() {
+        if in_range(&decoded) != Ordering::Equal {
+            continue;
+        }
         for sink in &mut sinks {
             sink.push(&decoded)?;
         }
