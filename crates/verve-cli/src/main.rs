@@ -33,6 +33,8 @@ enum Command {
     Encode(pipeline::EncodeArgs),
     /// Structural checks — frame counts, keyframe alignment, duration.
     Verify(pipeline::VerifyArgs),
+    /// CMAF + HLS + DASH over one segment set.
+    Package(pipeline::PackageArgs),
     /// What this build links against and which codecs it can produce.
     Doctor,
 }
@@ -54,6 +56,7 @@ fn main() -> ExitCode {
         Command::Ladder(args) => pipeline::ladder(&args, cli.json),
         Command::Encode(args) => pipeline::encode(&args, cli.json),
         Command::Verify(args) => pipeline::verify(&args, cli.json),
+        Command::Package(args) => pipeline::package(&args, cli.json),
         Command::Doctor => pipeline::doctor(cli.json),
     };
 

@@ -7,3 +7,4 @@
 /data
 /vendor/build
 /.env
+/vendor/packager

@@ -37,6 +37,8 @@ jobs:
             libavcodec-dev libavformat-dev libavutil-dev libavfilter-dev \
             libavdevice-dev libswscale-dev libswresample-dev \
             clang libclang-dev pkg-config
+      - name: Shaka Packager
+        run: ./scripts/fetch-packager.sh
       - run: cargo test -p verve-av --features ffmpeg
       - run: cargo build -p verve-cli --features ffmpeg
 

@@ -28,6 +28,10 @@ nuke: ## Stop everything and delete volumes
 ffmpeg: ## Build the pinned FFmpeg into vendor/ffmpeg
 	./scripts/build-ffmpeg.sh
 
+.PHONY: packager
+packager: ## Fetch the pinned Shaka Packager into vendor/
+	./scripts/fetch-packager.sh
+
 .PHONY: build
 build: ## Build the workspace with FFmpeg
 	cargo build --workspace --features verve-av/$(FEATURES)

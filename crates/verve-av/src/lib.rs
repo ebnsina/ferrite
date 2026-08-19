@@ -7,6 +7,7 @@ pub mod encoder;
 pub mod error;
 pub mod ladder;
 pub mod media;
+pub mod package;
 pub mod split;
 pub mod verify;
 

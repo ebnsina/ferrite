@@ -348,3 +348,63 @@ pub fn verify(args: &VerifyArgs, json: bool) -> Result<()> {
         anyhow::bail!("verification failed")
     }
 }
+
+/// Arguments for `verve package`.
+#[derive(Debug, Args)]
+pub struct PackageArgs {
+    /// Directory of encoded renditions.
+    pub dir: PathBuf,
+    /// Where to write segments and manifests.
+    #[arg(short, long, default_value = "cmaf")]
+    pub out: PathBuf,
+    /// File to take the audio track from. Audio is never chunked per rung.
+    #[arg(long)]
+    pub audio: Option<PathBuf>,
+}
+
+/// `verve package`.
+pub fn package(args: &PackageArgs, json: bool) -> Result<()> {
+    use verve_av::package::{Input, Track};
+
+    let mut files: Vec<PathBuf> = std::fs::read_dir(&args.dir)
+        .with_context(|| format!("reading {}", args.dir.display()))?
+        .filter_map(|e| e.ok().map(|e| e.path()))
+        .filter(|p| p.extension().is_some_and(|e| e == "mp4"))
+        .collect();
+    if files.is_empty() {
+        anyhow::bail!("no renditions in {}", args.dir.display());
+    }
+    files.sort();
+
+    let mut inputs: Vec<Input> = files
+        .iter()
+        .map(|p| Input {
+            name: p
+                .file_stem()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .to_string(),
+            path: p.clone(),
+            kind: Track::Video,
+        })
+        .collect();
+
+    if let Some(audio) = &args.audio {
+        inputs.push(Input {
+            name: "audio".into(),
+            path: audio.clone(),
+            kind: Track::Audio,
+        });
+    }
+
+    let packaged = verve_av::package::run(&inputs, &args.out)?;
+
+    if json {
+        println!("{}", serde_json::to_string_pretty(&packaged)?);
+    } else {
+        println!("  hls   {}", packaged.hls.display());
+        println!("  dash  {}", packaged.dash.display());
+        println!("{} renditions packaged", packaged.renditions.len());
+    }
+    Ok(())
+}

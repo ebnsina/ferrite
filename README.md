@@ -31,6 +31,17 @@ converted file back. See [docs/](docs/) — [overview](docs/01-overview.md),
 | Internal API | `/internal/work`, `/cancel`, `/finish`, `/budgets`, `/capacity` |
 | Temporal | behind the engine trait; workflows started untyped, by name |
 
+**Stage 2 — one machine, end to end** (in progress)
+
+| | |
+|---|---|
+| Ladder | never upscales, drops rungs above the source bitrate, keeps the aspect |
+| Split plan | cuts only at keyframes, leaves short sources whole, reproducible |
+| Transcode | one decode feeds every rung; rotation, fps, scale via libavfilter |
+| Check | catches a dropped chunk — the file that still plays but is wrong |
+| Package | CMAF + HLS + DASH over one segment set, via Shaka Packager |
+| Not yet | audio encode, thumbnails, contact sheet, pHash, job mode, `quality`/`bench` |
+
 ## Get started
 
 ```sh
@@ -50,7 +61,19 @@ make fake-worker        # runs verve.fake, reports completion back
 ```
 
 `make ffmpeg` builds the pinned FFmpeg into `vendor/ffmpeg`; until then the
-crate links against whatever `pkg-config` finds.
+crate links against whatever `pkg-config` finds. `make packager` fetches the
+pinned Shaka Packager into `vendor/packager`, which `verve package` needs.
+
+Local pipeline, end to end:
+
+```sh
+verve probe   input.mp4          # codecs, duration, keyframes, problems
+verve ladder  input.mp4          # which rungs, and why
+verve split   input.mp4          # where every cut lands
+verve encode  input.mp4 -o out/  # the ladder, decode-once
+verve verify  out/               # frame counts, keyframe alignment, duration
+verve package out/ -o cmaf/      # CMAF + HLS + DASH over one segment set
+```
 
 ## Ports
 
