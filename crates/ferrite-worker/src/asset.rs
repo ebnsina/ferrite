@@ -154,6 +154,7 @@ pub fn run(input: &Path, out_dir: &Path, request: &Request) -> Result<Published,
             name: s.name.to_string(),
             path: r.path.clone(),
             kind: Track::Video,
+            language: None,
         })
         .collect();
     if audio.is_some() {
@@ -161,6 +162,7 @@ pub fn run(input: &Path, out_dir: &Path, request: &Request) -> Result<Published,
             name: "audio".into(),
             path: audio_track,
             kind: Track::Audio,
+            language: None,
         });
     }
     let packaged = ferrite_av::package::run(&inputs, &out_dir.join("cmaf"))?;

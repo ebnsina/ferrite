@@ -48,6 +48,7 @@ converted file back.
 | Job mode | one file in, one file out, sharing steps 1–3 with asset mode |
 | Corpus | eleven awkward files, a JSON report, and a diff that gates a merge |
 | Conformance | MPEG-DASH and CMAF against DASH-IF; HLS wants Apple's tool |
+| Browser | plays in Chrome via hls.js, ABR switching 720p → 1080p mid-stream |
 
 ## Get started
 

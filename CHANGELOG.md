@@ -47,6 +47,8 @@ and this project uses [semantic versioning](https://semver.org/spec/v2.0.0.html)
 
 ### Added
 
+- Audio renditions carry the source's language when it states one. The packager
+  rejects `und`, so an unknown language is left unclaimed rather than guessed at.
 - `ferrite conform`: MPEG-DASH and CMAF standards checks against DASH-IF,
   pinned to 2.4.1 and run as a container. Manifest-level checks pass. Segment
   checks report seven findings from the validator's ISO/IEC 23009-1:2012 rules,

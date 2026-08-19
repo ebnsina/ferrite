@@ -386,6 +386,7 @@ pub fn package(args: &PackageArgs, json: bool) -> Result<()> {
                 .to_string(),
             path: p.clone(),
             kind: Track::Video,
+            language: None,
         })
         .collect();
 
@@ -398,6 +399,7 @@ pub fn package(args: &PackageArgs, json: bool) -> Result<()> {
                 name: "audio".into(),
                 path: track,
                 kind: Track::Audio,
+                language: None,
             }),
             None => eprintln!("note: {} has no audio track", source.display()),
         }

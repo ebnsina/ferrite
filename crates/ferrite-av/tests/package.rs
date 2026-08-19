@@ -75,12 +75,14 @@ fn packaged(name: &str) -> Option<(Fixture, package::Packaged, Vec<String>)> {
             name: s.name.to_string(),
             path: o.path.clone(),
             kind: Track::Video,
+            language: None,
         })
         .collect();
     inputs.push(Input {
         name: "audio".into(),
         path: source,
         kind: Track::Audio,
+        language: None,
     });
 
     let out = package::run(&inputs, &dir.join("cmaf")).ok()?;

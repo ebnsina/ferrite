@@ -18,6 +18,10 @@ pub struct Input {
     pub path: PathBuf,
     /// `video` or `audio`.
     pub kind: Track,
+    /// Language tag. `None` means undetermined, which is still a tag: an
+    /// untagged audio group has no default member, and a player asked to pick
+    /// from it stalls rather than choosing.
+    pub language: Option<String>,
 }
 
 /// What a stream carries.
@@ -52,6 +56,10 @@ pub struct Packaged {
 /// Segment length. Two seconds divides the ~10s chunk target and matches the
 /// GOP, so segment boundaries land on keyframes.
 pub const SEGMENT_SECONDS: u32 = 2;
+
+/// ISO 639-2 for undetermined. The right tag for audio whose language nobody
+/// stated, and better than no tag at all.
+pub const UNDETERMINED: &str = "und";
 
 /// The packager binary: `PACKAGER_BIN`, then `vendor/packager`, then `$PATH`.
 pub fn binary() -> PathBuf {
@@ -94,6 +102,21 @@ pub fn run(inputs: &[Input], out_dir: &Path) -> Result<Packaged> {
             dir.join("seg-$Number$.m4s").display(),
             format_args!("{}/{}.m3u8", input.name, input.kind.as_str()),
         ));
+        // Only when the source stated one: the packager rejects "und", so an
+        // unknown language is better left unclaimed than guessed at.
+        if let Some(language) = input.language.as_deref().filter(|l| *l != UNDETERMINED) {
+            command.arg(format!("language={language}"));
+        }
+    }
+
+    // Marks the first rendition of the matching group DEFAULT=YES.
+    let audio_language = inputs
+        .iter()
+        .find(|i| i.kind == Track::Audio)
+        .and_then(|i| i.language.as_deref())
+        .filter(|l| *l != UNDETERMINED);
+    if let Some(language) = audio_language {
+        command.arg("--default_language").arg(language);
     }
 
     command
@@ -148,6 +171,7 @@ mod tests {
             name: "720p".into(),
             path: PathBuf::from("/nonexistent.mp4"),
             kind: Track::Video,
+            language: None,
         }];
 
         let previous = std::env::var("PACKAGER_BIN").ok();
