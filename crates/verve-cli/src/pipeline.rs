@@ -1,7 +1,7 @@
 //! Local pipeline commands. No Temporal, no scheduler, no Postgres — you debug
 //! an encode on a laptop with the code the fleet runs.
 
-use anyhow::Result;
+use anyhow::{Context as _, Result};
 use clap::Args;
 use std::path::PathBuf;
 
@@ -280,5 +280,71 @@ pub fn encode(args: &EncodeArgs, json: bool) -> Result<()> {
             info.duration_ms as f64 / 1000.0 / elapsed.as_secs_f64().max(0.001)
         );
         Ok(())
+    }
+}
+
+/// Arguments for `verve verify`.
+#[derive(Debug, Args)]
+pub struct VerifyArgs {
+    /// Directory of renditions to check against each other.
+    pub dir: PathBuf,
+}
+
+/// `verve verify`. Exit 1 on a finding, so CI can branch on it.
+pub fn verify(args: &VerifyArgs, json: bool) -> Result<()> {
+    use verve_av::verify::Rendition;
+
+    let mut files: Vec<PathBuf> = std::fs::read_dir(&args.dir)
+        .with_context(|| format!("reading {}", args.dir.display()))?
+        .filter_map(|e| e.ok().map(|e| e.path()))
+        .filter(|p| p.extension().is_some_and(|e| e == "mp4" || e == "m4s"))
+        .collect();
+    if files.is_empty() {
+        anyhow::bail!("no renditions in {}", args.dir.display());
+    }
+    files.sort();
+
+    // Biggest first, so the reference is the rung most likely to be complete.
+    let mut probed: Vec<(String, verve_av::MediaInfo)> = Vec::new();
+    for path in &files {
+        let name = path
+            .file_stem()
+            .unwrap_or_default()
+            .to_string_lossy()
+            .to_string();
+        probed.push((name, probe_file(path)?));
+    }
+    probed.sort_by_key(|(_, i)| {
+        std::cmp::Reverse(
+            i.primary_video()
+                .map_or(0, |v| u64::from(v.width) * u64::from(v.height)),
+        )
+    });
+
+    let renditions: Vec<Rendition<'_>> = probed
+        .iter()
+        .map(|(n, i)| Rendition { name: n, info: i })
+        .collect();
+    let verdict = verve_av::verify::verify(&renditions);
+
+    if json {
+        println!("{}", serde_json::to_string_pretty(&verdict)?);
+    } else if verdict.is_ok() {
+        println!("{} renditions agree", verdict.checked);
+    } else {
+        for f in &verdict.findings {
+            println!("  {:<8} {:?}", f.rendition, f.problem);
+        }
+        println!(
+            "{} findings across {} renditions",
+            verdict.findings.len(),
+            verdict.checked
+        );
+    }
+
+    if verdict.is_ok() {
+        Ok(())
+    } else {
+        anyhow::bail!("verification failed")
     }
 }

@@ -444,6 +444,83 @@ fn cancellation_stops_the_run_rather_than_finishing_it() {
 }
 
 #[test]
+fn a_truncated_rung_still_plays_and_is_caught_anyway() {
+    // The exact failure the check step exists for: a dropped chunk leaves a
+    // file that decodes without complaint.
+    use verve_av::verify::{Rendition, verify};
+
+    let Some(fx) = Fixture::new("truncated", "1280x720", 6) else {
+        return;
+    };
+
+    let steps = ladder(&fx.source);
+    let outputs: Vec<Output> = steps
+        .iter()
+        .map(|s| Output {
+            path: fx.out(&format!("{}.mp4", s.name)),
+            spec: s.spec.clone(),
+        })
+        .collect();
+    let reports = transcode::run(&fx.source, &outputs, Arc::new(NeverCancel)).expect("transcode");
+
+    let intact: Vec<verve_av::MediaInfo> = reports
+        .iter()
+        .map(|r| verve_av::probe(&r.path).expect("probe"))
+        .collect();
+    let named: Vec<Rendition<'_>> = steps
+        .iter()
+        .zip(&intact)
+        .map(|(s, i)| Rendition {
+            name: s.name,
+            info: i,
+        })
+        .collect();
+    assert!(
+        verify(&named).is_ok(),
+        "a fresh ladder should agree with itself"
+    );
+
+    // Cut the second rung short, as a lost chunk would.
+    let short = fx.out("short.mp4");
+    if !ffmpeg(&[
+        "-i",
+        reports[1].path.to_str().unwrap(),
+        "-t",
+        "3",
+        "-c",
+        "copy",
+        short.to_str().unwrap(),
+    ]) {
+        return;
+    }
+
+    // It plays. That is why nothing else notices.
+    let truncated = verve_av::probe(&short).expect("the truncated file still opens");
+
+    let mut damaged = intact.clone();
+    damaged[1] = truncated;
+    let named: Vec<Rendition<'_>> = steps
+        .iter()
+        .zip(&damaged)
+        .map(|(s, i)| Rendition {
+            name: s.name,
+            info: i,
+        })
+        .collect();
+
+    let verdict = verify(&named);
+    assert!(!verdict.is_ok(), "a short rung was published");
+    assert!(
+        verdict
+            .findings
+            .iter()
+            .all(|f| f.rendition == steps[1].name),
+        "blamed the wrong rung: {:?}",
+        verdict.findings
+    );
+}
+
+#[test]
 fn an_empty_output_list_does_no_work() {
     let Some(fx) = Fixture::new("empty", "320x180", 1) else {
         return;

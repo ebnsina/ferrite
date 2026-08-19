@@ -31,6 +31,8 @@ enum Command {
     Ladder(pipeline::ProbeArgs),
     /// Run the ladder locally, decode-once.
     Encode(pipeline::EncodeArgs),
+    /// Structural checks — frame counts, keyframe alignment, duration.
+    Verify(pipeline::VerifyArgs),
     /// What this build links against and which codecs it can produce.
     Doctor,
 }
@@ -51,6 +53,7 @@ fn main() -> ExitCode {
         Command::Split(args) => pipeline::split(&args, cli.json),
         Command::Ladder(args) => pipeline::ladder(&args, cli.json),
         Command::Encode(args) => pipeline::encode(&args, cli.json),
+        Command::Verify(args) => pipeline::verify(&args, cli.json),
         Command::Doctor => pipeline::doctor(cli.json),
     };
 
